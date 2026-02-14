@@ -1,0 +1,12 @@
+[2026-02-07T13:53:53.495718+00:00] docxtpl import failed: No module named 'docxtpl'
+executable: C:\laragon\www\operasional\project\.venv\Scripts\python.exe
+python_version: 3.10.6 (tags/v3.10.6:9c7b4bd, Aug  1 2022, 21:53:49) [MSC v.1932 64 bit (AMD64)]
+sys.path:
+  C:\laragon\www\operasional\project
+  C:\laragon\bin\python\python-3.10\python310.zip
+  C:\laragon\bin\python\python-3.10\DLLs
+  C:\laragon\bin\python\python-3.10\lib
+  C:\laragon\bin\python\python-3.10
+  C:\laragon\www\operasional\project\.venv
+  C:\laragon\www\operasional\project\.venv\lib\site-packages
+

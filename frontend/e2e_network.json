@@ -1,0 +1,302 @@
+[
+  {
+    "type": "console",
+    "text": "%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold"
+  },
+  {
+    "type": "console",
+    "text": "Error while trying to use the following icon from the Manifest: http://localhost:3000/logo192.png (Download error or resource isn't a valid image)"
+  },
+  {
+    "type": "console",
+    "text": "[DOM] Input elements should have autocomplete attributes (suggested: \"current-password\"): (More info: https://goo.gl/9p2vKq) %o"
+  },
+  {
+    "type": "request",
+    "method": "OPTIONS",
+    "url": "http://localhost:8000/api/dashboard/summary/"
+  },
+  {
+    "type": "request",
+    "method": "GET",
+    "url": "http://localhost:8000/api/dashboard/summary/"
+  },
+  {
+    "type": "request",
+    "method": "GET",
+    "url": "http://localhost:8000/api/dashboard/summary/"
+  },
+  {
+    "type": "request",
+    "method": "OPTIONS",
+    "url": "http://localhost:8000/api/dashboard/summary/"
+  },
+  {
+    "type": "response",
+    "url": "http://localhost:8000/api/dashboard/summary/",
+    "status": 200,
+    "body": ""
+  },
+  {
+    "type": "response",
+    "url": "http://localhost:8000/api/dashboard/summary/",
+    "status": 200,
+    "body": ""
+  },
+  {
+    "type": "response",
+    "url": "http://localhost:8000/api/dashboard/summary/",
+    "status": 200,
+    "body": "{\"bl_agreement\":6,\"bl_sp3\":0,\"uv_agreement\":2,\"uv_sp3\":0}"
+  },
+  {
+    "type": "response",
+    "url": "http://localhost:8000/api/dashboard/summary/",
+    "status": 200,
+    "body": "{\"bl_agreement\":6,\"bl_sp3\":0,\"uv_agreement\":2,\"uv_sp3\":0}"
+  },
+  {
+    "type": "request",
+    "method": "OPTIONS",
+    "url": "http://localhost:8000/api/bl-agreement/"
+  },
+  {
+    "type": "request",
+    "method": "GET",
+    "url": "http://localhost:8000/api/bl-agreement/"
+  },
+  {
+    "type": "request",
+    "method": "GET",
+    "url": "http://localhost:8000/api/bl-agreement/"
+  },
+  {
+    "type": "request",
+    "method": "OPTIONS",
+    "url": "http://localhost:8000/api/bl-agreement/"
+  },
+  {
+    "type": "request",
+    "method": "OPTIONS",
+    "url": "http://localhost:8000/api/bl-agreement/contracts/"
+  },
+  {
+    "type": "request",
+    "method": "OPTIONS",
+    "url": "http://localhost:8000/api/branches/"
+  },
+  {
+    "type": "request",
+    "method": "OPTIONS",
+    "url": "http://localhost:8000/api/directors/"
+  },
+  {
+    "type": "request",
+    "method": "OPTIONS",
+    "url": "http://localhost:8000/api/bl-agreement/contracts/"
+  },
+  {
+    "type": "request",
+    "method": "GET",
+    "url": "http://localhost:8000/api/bl-agreement/contracts/"
+  },
+  {
+    "type": "request",
+    "method": "GET",
+    "url": "http://localhost:8000/api/branches/"
+  },
+  {
+    "type": "request",
+    "method": "GET",
+    "url": "http://localhost:8000/api/directors/"
+  },
+  {
+    "type": "request",
+    "method": "GET",
+    "url": "http://localhost:8000/api/bl-agreement/contracts/"
+  },
+  {
+    "type": "request",
+    "method": "GET",
+    "url": "http://localhost:8000/api/branches/"
+  },
+  {
+    "type": "request",
+    "method": "GET",
+    "url": "http://localhost:8000/api/directors/"
+  },
+  {
+    "type": "request",
+    "method": "OPTIONS",
+    "url": "http://localhost:8000/api/branches/"
+  },
+  {
+    "type": "request",
+    "method": "OPTIONS",
+    "url": "http://localhost:8000/api/directors/"
+  },
+  {
+    "type": "console",
+    "text": "The specified value \"E2E Debtor\" does not conform to the required format, \"yyyy-MM-dd\"."
+  },
+  {
+    "type": "request",
+    "method": "OPTIONS",
+    "url": "http://localhost:8000/api/contracts/"
+  },
+  {
+    "type": "request",
+    "method": "POST",
+    "url": "http://localhost:8000/api/contracts/"
+  },
+  {
+    "type": "response",
+    "url": "http://localhost:8000/api/bl-agreement/",
+    "status": 200,
+    "body": ""
+  },
+  {
+    "type": "response",
+    "url": "http://localhost:8000/api/branches/",
+    "status": 200,
+    "body": ""
+  },
+  {
+    "type": "response",
+    "url": "http://localhost:8000/api/bl-agreement/",
+    "status": 200,
+    "body": ""
+  },
+  {
+    "type": "response",
+    "url": "http://localhost:8000/api/contracts/",
+    "status": 200,
+    "body": ""
+  },
+  {
+    "type": "response",
+    "url": "http://localhost:8000/api/bl-agreement/contracts/",
+    "status": 200,
+    "body": ""
+  },
+  {
+    "type": "response",
+    "url": "http://localhost:8000/api/directors/",
+    "status": 200,
+    "body": ""
+  },
+  {
+    "type": "response",
+    "url": "http://localhost:8000/api/branches/",
+    "status": 200,
+    "body": ""
+  },
+  {
+    "type": "console",
+    "text": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+  },
+  {
+    "type": "console",
+    "text": "Failed saving contract-only AxiosError: Request failed with status code 500"
+  },
+  {
+    "type": "console",
+    "text": "Contract-only save response: [object Object]"
+  },
+  {
+    "type": "response",
+    "url": "http://localhost:8000/api/directors/",
+    "status": 200,
+    "body": ""
+  },
+  {
+    "type": "response",
+    "url": "http://localhost:8000/api/bl-agreement/contracts/",
+    "status": 200,
+    "body": ""
+  },
+  {
+    "type": "response",
+    "url": "http://localhost:8000/api/bl-agreement/",
+    "status": 200,
+    "body": "{\"agreements\":[{\"agreement_date\":null,\"contract_number\":\"TEST-COLL-001\",\"name_of_debtor\":\"John\",\"nik_number_of_debtor\":null,\"collateral_type\":\"BPKB\",\"created_by\":\"admin\"},{\"agreement_date\":\"2026-02-09\",\"contract_number\":\"CON002\",\"name_of_debtor\":\"Jane Smith\",\"nik_number_of_debtor\":\"3209876543212345\",\"collateral_type\":\"SHM\",\"created_by\":\"admin\"},{\"agreement_date\":\"2026-02-09\",\"contract_number\":\"CON005\",\"name_of_debtor\":\"A\",\"nik_number_of_debtor\":\"3254553134\",\"collateral_type\":\"shm\",\"created_by\":\"..."
+  },
+  {
+    "type": "response",
+    "url": "http://localhost:8000/api/bl-agreement/contracts/",
+    "status": 200,
+    "body": "{\"contracts\":[\"-\",\"CON001\",\"CON002\",\"CON003\",\"E2E-CON-1770718473734\",\"E2E-CON-1770718944767\",\"E2E-CON-1770718995460\",\"E2E-CON-1770719046558\",\"TEST-UV-COLL-001\"]}"
+  },
+  {
+    "type": "response",
+    "url": "http://localhost:8000/api/directors/",
+    "status": 200,
+    "body": "{\"directors\":[\"Supriyono Soekarno\"]}"
+  },
+  {
+    "type": "response",
+    "url": "http://localhost:8000/api/contracts/",
+    "status": 500,
+    "body": "{\"error\":\"(1292, \\\"Incorrect date value: '' for column 'date_birth_of_debtor' at row 1\\\")\"}"
+  },
+  {
+    "type": "response",
+    "url": "http://localhost:8000/api/bl-agreement/",
+    "status": 200,
+    "body": "{\"agreements\":[{\"agreement_date\":null,\"contract_number\":\"TEST-COLL-001\",\"name_of_debtor\":\"John\",\"nik_number_of_debtor\":null,\"collateral_type\":\"BPKB\",\"created_by\":\"admin\"},{\"agreement_date\":\"2026-02-09\",\"contract_number\":\"CON002\",\"name_of_debtor\":\"Jane Smith\",\"nik_number_of_debtor\":\"3209876543212345\",\"collateral_type\":\"SHM\",\"created_by\":\"admin\"},{\"agreement_date\":\"2026-02-09\",\"contract_number\":\"CON005\",\"name_of_debtor\":\"A\",\"nik_number_of_debtor\":\"3254553134\",\"collateral_type\":\"shm\",\"created_by\":\"..."
+  },
+  {
+    "type": "response",
+    "url": "http://localhost:8000/api/directors/",
+    "status": 200,
+    "body": "{\"directors\":[\"Supriyono Soekarno\"]}"
+  },
+  {
+    "type": "response",
+    "url": "http://localhost:8000/api/bl-agreement/contracts/",
+    "status": 200,
+    "body": "{\"contracts\":[\"-\",\"CON001\",\"CON002\",\"CON003\",\"E2E-CON-1770718473734\",\"E2E-CON-1770718944767\",\"E2E-CON-1770718995460\",\"E2E-CON-1770719046558\",\"TEST-UV-COLL-001\"]}"
+  },
+  {
+    "type": "response",
+    "url": "http://localhost:8000/api/branches/",
+    "status": 200,
+    "body": "{\"branches\":[{\"id\":34,\"area_id\":6,\"name\":\"Air Putih\",\"code\":\"ARP\",\"bm_id\":36,\"street_name\":null,\"subdistrict\":\"\",\"district\":\"\",\"city\":\"\",\"province\":\"\",\"is_active\":1,\"created_at\":\"2026-02-04T15:22:16\",\"updated_at\":\"2026-02-04T15:22:16\",\"deleted_at\":null,\"branches_id\":36,\"name_of_bm\":\"Miduk Panggabean\",\"place_birth_of_bm\":null,\"date_birth_of_bm\":null,\"nik_number_of_bm\":null,\"phone_number_of_bm\":null,\"street_name_of_bm\":\"\",\"subdistrict_of_bm\":\"\",\"district_of_bm\":\"\",\"city_of_bm\":\"\",\"province_of_bm\":..."
+  },
+  {
+    "type": "response",
+    "url": "http://localhost:8000/api/branches/",
+    "status": 200,
+    "body": "{\"branches\":[{\"id\":34,\"area_id\":6,\"name\":\"Air Putih\",\"code\":\"ARP\",\"bm_id\":36,\"street_name\":null,\"subdistrict\":\"\",\"district\":\"\",\"city\":\"\",\"province\":\"\",\"is_active\":1,\"created_at\":\"2026-02-04T15:22:16\",\"updated_at\":\"2026-02-04T15:22:16\",\"deleted_at\":null,\"branches_id\":36,\"name_of_bm\":\"Miduk Panggabean\",\"place_birth_of_bm\":null,\"date_birth_of_bm\":null,\"nik_number_of_bm\":null,\"phone_number_of_bm\":null,\"street_name_of_bm\":\"\",\"subdistrict_of_bm\":\"\",\"district_of_bm\":\"\",\"city_of_bm\":\"\",\"province_of_bm\":..."
+  },
+  {
+    "type": "request",
+    "method": "OPTIONS",
+    "url": "http://localhost:8000/api/bl-collateral/"
+  },
+  {
+    "type": "request",
+    "method": "POST",
+    "url": "http://localhost:8000/api/bl-collateral/"
+  },
+  {
+    "type": "response",
+    "url": "http://localhost:8000/api/bl-collateral/",
+    "status": 200,
+    "body": ""
+  },
+  {
+    "type": "console",
+    "text": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+  },
+  {
+    "type": "console",
+    "text": "Save collateral failed AxiosError: Request failed with status code 500"
+  },
+  {
+    "type": "response",
+    "url": "http://localhost:8000/api/bl-collateral/",
+    "status": 500,
+    "body": "{\"error\":\"(1452, 'Cannot add or update a child row: a foreign key constraint fails (`lolc_operasional`.`bl_collateral`, CONSTRAINT `fk_bl_collateral` FOREIGN KEY (`contract_number`) REFERENCES `contract` (`contract_number`) ON DELETE CASCADE ON UPDATE CASCADE)')\"}"
+  }
+]

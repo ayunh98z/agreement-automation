@@ -1,0 +1,1282 @@
+[2026-02-12T02:44:06.650136+00:00] user= type=docx endpoint=bl_agreement contract=CON111 file=bl_agreement_CON111.docx size=55982
+2026-02-12 09:44:06,653 INFO myproject.views DOCX generated: bl_agreement_CON111.docx size=55982 user=
+2026-02-12 09:44:06,674 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_5tnga1vs (attempt 1)
+[2026-02-12T02:44:46.529667+00:00] user= type=pdf endpoint=bl_agreement contract=CON111 file=bl_agreement_CON111.pdf size=389538
+2026-02-12 09:44:46,532 INFO myproject.views PDF generated: bl_agreement_CON111.pdf size=389538 user=
+2026-02-12 09:44:46,540 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_ujds48om (attempt 1)
+2026-02-12 10:09:06,693 ERROR myproject.views uv_sp3 insert failed
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 89, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\mysql\base.py", line 75, in execute
+    return self.cursor.execute(query, args)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 153, in execute
+    result = self._query(query)
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 322, in _query
+    conn.query(q)
+    ~~~~~~~~~~^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 575, in query
+    self._affected_rows = self._read_query_result(unbuffered=unbuffered)
+                          ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 826, in _read_query_result
+    result.read()
+    ~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 1203, in read
+    first_packet = self.connection._read_packet()
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 782, in _read_packet
+    packet.raise_for_error()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\protocol.py", line 219, in raise_for_error
+    err.raise_mysql_exception(self._data)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\err.py", line 150, in raise_mysql_exception
+    raise errorclass(errno, errval)
+pymysql.err.OperationalError: (1292, "Incorrect date value: '' for column 'sp3_date' at row 1")
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional5\operasional\project\myproject\views.py", line 3548, in post
+    cursor.execute(sql, params)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 102, in execute
+    return super().execute(sql, params)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 67, in execute
+    return self._execute_with_wrappers(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        sql, params, many=False, executor=self._execute
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 80, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 84, in _execute
+    with self.db.wrap_database_errors:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 89, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\mysql\base.py", line 75, in execute
+    return self.cursor.execute(query, args)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 153, in execute
+    result = self._query(query)
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 322, in _query
+    conn.query(q)
+    ~~~~~~~~~~^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 575, in query
+    self._affected_rows = self._read_query_result(unbuffered=unbuffered)
+                          ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 826, in _read_query_result
+    result.read()
+    ~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 1203, in read
+    first_packet = self.connection._read_packet()
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 782, in _read_packet
+    packet.raise_for_error()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\protocol.py", line 219, in raise_for_error
+    err.raise_mysql_exception(self._data)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\err.py", line 150, in raise_mysql_exception
+    raise errorclass(errno, errval)
+django.db.utils.OperationalError: (1292, "Incorrect date value: '' for column 'sp3_date' at row 1")
+2026-02-12 10:09:06,704 ERROR myproject.views uv_sp3 insert failed
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 89, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\mysql\base.py", line 75, in execute
+    return self.cursor.execute(query, args)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 153, in execute
+    result = self._query(query)
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 322, in _query
+    conn.query(q)
+    ~~~~~~~~~~^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 575, in query
+    self._affected_rows = self._read_query_result(unbuffered=unbuffered)
+                          ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 826, in _read_query_result
+    result.read()
+    ~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 1203, in read
+    first_packet = self.connection._read_packet()
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 782, in _read_packet
+    packet.raise_for_error()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\protocol.py", line 219, in raise_for_error
+    err.raise_mysql_exception(self._data)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\err.py", line 150, in raise_mysql_exception
+    raise errorclass(errno, errval)
+pymysql.err.OperationalError: (1292, "Incorrect date value: '' for column 'sp3_date' at row 1")
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional5\operasional\project\myproject\views.py", line 3548, in post
+    cursor.execute(sql, params)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 102, in execute
+    return super().execute(sql, params)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 67, in execute
+    return self._execute_with_wrappers(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        sql, params, many=False, executor=self._execute
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 80, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 84, in _execute
+    with self.db.wrap_database_errors:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 89, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\mysql\base.py", line 75, in execute
+    return self.cursor.execute(query, args)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 153, in execute
+    result = self._query(query)
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 322, in _query
+    conn.query(q)
+    ~~~~~~~~~~^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 575, in query
+    self._affected_rows = self._read_query_result(unbuffered=unbuffered)
+                          ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 826, in _read_query_result
+    result.read()
+    ~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 1203, in read
+    first_packet = self.connection._read_packet()
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 782, in _read_packet
+    packet.raise_for_error()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\protocol.py", line 219, in raise_for_error
+    err.raise_mysql_exception(self._data)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\err.py", line 150, in raise_mysql_exception
+    raise errorclass(errno, errval)
+django.db.utils.OperationalError: (1292, "Incorrect date value: '' for column 'sp3_date' at row 1")
+[2026-02-12T03:38:26.007366+00:00] user= type=pdf endpoint=bl_agreement contract=CON001 file=bl_agreement_CON001.pdf size=389513
+2026-02-12 10:38:26,008 INFO myproject.views PDF generated: bl_agreement_CON001.pdf size=389513 user=
+2026-02-12 10:38:26,014 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_unk6gy0t (attempt 1)
+[2026-02-12T04:01:11.017791+00:00] user= type=pdf endpoint=bl_agreement contract=CON111 file=bl_agreement_CON111.pdf size=389543
+2026-02-12 11:01:11,019 INFO myproject.views PDF generated: bl_agreement_CON111.pdf size=389543 user=
+2026-02-12 11:01:11,025 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_8_9lj485 (attempt 1)
+[2026-02-12T04:19:21.251003+00:00] user= type=pdf endpoint=bl_agreement contract=CON123 file=bl_agreement_CON123.pdf size=390678
+2026-02-12 11:19:21,252 INFO myproject.views PDF generated: bl_agreement_CON123.pdf size=390678 user=
+2026-02-12 11:19:21,258 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_5wi3bu8k (attempt 1)
+[2026-02-12T04:25:58.096680+00:00] user= type=pdf endpoint=bl_agreement contract=CON111 file=bl_agreement_CON111.pdf size=389550
+2026-02-12 11:25:58,098 INFO myproject.views PDF generated: bl_agreement_CON111.pdf size=389550 user=
+2026-02-12 11:25:58,105 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_3973y4tb (attempt 1)
+[2026-02-12T04:34:50.464952+00:00] user= type=pdf endpoint=bl_agreement contract=CON004 file=bl_agreement_CON004.pdf size=389062
+2026-02-12 11:34:50,466 INFO myproject.views PDF generated: bl_agreement_CON004.pdf size=389062 user=
+2026-02-12 11:34:50,470 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_qqfqnl22 (attempt 1)
+[2026-02-12T05:21:18.654021+00:00] user= type=pdf endpoint=bl_agreement contract=CON111 file=bl_agreement_CON111.pdf size=389550
+2026-02-12 12:21:18,657 INFO myproject.views PDF generated: bl_agreement_CON111.pdf size=389550 user=
+2026-02-12 12:21:18,667 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_4somr4k1 (attempt 1)
+[2026-02-12T06:27:54.339094+00:00] user= type=pdf endpoint=bl_agreement contract=CON007 file=bl_agreement_CON007.pdf size=389334
+2026-02-12 13:27:54,340 INFO myproject.views PDF generated: bl_agreement_CON007.pdf size=389334 user=
+2026-02-12 13:27:54,353 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_w69ewzvn (attempt 1)
+[2026-02-12T06:31:33.342762+00:00] user= type=pdf endpoint=bl_agreement contract=CON007 file=bl_agreement_CON007.pdf size=317564
+2026-02-12 13:31:33,345 INFO myproject.views PDF generated: bl_agreement_CON007.pdf size=317564 user=
+2026-02-12 13:31:33,354 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_oz2q63vm (attempt 1)
+[2026-02-12T07:13:30.573492+00:00] user= type=pdf endpoint=bl_agreement contract=CON008 file=bl_agreement_CON008.pdf size=389292
+2026-02-12 14:13:30,575 INFO myproject.views PDF generated: bl_agreement_CON008.pdf size=389292 user=
+2026-02-12 14:13:30,582 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_j57785eo (attempt 1)
+[2026-02-12T07:58:51.219186+00:00] user= type=pdf endpoint=bl_agreement contract=CON008 file=bl_agreement_CON008.pdf size=318275
+2026-02-12 14:58:51,221 INFO myproject.views PDF generated: bl_agreement_CON008.pdf size=318275 user=
+2026-02-12 14:58:51,230 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out__1gfjtaq (attempt 1)
+[2026-02-12T09:13:41.014914+00:00] user= type=pdf endpoint=bl_agreement contract=CON008 file=bl_agreement_CON008.pdf size=389295
+2026-02-12 16:13:41,016 INFO myproject.views PDF generated: bl_agreement_CON008.pdf size=389295 user=
+2026-02-12 16:13:41,027 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_282hgrol (attempt 1)
+2026-02-13 22:03:10,793 ERROR myproject.views PDF conversion failed for CON333: docx2pdf import failed: No module named 'docx2pdf'
+2026-02-13 22:03:10,809 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_coa8m7gk (attempt 1)
+2026-02-13 22:03:48,936 ERROR myproject.views PDF conversion failed for CON333: docx2pdf import failed: No module named 'docx2pdf'
+2026-02-13 22:03:48,950 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_mu7fjkh8 (attempt 1)
+2026-02-13 22:04:35,441 ERROR myproject.views PDF conversion failed for CON333: docx2pdf import failed: No module named 'docx2pdf'
+2026-02-13 22:04:35,457 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_fsupm6pk (attempt 1)
+2026-02-13 22:04:58,538 ERROR myproject.views PDF conversion failed for CON007: docx2pdf import failed: No module named 'docx2pdf'
+2026-02-13 22:04:58,554 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_nhbvmvwz (attempt 1)
+2026-02-13 22:05:05,068 ERROR myproject.views UV PDF conversion failed for CON089: docx2pdf import failed: No module named 'docx2pdf'
+2026-02-13 22:05:05,084 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_uv__n33tbqw (attempt 1)
+2026-02-13 22:05:10,488 ERROR myproject.views UV SP3 PDF conversion failed for CON321: docx2pdf import failed: No module named 'docx2pdf'
+2026-02-13 22:07:18,752 ERROR myproject.views PDF conversion failed for CON333: docx2pdf import failed: No module named 'docx2pdf'
+2026-02-13 22:07:18,770 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_ljsed1vr (attempt 1)
+[2026-02-13T15:15:36.188972+00:00] user= type=pdf endpoint=bl_agreement contract=CON333 file=bl_agreement_CON333.pdf size=389513
+2026-02-13 22:15:36,190 INFO myproject.views PDF generated: bl_agreement_CON333.pdf size=389513 user=
+2026-02-13 22:15:36,196 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_v35ihqo7 (attempt 1)
+[2026-02-13T16:09:20.523180+00:00] user= type=pdf endpoint=bl_agreement contract=CON334 file=bl_agreement_CON334.pdf size=389481
+2026-02-13 23:09:20,527 INFO myproject.views PDF generated: bl_agreement_CON334.pdf size=389481 user=
+2026-02-13 23:09:20,536 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_q3f2ps_h (attempt 1)
+[2026-02-13T16:12:53.455995+00:00] user= type=docx endpoint=bl_agreement contract=CON334 file=bl_agreement_CON334.docx size=27628
+2026-02-13 23:12:53,458 INFO myproject.views DOCX generated: bl_agreement_CON334.docx size=27628 user=
+2026-02-13 23:12:53,474 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_41uqob8z (attempt 1)
+[2026-02-13T16:37:34.884820+00:00] user= type=docx endpoint=uv_agreement contract=con334 file=uv_agreement_con334.docx size=47389
+2026-02-13 23:37:34,886 INFO myproject.views DOCX generated: uv_agreement_con334.docx size=47389 user=
+2026-02-13 23:37:34,910 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_uv_8pt4sqhe (attempt 1)
+[2026-02-14T07:41:32.887186+00:00] user= type=docx endpoint=uv_agreement contract=CON003 file=uv_agreement_CON003.docx size=48367
+2026-02-14 14:41:32,887 INFO myproject.views DOCX generated: uv_agreement_CON003.docx size=48367 user=
+2026-02-14 14:41:32,903 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_uv_tu04cksu (attempt 1)
+[2026-02-14T07:44:54.010858+00:00] user= type=docx endpoint=uv_agreement contract=con001 file=uv_agreement_con001.docx size=48358
+2026-02-14 14:44:54,025 INFO myproject.views DOCX generated: uv_agreement_con001.docx size=48358 user=
+2026-02-14 14:44:54,041 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_uv_z0e4si3a (attempt 1)
+2026-02-14 14:46:43,773 ERROR myproject.views UV PDF conversion failed for CON003: docx2pdf import failed: No module named 'docx2pdf'; soffice returned exit 1: 'soffice' is not recognized as an internal or external command,
+operable program or batch file.
+
+2026-02-14 14:46:43,773 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_uv_w1dtx7b7 (attempt 1)
+[2026-02-14T07:55:39.381557+00:00] user= type=pdf endpoint=uv_agreement contract=CON002 file=uv_agreement_CON002.pdf size=380456
+2026-02-14 14:55:39,385 INFO myproject.views PDF generated: uv_agreement_CON002.pdf size=380456 user=
+2026-02-14 14:55:39,399 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_uv_yvgfchsu (attempt 1)
+[2026-02-14T08:18:36.270634+00:00] user= type=pdf endpoint=uv_sp3 contract=CON004 file=uv_sp3_CON004.pdf size=322249
+2026-02-14 15:18:36,274 INFO myproject.views PDF generated: uv_sp3_CON004.pdf size=322249 user=
+2026-02-14 15:18:36,279 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\pdf_out_kl_w6azl (attempt 1)
+2026-02-14 15:22:05,437 INFO myproject.views DOCX generated: uv_suratp3_template_CON002.docx size=28233 user=
+[2026-02-14T08:22:05.440590+00:00] user= type=docx endpoint=uv_sp3 contract=CON002 file=uv_suratp3_template_CON002.docx size=28233
+[2026-02-14T08:31:04.330806+00:00] user= type=pdf endpoint=uv_sp3 contract=con334 file=uv_sp3_con334.pdf size=324570
+2026-02-14 15:31:04,331 INFO myproject.views PDF generated: uv_sp3_con334.pdf size=324570 user=
+2026-02-14 15:31:04,335 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\pdf_out_c0gd3sll (attempt 1)
+[2026-02-14T08:36:41.822829+00:00] user= type=pdf endpoint=uv_sp3 contract=CON334 file=uv_sp3_CON334.pdf size=324561
+2026-02-14 15:36:41,824 INFO myproject.views PDF generated: uv_sp3_CON334.pdf size=324561 user=
+2026-02-14 15:36:41,829 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\pdf_out_b64ev_12 (attempt 1)
+[2026-02-14T08:40:11.537850+00:00] user= type=pdf endpoint=uv_sp3 contract=con334 file=uv_sp3_con334.pdf size=324561
+2026-02-14 15:40:11,539 INFO myproject.views PDF generated: uv_sp3_con334.pdf size=324561 user=
+2026-02-14 15:40:11,546 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\pdf_out_lxommows (attempt 1)
+[2026-02-14T08:46:12.492408+00:00] user= type=pdf endpoint=uv_sp3 contract=CON003 file=uv_sp3_CON003.pdf size=320900
+2026-02-14 15:46:12,493 INFO myproject.views PDF generated: uv_sp3_CON003.pdf size=320900 user=
+2026-02-14 15:46:12,498 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\pdf_out_sd7cbc4f (attempt 1)
+[2026-02-14T08:53:37.879798+00:00] user= type=pdf endpoint=uv_sp3 contract=CON001 file=uv_sp3_CON001.pdf size=319493
+2026-02-14 15:53:37,880 INFO myproject.views PDF generated: uv_sp3_CON001.pdf size=319493 user=
+2026-02-14 15:53:37,884 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\pdf_out_hlokbogo (attempt 1)
+[2026-02-14T08:54:00.978167+00:00] user= type=pdf endpoint=uv_sp3 contract=CON002 file=uv_sp3_CON002.pdf size=318791
+2026-02-14 15:54:00,980 INFO myproject.views PDF generated: uv_sp3_CON002.pdf size=318791 user=
+2026-02-14 15:54:00,986 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\pdf_out_6j4qw89g (attempt 1)
+[2026-02-14T08:55:00.360047+00:00] user= type=pdf endpoint=uv_sp3 contract=CON003 file=uv_sp3_CON003.pdf size=319774
+2026-02-14 15:55:00,360 INFO myproject.views PDF generated: uv_sp3_CON003.pdf size=319774 user=
+2026-02-14 15:55:00,364 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\pdf_out_87kox0ao (attempt 1)
+[2026-02-14T08:59:47.165432+00:00] user= type=pdf endpoint=uv_agreement contract=CON001 file=uv_agreement_CON001.pdf size=379396
+2026-02-14 15:59:47,166 INFO myproject.views PDF generated: uv_agreement_CON001.pdf size=379396 user=
+2026-02-14 15:59:47,174 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_uv_jkztku73 (attempt 1)
+[2026-02-14T09:31:37.415553+00:00] user= type=pdf endpoint=uv_sp3 contract=CON002 file=uv_sp3_CON002.pdf size=318791
+2026-02-14 16:31:37,416 INFO myproject.views PDF generated: uv_sp3_CON002.pdf size=318791 user=
+2026-02-14 16:31:37,419 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\pdf_out_778yq519 (attempt 1)
+[2026-02-14T18:29:07.665922+07:00] user= type=pdf endpoint=uv_agreement contract=con201 file=uv_agreement_con201.pdf size=381343
+2026-02-14 18:29:07,667 INFO myproject.views PDF generated: uv_agreement_con201.pdf size=381343 user=
+2026-02-14 18:29:07,673 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_uv_h791c3a0 (attempt 1)
+[2026-02-14T18:38:38.939883+07:00] user= type=pdf endpoint=uv_sp3 contract=CON201 file=uv_sp3_CON201.pdf size=319016
+2026-02-14 18:38:38,940 INFO myproject.views PDF generated: uv_sp3_CON201.pdf size=319016 user=
+2026-02-14 18:38:38,946 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\pdf_out_xmdl9vlw (attempt 1)
+[2026-02-14T19:31:27.405040+07:00] user= type=docx endpoint=bl_agreement contract=CON001 file=bl_agreement_CON001.docx size=27891
+2026-02-14 19:31:27,417 INFO myproject.views DOCX generated: bl_agreement_CON001.docx size=27891 user=
+2026-02-14 19:31:27,423 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_vxcim_zv (attempt 1)
+[2026-02-14T19:32:49.638910+07:00] user= type=docx endpoint=bl_agreement contract=CON002 file=bl_agreement_CON002.docx size=27907
+2026-02-14 19:32:49,638 INFO myproject.views DOCX generated: bl_agreement_CON002.docx size=27907 user=
+2026-02-14 19:32:49,646 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_5nrbi9ij (attempt 1)
+2026-02-14 19:35:35,125 ERROR myproject.views PDF conversion failed for CON001: docx2pdf import failed: No module named 'docx2pdf'; soffice returned exit 1: 'soffice' is not recognized as an internal or external command,
+operable program or batch file.
+
+2026-02-14 19:35:35,134 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_n04qztqj (attempt 1)
+2026-02-14 19:36:23,473 ERROR myproject.views PDF conversion failed for CON001: docx2pdf import failed: No module named 'docx2pdf'; soffice returned exit 1: 'soffice' is not recognized as an internal or external command,
+operable program or batch file.
+
+2026-02-14 19:36:23,477 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_lmzfbbe7 (attempt 1)
+2026-02-14 19:46:50,192 ERROR myproject.views PDF conversion failed for CON001: docx2pdf import failed: No module named 'docx2pdf'; soffice returned exit 1: 'soffice' is not recognized as an internal or external command,
+operable program or batch file.
+
+2026-02-14 19:46:50,208 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_yr48uexp (attempt 1)
+[2026-02-14T19:54:41.051451+07:00] user= type=pdf endpoint=bl_agreement contract=CON001 file=bl_agreement_CON001.pdf size=389648
+2026-02-14 19:54:41,051 INFO myproject.views PDF generated: bl_agreement_CON001.pdf size=389648 user=
+2026-02-14 19:54:41,051 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_krr90n9q (attempt 1)
+[2026-02-14T19:59:48.588400+07:00] user= type=pdf endpoint=bl_agreement contract=CON003 file=bl_agreement_CON003.pdf size=389704
+2026-02-14 19:59:48,589 INFO myproject.views PDF generated: bl_agreement_CON003.pdf size=389704 user=
+2026-02-14 19:59:48,592 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_4th6_1s6 (attempt 1)
+[2026-02-14T20:05:06.469583+07:00] user= type=docx endpoint=bl_agreement contract=CON201 file=bl_agreement_CON201.docx size=27896
+2026-02-14 20:05:06,470 INFO myproject.views DOCX generated: bl_agreement_CON201.docx size=27896 user=
+2026-02-14 20:05:06,475 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_ofzvvkb6 (attempt 1)
+2026-02-14 20:17:31,961 INFO myproject.views bl_collateral cols_info: ['bl_collateral_id', 'contract_number', 'collateral_type', 'number_of_certificate', 'number_of_ajb', 'surface_area', 'name_of_collateral_owner', 'capacity_of_building', 'location_of_land', 'created_by', 'created_at', 'updated_at']
+2026-02-14 20:17:31,964 INFO myproject.views bl_collateral data_map preview: {'contract_number': 'CON401', 'collateral_type': 'SHM', 'number_of_certificate': '7346873468', 'number_of_ajb': '746379', 'surface_area': '1000', 'name_of_collateral_owner': 'Jijah', 'capacity_of_building': '750', 'location_of_land': 'Bandung', 'created_by': '', 'created_at': 'datetime'}
+[2026-02-14T20:17:55.068786+07:00] user= type=docx endpoint=bl_agreement contract=CON401 file=bl_agreement_CON401.docx size=27890
+2026-02-14 20:17:55,068 INFO myproject.views DOCX generated: bl_agreement_CON401.docx size=27890 user=
+2026-02-14 20:17:55,068 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_n47owmb9 (attempt 1)
+[2026-02-14T20:19:26.644168+07:00] user= type=pdf endpoint=bl_agreement contract=CON002 file=bl_agreement_CON002.pdf size=317763
+2026-02-14 20:19:26,645 INFO myproject.views PDF generated: bl_agreement_CON002.pdf size=317763 user=
+2026-02-14 20:19:26,648 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_d50v39l2 (attempt 1)
+[2026-02-14T20:21:49.568205+07:00] user= type=pdf endpoint=bl_agreement contract=CON401 file=bl_agreement_CON401.pdf size=319267
+2026-02-14 20:21:49,568 INFO myproject.views PDF generated: bl_agreement_CON401.pdf size=319267 user=
+2026-02-14 20:21:49,574 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_fzls00vd (attempt 1)
+2026-02-14 20:34:45,046 ERROR myproject.views uv_sp3 insert failed
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional5\operasional\project\myproject\views.py", line 3841, in post
+    cursor.execute(sql, params)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\django\db\backends\utils.py", line 102, in execute
+    return super().execute(sql, params)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\django\db\backends\utils.py", line 67, in execute
+    return self._execute_with_wrappers(
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\django\db\backends\utils.py", line 80, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\django\db\backends\utils.py", line 89, in _execute
+    return self.cursor.execute(sql, params)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\django\db\backends\mysql\base.py", line 75, in execute
+    return self.cursor.execute(query, args)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\pymysql\cursors.py", line 151, in execute
+    query = self.mogrify(query, args)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\pymysql\cursors.py", line 129, in mogrify
+    query = query % self._escape_args(args, conn)
+TypeError: not enough arguments for format string
+2026-02-14 20:35:56,617 ERROR myproject.views uv_sp3 insert failed
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional5\operasional\project\myproject\views.py", line 3841, in post
+    cursor.execute(sql, params)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\django\db\backends\utils.py", line 102, in execute
+    return super().execute(sql, params)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\django\db\backends\utils.py", line 67, in execute
+    return self._execute_with_wrappers(
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\django\db\backends\utils.py", line 80, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\django\db\backends\utils.py", line 89, in _execute
+    return self.cursor.execute(sql, params)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\django\db\backends\mysql\base.py", line 75, in execute
+    return self.cursor.execute(query, args)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\pymysql\cursors.py", line 151, in execute
+    query = self.mogrify(query, args)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\pymysql\cursors.py", line 129, in mogrify
+    query = query % self._escape_args(args, conn)
+TypeError: not enough arguments for format string
+2026-02-14 21:03:25,102 ERROR myproject.views Failed to save contract
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\django\db\backends\utils.py", line 89, in _execute
+    return self.cursor.execute(sql, params)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\django\db\backends\mysql\base.py", line 75, in execute
+    return self.cursor.execute(query, args)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\pymysql\cursors.py", line 153, in execute
+    result = self._query(query)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\pymysql\cursors.py", line 322, in _query
+    conn.query(q)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\pymysql\connections.py", line 575, in query
+    self._affected_rows = self._read_query_result(unbuffered=unbuffered)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\pymysql\connections.py", line 826, in _read_query_result
+    result.read()
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\pymysql\connections.py", line 1203, in read
+    first_packet = self.connection._read_packet()
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\pymysql\connections.py", line 782, in _read_packet
+    packet.raise_for_error()
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\pymysql\protocol.py", line 219, in raise_for_error
+    err.raise_mysql_exception(self._data)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\pymysql\err.py", line 150, in raise_mysql_exception
+    raise errorclass(errno, errval)
+pymysql.err.IntegrityError: (1062, "Duplicate entry '0' for key 'contract.PRIMARY'")
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional5\operasional\project\myproject\views.py", line 1909, in post
+    cursor.execute(sql, params)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\django\db\backends\utils.py", line 102, in execute
+    return super().execute(sql, params)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\django\db\backends\utils.py", line 67, in execute
+    return self._execute_with_wrappers(
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\django\db\backends\utils.py", line 80, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\django\db\backends\utils.py", line 84, in _execute
+    with self.db.wrap_database_errors:
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\django\db\backends\utils.py", line 89, in _execute
+    return self.cursor.execute(sql, params)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\django\db\backends\mysql\base.py", line 75, in execute
+    return self.cursor.execute(query, args)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\pymysql\cursors.py", line 153, in execute
+    result = self._query(query)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\pymysql\cursors.py", line 322, in _query
+    conn.query(q)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\pymysql\connections.py", line 575, in query
+    self._affected_rows = self._read_query_result(unbuffered=unbuffered)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\pymysql\connections.py", line 826, in _read_query_result
+    result.read()
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\pymysql\connections.py", line 1203, in read
+    first_packet = self.connection._read_packet()
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\pymysql\connections.py", line 782, in _read_packet
+    packet.raise_for_error()
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\pymysql\protocol.py", line 219, in raise_for_error
+    err.raise_mysql_exception(self._data)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\pymysql\err.py", line 150, in raise_mysql_exception
+    raise errorclass(errno, errval)
+django.db.utils.IntegrityError: (1062, "Duplicate entry '0' for key 'contract.PRIMARY'")
+2026-02-14 21:06:57,485 ERROR myproject.views Failed to save contract
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 89, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\mysql\base.py", line 75, in execute
+    return self.cursor.execute(query, args)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 153, in execute
+    result = self._query(query)
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 322, in _query
+    conn.query(q)
+    ~~~~~~~~~~^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 575, in query
+    self._affected_rows = self._read_query_result(unbuffered=unbuffered)
+                          ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 826, in _read_query_result
+    result.read()
+    ~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 1203, in read
+    first_packet = self.connection._read_packet()
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 782, in _read_packet
+    packet.raise_for_error()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\protocol.py", line 219, in raise_for_error
+    err.raise_mysql_exception(self._data)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\err.py", line 150, in raise_mysql_exception
+    raise errorclass(errno, errval)
+pymysql.err.IntegrityError: (1062, "Duplicate entry '0' for key 'contract.PRIMARY'")
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional5\operasional\project\myproject\views.py", line 1927, in post
+    cursor.execute(sql, params)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 102, in execute
+    return super().execute(sql, params)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 67, in execute
+    return self._execute_with_wrappers(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        sql, params, many=False, executor=self._execute
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 80, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 84, in _execute
+    with self.db.wrap_database_errors:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 89, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\mysql\base.py", line 75, in execute
+    return self.cursor.execute(query, args)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 153, in execute
+    result = self._query(query)
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 322, in _query
+    conn.query(q)
+    ~~~~~~~~~~^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 575, in query
+    self._affected_rows = self._read_query_result(unbuffered=unbuffered)
+                          ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 826, in _read_query_result
+    result.read()
+    ~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 1203, in read
+    first_packet = self.connection._read_packet()
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 782, in _read_packet
+    packet.raise_for_error()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\protocol.py", line 219, in raise_for_error
+    err.raise_mysql_exception(self._data)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\err.py", line 150, in raise_mysql_exception
+    raise errorclass(errno, errval)
+django.db.utils.IntegrityError: (1062, "Duplicate entry '0' for key 'contract.PRIMARY'")
+2026-02-14 21:17:56,904 ERROR myproject.views Failed to save contract
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 89, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\mysql\base.py", line 75, in execute
+    return self.cursor.execute(query, args)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 153, in execute
+    result = self._query(query)
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 322, in _query
+    conn.query(q)
+    ~~~~~~~~~~^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 575, in query
+    self._affected_rows = self._read_query_result(unbuffered=unbuffered)
+                          ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 826, in _read_query_result
+    result.read()
+    ~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 1203, in read
+    first_packet = self.connection._read_packet()
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 782, in _read_packet
+    packet.raise_for_error()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\protocol.py", line 219, in raise_for_error
+    err.raise_mysql_exception(self._data)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\err.py", line 150, in raise_mysql_exception
+    raise errorclass(errno, errval)
+pymysql.err.IntegrityError: (1062, "Duplicate entry '0' for key 'contract.PRIMARY'")
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional5\operasional\project\myproject\views.py", line 1975, in post
+    cursor.execute(sql, params)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 102, in execute
+    return super().execute(sql, params)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 67, in execute
+    return self._execute_with_wrappers(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        sql, params, many=False, executor=self._execute
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 80, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 84, in _execute
+    with self.db.wrap_database_errors:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 89, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\mysql\base.py", line 75, in execute
+    return self.cursor.execute(query, args)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 153, in execute
+    result = self._query(query)
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 322, in _query
+    conn.query(q)
+    ~~~~~~~~~~^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 575, in query
+    self._affected_rows = self._read_query_result(unbuffered=unbuffered)
+                          ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 826, in _read_query_result
+    result.read()
+    ~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 1203, in read
+    first_packet = self.connection._read_packet()
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 782, in _read_packet
+    packet.raise_for_error()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\protocol.py", line 219, in raise_for_error
+    err.raise_mysql_exception(self._data)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\err.py", line 150, in raise_mysql_exception
+    raise errorclass(errno, errval)
+django.db.utils.IntegrityError: (1062, "Duplicate entry '0' for key 'contract.PRIMARY'")
+2026-02-14 21:19:41,776 ERROR myproject.views Failed to save contract
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 89, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\mysql\base.py", line 75, in execute
+    return self.cursor.execute(query, args)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 153, in execute
+    result = self._query(query)
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 322, in _query
+    conn.query(q)
+    ~~~~~~~~~~^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 575, in query
+    self._affected_rows = self._read_query_result(unbuffered=unbuffered)
+                          ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 826, in _read_query_result
+    result.read()
+    ~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 1203, in read
+    first_packet = self.connection._read_packet()
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 782, in _read_packet
+    packet.raise_for_error()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\protocol.py", line 219, in raise_for_error
+    err.raise_mysql_exception(self._data)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\err.py", line 150, in raise_mysql_exception
+    raise errorclass(errno, errval)
+pymysql.err.IntegrityError: (1062, "Duplicate entry '0' for key 'contract.PRIMARY'")
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional5\operasional\project\myproject\views.py", line 1979, in post
+    cursor.execute(sql, params)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 102, in execute
+    return super().execute(sql, params)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 67, in execute
+    return self._execute_with_wrappers(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        sql, params, many=False, executor=self._execute
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 80, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 84, in _execute
+    with self.db.wrap_database_errors:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 89, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\mysql\base.py", line 75, in execute
+    return self.cursor.execute(query, args)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 153, in execute
+    result = self._query(query)
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 322, in _query
+    conn.query(q)
+    ~~~~~~~~~~^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 575, in query
+    self._affected_rows = self._read_query_result(unbuffered=unbuffered)
+                          ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 826, in _read_query_result
+    result.read()
+    ~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 1203, in read
+    first_packet = self.connection._read_packet()
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 782, in _read_packet
+    packet.raise_for_error()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\protocol.py", line 219, in raise_for_error
+    err.raise_mysql_exception(self._data)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\err.py", line 150, in raise_mysql_exception
+    raise errorclass(errno, errval)
+django.db.utils.IntegrityError: (1062, "Duplicate entry '0' for key 'contract.PRIMARY'")
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 87, in _execute
+    return self.cursor.execute(sql)
+           ~~~~~~~~~~~~~~~~~~~^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\mysql\base.py", line 75, in execute
+    return self.cursor.execute(query, args)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 153, in execute
+    result = self._query(query)
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 322, in _query
+    conn.query(q)
+    ~~~~~~~~~~^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 575, in query
+    self._affected_rows = self._read_query_result(unbuffered=unbuffered)
+                          ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 826, in _read_query_result
+    result.read()
+    ~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 1203, in read
+    first_packet = self.connection._read_packet()
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 782, in _read_packet
+    packet.raise_for_error()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\protocol.py", line 219, in raise_for_error
+    err.raise_mysql_exception(self._data)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\err.py", line 150, in raise_mysql_exception
+    raise errorclass(errno, errval)
+pymysql.err.OperationalError: (1054, "Unknown column 'id' in 'field list'")
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional5\operasional\project\myproject\views.py", line 1984, in post
+    cursor.execute('SELECT COALESCE(MAX(id), 0) + 1 FROM contract')
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 102, in execute
+    return super().execute(sql, params)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 67, in execute
+    return self._execute_with_wrappers(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        sql, params, many=False, executor=self._execute
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 80, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 84, in _execute
+    with self.db.wrap_database_errors:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 87, in _execute
+    return self.cursor.execute(sql)
+           ~~~~~~~~~~~~~~~~~~~^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\mysql\base.py", line 75, in execute
+    return self.cursor.execute(query, args)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 153, in execute
+    result = self._query(query)
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 322, in _query
+    conn.query(q)
+    ~~~~~~~~~~^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 575, in query
+    self._affected_rows = self._read_query_result(unbuffered=unbuffered)
+                          ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 826, in _read_query_result
+    result.read()
+    ~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 1203, in read
+    first_packet = self.connection._read_packet()
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 782, in _read_packet
+    packet.raise_for_error()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\protocol.py", line 219, in raise_for_error
+    err.raise_mysql_exception(self._data)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\err.py", line 150, in raise_mysql_exception
+    raise errorclass(errno, errval)
+django.db.utils.OperationalError: (1054, "Unknown column 'id' in 'field list'")
+2026-02-14 21:20:41,292 ERROR myproject.views Failed to save contract
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 89, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\mysql\base.py", line 75, in execute
+    return self.cursor.execute(query, args)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 153, in execute
+    result = self._query(query)
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 322, in _query
+    conn.query(q)
+    ~~~~~~~~~~^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 575, in query
+    self._affected_rows = self._read_query_result(unbuffered=unbuffered)
+                          ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 826, in _read_query_result
+    result.read()
+    ~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 1203, in read
+    first_packet = self.connection._read_packet()
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 782, in _read_packet
+    packet.raise_for_error()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\protocol.py", line 219, in raise_for_error
+    err.raise_mysql_exception(self._data)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\err.py", line 150, in raise_mysql_exception
+    raise errorclass(errno, errval)
+pymysql.err.IntegrityError: (1062, "Duplicate entry '0' for key 'contract.PRIMARY'")
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional5\operasional\project\myproject\views.py", line 1979, in post
+    cursor.execute(sql, params)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 102, in execute
+    return super().execute(sql, params)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 67, in execute
+    return self._execute_with_wrappers(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        sql, params, many=False, executor=self._execute
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 80, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 84, in _execute
+    with self.db.wrap_database_errors:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 89, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\mysql\base.py", line 75, in execute
+    return self.cursor.execute(query, args)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 153, in execute
+    result = self._query(query)
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 322, in _query
+    conn.query(q)
+    ~~~~~~~~~~^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 575, in query
+    self._affected_rows = self._read_query_result(unbuffered=unbuffered)
+                          ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 826, in _read_query_result
+    result.read()
+    ~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 1203, in read
+    first_packet = self.connection._read_packet()
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 782, in _read_packet
+    packet.raise_for_error()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\protocol.py", line 219, in raise_for_error
+    err.raise_mysql_exception(self._data)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\err.py", line 150, in raise_mysql_exception
+    raise errorclass(errno, errval)
+django.db.utils.IntegrityError: (1062, "Duplicate entry '0' for key 'contract.PRIMARY'")
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 89, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\mysql\base.py", line 75, in execute
+    return self.cursor.execute(query, args)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 153, in execute
+    result = self._query(query)
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 322, in _query
+    conn.query(q)
+    ~~~~~~~~~~^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 575, in query
+    self._affected_rows = self._read_query_result(unbuffered=unbuffered)
+                          ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 826, in _read_query_result
+    result.read()
+    ~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 1203, in read
+    first_packet = self.connection._read_packet()
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 782, in _read_packet
+    packet.raise_for_error()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\protocol.py", line 219, in raise_for_error
+    err.raise_mysql_exception(self._data)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\err.py", line 150, in raise_mysql_exception
+    raise errorclass(errno, errval)
+pymysql.err.IntegrityError: (1062, "Duplicate entry '0' for key 'contract.PRIMARY'")
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional5\operasional\project\myproject\views.py", line 2007, in post
+    cursor.execute(sql2, params)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 102, in execute
+    return super().execute(sql, params)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 67, in execute
+    return self._execute_with_wrappers(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        sql, params, many=False, executor=self._execute
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 80, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 84, in _execute
+    with self.db.wrap_database_errors:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 89, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\mysql\base.py", line 75, in execute
+    return self.cursor.execute(query, args)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 153, in execute
+    result = self._query(query)
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 322, in _query
+    conn.query(q)
+    ~~~~~~~~~~^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 575, in query
+    self._affected_rows = self._read_query_result(unbuffered=unbuffered)
+                          ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 826, in _read_query_result
+    result.read()
+    ~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 1203, in read
+    first_packet = self.connection._read_packet()
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 782, in _read_packet
+    packet.raise_for_error()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\protocol.py", line 219, in raise_for_error
+    err.raise_mysql_exception(self._data)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\err.py", line 150, in raise_mysql_exception
+    raise errorclass(errno, errval)
+django.db.utils.IntegrityError: (1062, "Duplicate entry '0' for key 'contract.PRIMARY'")
+2026-02-14 21:23:58,315 ERROR myproject.views Failed to save contract
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 89, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\mysql\base.py", line 75, in execute
+    return self.cursor.execute(query, args)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 153, in execute
+    result = self._query(query)
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 322, in _query
+    conn.query(q)
+    ~~~~~~~~~~^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 575, in query
+    self._affected_rows = self._read_query_result(unbuffered=unbuffered)
+                          ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 826, in _read_query_result
+    result.read()
+    ~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 1203, in read
+    first_packet = self.connection._read_packet()
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 782, in _read_packet
+    packet.raise_for_error()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\protocol.py", line 219, in raise_for_error
+    err.raise_mysql_exception(self._data)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\err.py", line 150, in raise_mysql_exception
+    raise errorclass(errno, errval)
+pymysql.err.IntegrityError: (1062, "Duplicate entry '0' for key 'contract.PRIMARY'")
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional5\operasional\project\myproject\views.py", line 1996, in post
+    cursor.execute(sql, params)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 102, in execute
+    return super().execute(sql, params)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 67, in execute
+    return self._execute_with_wrappers(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        sql, params, many=False, executor=self._execute
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 80, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 84, in _execute
+    with self.db.wrap_database_errors:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 89, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\mysql\base.py", line 75, in execute
+    return self.cursor.execute(query, args)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 153, in execute
+    result = self._query(query)
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 322, in _query
+    conn.query(q)
+    ~~~~~~~~~~^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 575, in query
+    self._affected_rows = self._read_query_result(unbuffered=unbuffered)
+                          ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 826, in _read_query_result
+    result.read()
+    ~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 1203, in read
+    first_packet = self.connection._read_packet()
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 782, in _read_packet
+    packet.raise_for_error()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\protocol.py", line 219, in raise_for_error
+    err.raise_mysql_exception(self._data)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\err.py", line 150, in raise_mysql_exception
+    raise errorclass(errno, errval)
+django.db.utils.IntegrityError: (1062, "Duplicate entry '0' for key 'contract.PRIMARY'")
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 89, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\mysql\base.py", line 75, in execute
+    return self.cursor.execute(query, args)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 153, in execute
+    result = self._query(query)
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 322, in _query
+    conn.query(q)
+    ~~~~~~~~~~^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 575, in query
+    self._affected_rows = self._read_query_result(unbuffered=unbuffered)
+                          ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 826, in _read_query_result
+    result.read()
+    ~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 1203, in read
+    first_packet = self.connection._read_packet()
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 782, in _read_packet
+    packet.raise_for_error()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\protocol.py", line 219, in raise_for_error
+    err.raise_mysql_exception(self._data)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\err.py", line 150, in raise_mysql_exception
+    raise errorclass(errno, errval)
+pymysql.err.IntegrityError: (1062, "Duplicate entry '0' for key 'contract.PRIMARY'")
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional5\operasional\project\myproject\views.py", line 2024, in post
+    cursor.execute(sql2, params)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 102, in execute
+    return super().execute(sql, params)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 67, in execute
+    return self._execute_with_wrappers(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        sql, params, many=False, executor=self._execute
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 80, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 84, in _execute
+    with self.db.wrap_database_errors:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 89, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\mysql\base.py", line 75, in execute
+    return self.cursor.execute(query, args)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 153, in execute
+    result = self._query(query)
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 322, in _query
+    conn.query(q)
+    ~~~~~~~~~~^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 575, in query
+    self._affected_rows = self._read_query_result(unbuffered=unbuffered)
+                          ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 826, in _read_query_result
+    result.read()
+    ~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 1203, in read
+    first_packet = self.connection._read_packet()
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 782, in _read_packet
+    packet.raise_for_error()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\protocol.py", line 219, in raise_for_error
+    err.raise_mysql_exception(self._data)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\err.py", line 150, in raise_mysql_exception
+    raise errorclass(errno, errval)
+django.db.utils.IntegrityError: (1062, "Duplicate entry '0' for key 'contract.PRIMARY'")
+2026-02-14 21:24:20,339 ERROR myproject.views Failed to save contract
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 89, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\mysql\base.py", line 75, in execute
+    return self.cursor.execute(query, args)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 153, in execute
+    result = self._query(query)
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 322, in _query
+    conn.query(q)
+    ~~~~~~~~~~^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 575, in query
+    self._affected_rows = self._read_query_result(unbuffered=unbuffered)
+                          ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 826, in _read_query_result
+    result.read()
+    ~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 1203, in read
+    first_packet = self.connection._read_packet()
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 782, in _read_packet
+    packet.raise_for_error()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\protocol.py", line 219, in raise_for_error
+    err.raise_mysql_exception(self._data)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\err.py", line 150, in raise_mysql_exception
+    raise errorclass(errno, errval)
+pymysql.err.IntegrityError: (1062, "Duplicate entry '0' for key 'contract.PRIMARY'")
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional5\operasional\project\myproject\views.py", line 2005, in post
+    cursor.execute(sql, params)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 102, in execute
+    return super().execute(sql, params)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 67, in execute
+    return self._execute_with_wrappers(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        sql, params, many=False, executor=self._execute
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 80, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 84, in _execute
+    with self.db.wrap_database_errors:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 89, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\mysql\base.py", line 75, in execute
+    return self.cursor.execute(query, args)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 153, in execute
+    result = self._query(query)
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 322, in _query
+    conn.query(q)
+    ~~~~~~~~~~^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 575, in query
+    self._affected_rows = self._read_query_result(unbuffered=unbuffered)
+                          ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 826, in _read_query_result
+    result.read()
+    ~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 1203, in read
+    first_packet = self.connection._read_packet()
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 782, in _read_packet
+    packet.raise_for_error()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\protocol.py", line 219, in raise_for_error
+    err.raise_mysql_exception(self._data)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\err.py", line 150, in raise_mysql_exception
+    raise errorclass(errno, errval)
+django.db.utils.IntegrityError: (1062, "Duplicate entry '0' for key 'contract.PRIMARY'")
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 89, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\mysql\base.py", line 75, in execute
+    return self.cursor.execute(query, args)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 153, in execute
+    result = self._query(query)
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 322, in _query
+    conn.query(q)
+    ~~~~~~~~~~^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 575, in query
+    self._affected_rows = self._read_query_result(unbuffered=unbuffered)
+                          ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 826, in _read_query_result
+    result.read()
+    ~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 1203, in read
+    first_packet = self.connection._read_packet()
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 782, in _read_packet
+    packet.raise_for_error()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\protocol.py", line 219, in raise_for_error
+    err.raise_mysql_exception(self._data)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\err.py", line 150, in raise_mysql_exception
+    raise errorclass(errno, errval)
+pymysql.err.IntegrityError: (1062, "Duplicate entry '0' for key 'contract.PRIMARY'")
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional5\operasional\project\myproject\views.py", line 2033, in post
+    cursor.execute(sql2, params)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 102, in execute
+    return super().execute(sql, params)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 67, in execute
+    return self._execute_with_wrappers(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        sql, params, many=False, executor=self._execute
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 80, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 84, in _execute
+    with self.db.wrap_database_errors:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\utils.py", line 89, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\django\db\backends\mysql\base.py", line 75, in execute
+    return self.cursor.execute(query, args)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 153, in execute
+    result = self._query(query)
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\cursors.py", line 322, in _query
+    conn.query(q)
+    ~~~~~~~~~~^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 575, in query
+    self._affected_rows = self._read_query_result(unbuffered=unbuffered)
+                          ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 826, in _read_query_result
+    result.read()
+    ~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 1203, in read
+    first_packet = self.connection._read_packet()
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\connections.py", line 782, in _read_packet
+    packet.raise_for_error()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\protocol.py", line 219, in raise_for_error
+    err.raise_mysql_exception(self._data)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\pymysql\err.py", line 150, in raise_mysql_exception
+    raise errorclass(errno, errval)
+django.db.utils.IntegrityError: (1062, "Duplicate entry '0' for key 'contract.PRIMARY'")
+[2026-02-14T14:42:21.809676+00:00] user=anonymous type=docx endpoint=uv_agreement contract=TEST123 file=uv_agreement_TEST123.docx size=46902
+2026-02-14 21:42:21,809 INFO myproject.views DOCX generated: uv_agreement_TEST123.docx size=46902 user=anonymous
+2026-02-14 21:42:21,809 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_uv_95flnza5 (attempt 1)
+[2026-02-14T14:52:36.590900+00:00] user= type=pdf endpoint=bl_agreement contract=CON001 file=bl_agreement_CON001.pdf size=389648
+2026-02-14 21:52:36,590 INFO myproject.views PDF generated: bl_agreement_CON001.pdf size=389648 user=
+2026-02-14 21:52:36,610 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_05q3f8ap (attempt 1)
+[2026-02-14T14:53:15.991367+00:00] user= type=pdf endpoint=bl_agreement contract=CON401 file=bl_agreement_CON401.pdf size=319266
+2026-02-14 21:53:15,991 INFO myproject.views PDF generated: bl_agreement_CON401.pdf size=319266 user=
+2026-02-14 21:53:15,997 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_ufb_ebnj (attempt 1)
+[2026-02-14T14:53:45.488211+00:00] user= type=pdf endpoint=uv_agreement contract=CON001 file=uv_agreement_CON001.pdf size=379174
+2026-02-14 21:53:45,488 INFO myproject.views PDF generated: uv_agreement_CON001.pdf size=379174 user=
+2026-02-14 21:53:45,500 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_uv_4d7x0l9j (attempt 1)
+[2026-02-14T14:54:37.289607+00:00] user= type=pdf endpoint=uv_sp3 contract=CON201 file=uv_sp3_CON201.pdf size=319016
+2026-02-14 21:54:37,291 INFO myproject.views PDF generated: uv_sp3_CON201.pdf size=319016 user=
+2026-02-14 21:54:37,301 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\pdf_out_vbvglg7s (attempt 1)
+[2026-02-14T15:00:17.999875+00:00] user=anonymous type=docx endpoint=uv_agreement contract=TEST123 file=uv_agreement_TEST123.docx size=46902
+2026-02-14 22:00:17,999 INFO myproject.views DOCX generated: uv_agreement_TEST123.docx size=46902 user=anonymous
+2026-02-14 22:00:18,016 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_uv_iafuzrw0 (attempt 1)
+[2026-02-14T15:06:12.726197+00:00] user=anonymous type=docx endpoint=uv_agreement contract=TEST123 file=uv_agreement_TEST123.docx size=46902
+2026-02-14 22:06:12,726 INFO myproject.views DOCX generated: uv_agreement_TEST123.docx size=46902 user=anonymous
+2026-02-14 22:06:12,735 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_uv_nc3qxnqq (attempt 1)
+[2026-02-14T15:15:53.386746+00:00] user=anonymous type=docx endpoint=uv_agreement contract=TEST123 file=uv_agreement_TEST123.docx size=46902
+2026-02-14 22:15:53,394 INFO myproject.views DOCX generated: uv_agreement_TEST123.docx size=46902 user=anonymous
+2026-02-14 22:15:53,450 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_uv_bpz662w3 (attempt 1)
+[2026-02-14T15:26:24.919961+00:00] user=anonymous type=docx endpoint=uv_agreement contract=TEST123 file=uv_agreement_TEST123.docx size=46902
+2026-02-14 22:26:24,919 INFO myproject.views DOCX generated: uv_agreement_TEST123.docx size=46902 user=anonymous
+2026-02-14 22:26:24,933 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_uv_2wznqjah (attempt 1)
+[2026-02-14T15:31:45.055479+00:00] user=anonymous type=docx endpoint=uv_agreement contract=TEST123 file=uv_agreement_TEST123.docx size=46902
+2026-02-14 22:31:45,055 INFO myproject.views DOCX generated: uv_agreement_TEST123.docx size=46902 user=anonymous
+2026-02-14 22:31:45,061 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_uv_tt7rkdp4 (attempt 1)
+[2026-02-14T15:32:55.872481+00:00] user=anonymous type=docx endpoint=uv_agreement contract=TEST123 file=uv_agreement_TEST123.docx size=45986
+2026-02-14 22:32:55,872 INFO myproject.views DOCX generated: uv_agreement_TEST123.docx size=45986 user=anonymous
+2026-02-14 22:32:55,880 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_uv_q1crnwf1 (attempt 1)
+[2026-02-14T15:45:01.857367+00:00] user=anonymous type=docx endpoint=uv_agreement contract=TEST123 file=uv_agreement_TEST123.docx size=45986
+2026-02-14 22:45:01,858 INFO myproject.views DOCX generated: uv_agreement_TEST123.docx size=45986 user=anonymous
+2026-02-14 22:45:01,868 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_uv_gtk__u97 (attempt 1)
+[2026-02-14T15:47:45.907100+00:00] user=anonymous type=docx endpoint=uv_agreement contract=TEST123 file=uv_agreement_TEST123.docx size=45986
+2026-02-14 22:47:45,907 INFO myproject.views DOCX generated: uv_agreement_TEST123.docx size=45986 user=anonymous
+2026-02-14 22:47:45,914 INFO myproject.views Removed temporary path C:\Users\LTP-IT~1\AppData\Local\Temp\docx_out_uv_j2_xs61b (attempt 1)

@@ -1,0 +1,15 @@
+import json, sys
+from urllib.request import Request, urlopen
+from urllib.error import HTTPError
+url = 'http://127.0.0.1:8000/api/token/'
+data = json.dumps({'username':'admin','password':'admin123'}).encode('utf-8')
+req = Request(url, data=data, headers={'Content-Type':'application/json','Origin':'http://localhost:3000'})
+try:
+    resp = urlopen(req, timeout=10)
+    print(resp.read().decode('utf-8'))
+except HTTPError as e:
+    print('HTTP', e.code)
+    print(e.read().decode('utf-8'))
+except Exception as e:
+    print('ERR', e)
+    sys.exit(1)

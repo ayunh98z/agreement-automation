@@ -1,0 +1,22 @@
+Frontend Access Token
+==================================================
+Generated: 2026-02-04
+
+Access Token (valid for 60 minutes):
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzcwMTc3NDIyLCJpYXQiOjE3NzAxNzM4MjIsImp0aSI6IjhiOTZjNmEyYmI4ZjRmMDRiOTk1NTUzNDYxZmI1MmQ1IiwidXNlcl9pZCI6MSwidXNlcm5hbWUiOiJhZG1pbiJ9.ExgOm8TQyXSSpAhD3-jmk2aEHidxGTu_4d3JRxHz5T4
+
+==================================================
+
+To set up frontend:
+1. Open http://localhost:3000 in browser
+2. Open Developer Tools (F12)
+3. Go to Console tab
+4. Paste this command:
+
+localStorage.setItem('access_token', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzcwMTc3NDIyLCJpYXQiOjE3NzAxNzM4MjIsImp0aSI6IjhiOTZjNmEyYmI4ZjRmMDRiOTk1NTUzNDYxZmI1MmQ1IiwidXNlcl9pZCI6MSwidXNlcm5hbWUiOiJhZG1pbiJ9.ExgOm8TQyXSSpAhD3-jmk2aEHidxGTu_4d3JRxHz5T4'); location.reload();
+
+5. Wait for page to reload
+6. Navigate to User Management
+7. Test Add User and Edit User buttons
+
+==================================================

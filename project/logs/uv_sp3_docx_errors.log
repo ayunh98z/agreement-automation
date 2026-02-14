@@ -1,0 +1,72 @@
+[2026-02-11T19:15:26.651934+00:00] docxtpl render failed for C:\Users\LTP-IT~1\AppData\Local\Temp\tmpnqihdrie.docx: unexpected char '…' at 70161
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional5\operasional\project\myproject\views.py", line 3141, in get
+    tpl.render(ctx)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\docxtpl\template.py", line 489, in render
+    xml_src = self.build_xml(context, jinja_env)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\docxtpl\template.py", line 436, in build_xml
+    xml = self.render_xml_part(xml, self.docx._part, context, jinja_env)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\docxtpl\template.py", line 322, in render_xml_part
+    raise exc
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\docxtpl\template.py", line 312, in render_xml_part
+    template = Template(src_xml)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\jinja2\environment.py", line 1214, in __new__
+    return env.from_string(source, template_class=cls)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\jinja2\environment.py", line 1111, in from_string
+    return cls.from_code(self, self.compile(source), gs, None)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\jinja2\environment.py", line 771, in compile
+    self.handle_exception(source=source_hint)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "<unknown>", line 42, in template
+jinja2.exceptions.TemplateSyntaxError: unexpected char '…' at 70161
+
+{"uv_agreement_id": 6, "contract_number": "CON001", "place_of_agreement": null, "agreement_day_in_word": null, "agreement_date": "", "agreement_date_in_word": "", "name_of_bm": null, "place_birth_of_bm": null, "date_birth_of_bm": null, "date_birth_of_bm_in_word": null, "name_of_director": null, "date_of_delegated": "", "street_of_bm": null, "subdistrict_of_bm": null, "district_of_bm": null, "city_of_bm": null, "province_of_bm": null, "nik_number_of_bm": null, "name_of_debtor": null, "place_birth_of_debtor": null, "date_birth_of_debtor": null, "date_birth_of_debtor_in_word": null, "street_of_debtor": null, "subdistrict_of_debtor": null, "district_of_debtor": null, "city_of_debtor": null, "province_of_debtor": null, "nik_number_of_debtor": null, "business_partners_relationship": null, "business_type": null, "sp3_number": null, "sp3_date": "", "loan_amount": "", "loan_amount_in_word": "", "term": null, "term_by_word": null, "flat_rate": null, "flat_rate_by_word": null, "bank_account_number": null, "name_of_bank": null, "name_of_account_holder": null, "notaris_fee": "", "notaris_fee_in_word": "", "admin_fee": "", "admin_fee_in_word": "", "admin_rate": "0", "admin_rate_in_word": "nol koma", "tlo": "0", "tlo_in_word": "", "life_insurance": "0", "life_insurance_in_word": "", "virtual_account_number": null, "topup_contract": null, "wheeled_vehicle": "", "vehicle_type": null, "vehicle_brand": null, "vechile_model": null, "plate_number": null, "chassis_number": "", "engine_number": "", "manufactured_year": "", "vehicle_colour": "", "bpkb_number": "", "name_of_vehicle_owner": null, "net_amount": "", "net_amount_in_word": "", "handling_fee": 0, "total_amount": 0, "street_name": "", "subdistrict": "", "district": "", "city": "", "province": "", "phone_number_of_lolc": "", "phone_number_of_bm": null, "phone_number_of_debtor": null, "created_by": "admin", "created_at": "2026-02-11 19:15:25", "update_at": null, "mortgage_amount": "", "mortgage_amount_in_word": "", "agreement_date_display": "", "sp3_date_in_word": "", "sp3_date_display": "", "date_of_delegated_in_word": "", "date_of_delegated_display": "", "header_fields": {"agreement_date": "", "agreement_date_in_word": "", "agreement_date_display": "", "agreement_day_in_word": null, "sp3_date": "", "sp3_date_in_word": "", "sp3_date_display": "", "name_of_debtor": null, "phone_number_of_lolc": "", "sp3_number": null, "contract_number": "CON001"}}
+[2026-02-11T19:19:43.781095+00:00] docxtpl render failed for C:\Users\LTP-IT~1\AppData\Local\Temp\tmphqk2fpwo.docx: unexpected char '…' at 70161
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional5\operasional\project\myproject\views.py", line 3169, in get
+    tpl.render(ctx)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\docxtpl\template.py", line 489, in render
+    xml_src = self.build_xml(context, jinja_env)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\docxtpl\template.py", line 436, in build_xml
+    xml = self.render_xml_part(xml, self.docx._part, context, jinja_env)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\docxtpl\template.py", line 322, in render_xml_part
+    raise exc
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\docxtpl\template.py", line 312, in render_xml_part
+    template = Template(src_xml)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\jinja2\environment.py", line 1214, in __new__
+    return env.from_string(source, template_class=cls)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\jinja2\environment.py", line 1111, in from_string
+    return cls.from_code(self, self.compile(source), gs, None)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\jinja2\environment.py", line 771, in compile
+    self.handle_exception(source=source_hint)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "<unknown>", line 42, in template
+jinja2.exceptions.TemplateSyntaxError: unexpected char '…' at 70161
+
+{"uv_agreement_id": 1, "contract_number": "CON321", "place_of_agreement": null, "agreement_day_in_word": null, "agreement_date": "", "agreement_date_in_word": "", "name_of_bm": null, "place_birth_of_bm": null, "date_birth_of_bm": null, "date_birth_of_bm_in_word": null, "name_of_director": null, "date_of_delegated": "", "street_of_bm": null, "subdistrict_of_bm": null, "district_of_bm": null, "city_of_bm": null, "province_of_bm": null, "nik_number_of_bm": null, "name_of_debtor": null, "place_birth_of_debtor": null, "date_birth_of_debtor": null, "date_birth_of_debtor_in_word": null, "street_of_debtor": null, "subdistrict_of_debtor": null, "district_of_debtor": null, "city_of_debtor": null, "province_of_debtor": null, "nik_number_of_debtor": null, "business_partners_relationship": null, "business_type": null, "sp3_number": null, "sp3_date": "", "loan_amount": "", "loan_amount_in_word": "", "term": null, "term_by_word": null, "flat_rate": null, "flat_rate_by_word": null, "bank_account_number": null, "name_of_bank": null, "name_of_account_holder": null, "notaris_fee": "", "notaris_fee_in_word": "", "admin_fee": "", "admin_fee_in_word": "", "admin_rate": "0", "admin_rate_in_word": "nol koma", "tlo": "0", "tlo_in_word": "", "life_insurance": "0", "life_insurance_in_word": "", "virtual_account_number": null, "topup_contract": null, "wheeled_vehicle": "", "vehicle_type": null, "vehicle_brand": null, "vechile_model": null, "plate_number": null, "chassis_number": "", "engine_number": "", "manufactured_year": "", "vehicle_colour": "", "bpkb_number": "", "name_of_vehicle_owner": null, "net_amount": "", "net_amount_in_word": "", "handling_fee": 0, "total_amount": 0, "street_name": "", "subdistrict": "", "district": "", "city": "", "province": "", "phone_number_of_lolc": "", "phone_number_of_bm": null, "phone_number_of_debtor": null, "created_by": "admin", "created_at": "2026-02-11 18:53:35", "update_at": null, "mortgage_amount": "", "mortgage_amount_in_word": "", "agreement_date_display": "", "sp3_date_in_word": "", "sp3_date_display": "", "date_of_delegated_in_word": "", "date_of_delegated_display": "", "header_fields": {"agreement_date": "", "agreement_date_in_word": "", "agreement_date_display": "", "agreement_day_in_word": null, "sp3_date": "", "sp3_date_in_word": "", "sp3_date_display": "", "name_of_debtor": null, "phone_number_of_lolc": "", "sp3_number": null, "contract_number": "CON321"}}
+[2026-02-11T19:19:45.320785+00:00] docxtpl render failed for C:\Users\LTP-IT~1\AppData\Local\Temp\tmp1bhqss8z.docx: unexpected char '…' at 70161
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional5\operasional\project\myproject\views.py", line 3169, in get
+    tpl.render(ctx)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\docxtpl\template.py", line 489, in render
+    xml_src = self.build_xml(context, jinja_env)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\docxtpl\template.py", line 436, in build_xml
+    xml = self.render_xml_part(xml, self.docx._part, context, jinja_env)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\docxtpl\template.py", line 322, in render_xml_part
+    raise exc
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\docxtpl\template.py", line 312, in render_xml_part
+    template = Template(src_xml)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\jinja2\environment.py", line 1214, in __new__
+    return env.from_string(source, template_class=cls)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\jinja2\environment.py", line 1111, in from_string
+    return cls.from_code(self, self.compile(source), gs, None)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\jinja2\environment.py", line 771, in compile
+    self.handle_exception(source=source_hint)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "<unknown>", line 42, in template
+jinja2.exceptions.TemplateSyntaxError: unexpected char '…' at 70161
+
+{"uv_agreement_id": 1, "contract_number": "CON321", "place_of_agreement": null, "agreement_day_in_word": null, "agreement_date": "", "agreement_date_in_word": "", "name_of_bm": null, "place_birth_of_bm": null, "date_birth_of_bm": null, "date_birth_of_bm_in_word": null, "name_of_director": null, "date_of_delegated": "", "street_of_bm": null, "subdistrict_of_bm": null, "district_of_bm": null, "city_of_bm": null, "province_of_bm": null, "nik_number_of_bm": null, "name_of_debtor": null, "place_birth_of_debtor": null, "date_birth_of_debtor": null, "date_birth_of_debtor_in_word": null, "street_of_debtor": null, "subdistrict_of_debtor": null, "district_of_debtor": null, "city_of_debtor": null, "province_of_debtor": null, "nik_number_of_debtor": null, "business_partners_relationship": null, "business_type": null, "sp3_number": null, "sp3_date": "", "loan_amount": "", "loan_amount_in_word": "", "term": null, "term_by_word": null, "flat_rate": null, "flat_rate_by_word": null, "bank_account_number": null, "name_of_bank": null, "name_of_account_holder": null, "notaris_fee": "", "notaris_fee_in_word": "", "admin_fee": "", "admin_fee_in_word": "", "admin_rate": "0", "admin_rate_in_word": "nol koma", "tlo": "0", "tlo_in_word": "", "life_insurance": "0", "life_insurance_in_word": "", "virtual_account_number": null, "topup_contract": null, "wheeled_vehicle": "", "vehicle_type": null, "vehicle_brand": null, "vechile_model": null, "plate_number": null, "chassis_number": "", "engine_number": "", "manufactured_year": "", "vehicle_colour": "", "bpkb_number": "", "name_of_vehicle_owner": null, "net_amount": "", "net_amount_in_word": "", "handling_fee": 0, "total_amount": 0, "street_name": "", "subdistrict": "", "district": "", "city": "", "province": "", "phone_number_of_lolc": "", "phone_number_of_bm": null, "phone_number_of_debtor": null, "created_by": "admin", "created_at": "2026-02-11 18:53:35", "update_at": null, "mortgage_amount": "", "mortgage_amount_in_word": "", "agreement_date_display": "", "sp3_date_in_word": "", "sp3_date_display": "", "date_of_delegated_in_word": "", "date_of_delegated_display": "", "header_fields": {"agreement_date": "", "agreement_date_in_word": "", "agreement_date_display": "", "agreement_day_in_word": null, "sp3_date": "", "sp3_date_in_word": "", "sp3_date_display": "", "name_of_debtor": null, "phone_number_of_lolc": "", "sp3_number": null, "contract_number": "CON321"}}

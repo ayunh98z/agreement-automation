@@ -1,0 +1,8 @@
+Drop report for allauth/social tables
+DB: lolc_operasional  host: 127.0.0.1
+
+account_emailaddress: error: (3730, "Cannot drop table 'account_emailaddress' referenced by a foreign key constraint 'account_emailconfirm_email_address_id_5b7f8c58_fk_account_e' on table 'account_emailconfirmation'.")
+account_emailconfirmation: dropped
+socialaccount_socialaccount: error: (3730, "Cannot drop table 'socialaccount_socialaccount' referenced by a foreign key constraint 'socialaccount_social_account_id_951f210e_fk_socialacc' on table 'socialaccount_socialtoken'.")
+socialaccount_socialapp: error: (3730, "Cannot drop table 'socialaccount_socialapp' referenced by a foreign key constraint 'socialaccount_social_app_id_636a42d7_fk_socialacc' on table 'socialaccount_socialtoken'.")
+socialaccount_socialtoken: dropped

@@ -1,0 +1,518 @@
+[2026-02-09T06:15:45.672756+00:00] Error generating docx for CON003
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional\project\myproject\views.py", line 1350, in get
+    tpl.render(ctx)
+    ~~~~~~~~~~^^^^^
+  File "C:\laragon\www\operasional\.venv\Lib\site-packages\docxtpl\template.py", line 489, in render
+    xml_src = self.build_xml(context, jinja_env)
+  File "C:\laragon\www\operasional\.venv\Lib\site-packages\docxtpl\template.py", line 436, in build_xml
+    xml = self.render_xml_part(xml, self.docx._part, context, jinja_env)
+  File "C:\laragon\www\operasional\.venv\Lib\site-packages\docxtpl\template.py", line 322, in render_xml_part
+    raise exc
+  File "C:\laragon\www\operasional\.venv\Lib\site-packages\docxtpl\template.py", line 312, in render_xml_part
+    template = Template(src_xml)
+  File "C:\laragon\www\operasional\.venv\Lib\site-packages\jinja2\environment.py", line 1214, in __new__
+    return env.from_string(source, template_class=cls)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional\.venv\Lib\site-packages\jinja2\environment.py", line 1111, in from_string
+    return cls.from_code(self, self.compile(source), gs, None)
+                               ~~~~~~~~~~~~^^^^^^^^
+  File "C:\laragon\www\operasional\.venv\Lib\site-packages\jinja2\environment.py", line 771, in compile
+    self.handle_exception(source=source_hint)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional\.venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "<unknown>", line 58, in template
+jinja2.exceptions.TemplateSyntaxError: expected token 'end of print statement', got '_by_word'
+
+[2026-02-09T06:15:59.836778+00:00] Error generating docx for CON003
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional\project\myproject\views.py", line 1350, in get
+    tpl.render(ctx)
+    ~~~~~~~~~~^^^^^
+  File "C:\laragon\www\operasional\.venv\Lib\site-packages\docxtpl\template.py", line 489, in render
+    xml_src = self.build_xml(context, jinja_env)
+  File "C:\laragon\www\operasional\.venv\Lib\site-packages\docxtpl\template.py", line 436, in build_xml
+    xml = self.render_xml_part(xml, self.docx._part, context, jinja_env)
+  File "C:\laragon\www\operasional\.venv\Lib\site-packages\docxtpl\template.py", line 322, in render_xml_part
+    raise exc
+  File "C:\laragon\www\operasional\.venv\Lib\site-packages\docxtpl\template.py", line 312, in render_xml_part
+    template = Template(src_xml)
+  File "C:\laragon\www\operasional\.venv\Lib\site-packages\jinja2\environment.py", line 1214, in __new__
+    return env.from_string(source, template_class=cls)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional\.venv\Lib\site-packages\jinja2\environment.py", line 1111, in from_string
+    return cls.from_code(self, self.compile(source), gs, None)
+                               ~~~~~~~~~~~~^^^^^^^^
+  File "C:\laragon\www\operasional\.venv\Lib\site-packages\jinja2\environment.py", line 771, in compile
+    self.handle_exception(source=source_hint)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional\.venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "<unknown>", line 58, in template
+jinja2.exceptions.TemplateSyntaxError: expected token 'end of print statement', got '_by_word'
+
+[2026-02-09T06:16:31.071050+00:00] Error generating docx for CON002
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional\project\myproject\views.py", line 1350, in get
+    tpl.render(ctx)
+    ~~~~~~~~~~^^^^^
+  File "C:\laragon\www\operasional\.venv\Lib\site-packages\docxtpl\template.py", line 489, in render
+    xml_src = self.build_xml(context, jinja_env)
+  File "C:\laragon\www\operasional\.venv\Lib\site-packages\docxtpl\template.py", line 436, in build_xml
+    xml = self.render_xml_part(xml, self.docx._part, context, jinja_env)
+  File "C:\laragon\www\operasional\.venv\Lib\site-packages\docxtpl\template.py", line 322, in render_xml_part
+    raise exc
+  File "C:\laragon\www\operasional\.venv\Lib\site-packages\docxtpl\template.py", line 312, in render_xml_part
+    template = Template(src_xml)
+  File "C:\laragon\www\operasional\.venv\Lib\site-packages\jinja2\environment.py", line 1214, in __new__
+    return env.from_string(source, template_class=cls)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional\.venv\Lib\site-packages\jinja2\environment.py", line 1111, in from_string
+    return cls.from_code(self, self.compile(source), gs, None)
+                               ~~~~~~~~~~~~^^^^^^^^
+  File "C:\laragon\www\operasional\.venv\Lib\site-packages\jinja2\environment.py", line 771, in compile
+    self.handle_exception(source=source_hint)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional\.venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "<unknown>", line 58, in template
+jinja2.exceptions.TemplateSyntaxError: expected token 'end of print statement', got '_by_word'
+
+[2026-02-09T12:44:27.238418+00:00] Error generating docx for CON002
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional\project\myproject\views.py", line 1350, in get
+    tpl.render(ctx)
+    ~~~~~~~~~~^^^^^
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\docxtpl\template.py", line 489, in render
+    xml_src = self.build_xml(context, jinja_env)
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\docxtpl\template.py", line 436, in build_xml
+    xml = self.render_xml_part(xml, self.docx._part, context, jinja_env)
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\docxtpl\template.py", line 322, in render_xml_part
+    raise exc
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\docxtpl\template.py", line 312, in render_xml_part
+    template = Template(src_xml)
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\jinja2\environment.py", line 1214, in __new__
+    return env.from_string(source, template_class=cls)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\jinja2\environment.py", line 1111, in from_string
+    return cls.from_code(self, self.compile(source), gs, None)
+                               ~~~~~~~~~~~~^^^^^^^^
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\jinja2\environment.py", line 771, in compile
+    self.handle_exception(source=source_hint)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "<unknown>", line 53, in template
+jinja2.exceptions.TemplateSyntaxError: expected token 'end of print statement', got '_by_word'
+
+[2026-02-09T12:44:49.069794+00:00] Error generating docx for CON001
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional\project\myproject\views.py", line 1350, in get
+    tpl.render(ctx)
+    ~~~~~~~~~~^^^^^
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\docxtpl\template.py", line 489, in render
+    xml_src = self.build_xml(context, jinja_env)
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\docxtpl\template.py", line 436, in build_xml
+    xml = self.render_xml_part(xml, self.docx._part, context, jinja_env)
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\docxtpl\template.py", line 322, in render_xml_part
+    raise exc
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\docxtpl\template.py", line 312, in render_xml_part
+    template = Template(src_xml)
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\jinja2\environment.py", line 1214, in __new__
+    return env.from_string(source, template_class=cls)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\jinja2\environment.py", line 1111, in from_string
+    return cls.from_code(self, self.compile(source), gs, None)
+                               ~~~~~~~~~~~~^^^^^^^^
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\jinja2\environment.py", line 771, in compile
+    self.handle_exception(source=source_hint)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "<unknown>", line 53, in template
+jinja2.exceptions.TemplateSyntaxError: expected token 'end of print statement', got '_by_word'
+
+[2026-02-09T12:51:55.675771+00:00] Error generating docx for CON002
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional\project\myproject\views.py", line 1350, in get
+    tpl.render(ctx)
+    ~~~~~~~~~~^^^^^
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\docxtpl\template.py", line 489, in render
+    xml_src = self.build_xml(context, jinja_env)
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\docxtpl\template.py", line 436, in build_xml
+    xml = self.render_xml_part(xml, self.docx._part, context, jinja_env)
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\docxtpl\template.py", line 322, in render_xml_part
+    raise exc
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\docxtpl\template.py", line 312, in render_xml_part
+    template = Template(src_xml)
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\jinja2\environment.py", line 1214, in __new__
+    return env.from_string(source, template_class=cls)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\jinja2\environment.py", line 1111, in from_string
+    return cls.from_code(self, self.compile(source), gs, None)
+                               ~~~~~~~~~~~~^^^^^^^^
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\jinja2\environment.py", line 771, in compile
+    self.handle_exception(source=source_hint)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "<unknown>", line 53, in template
+jinja2.exceptions.TemplateSyntaxError: expected token 'end of print statement', got '_by_word'
+
+[2026-02-09T12:52:10.680449+00:00] Error generating docx for CON001
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional\project\myproject\views.py", line 1350, in get
+    tpl.render(ctx)
+    ~~~~~~~~~~^^^^^
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\docxtpl\template.py", line 489, in render
+    xml_src = self.build_xml(context, jinja_env)
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\docxtpl\template.py", line 436, in build_xml
+    xml = self.render_xml_part(xml, self.docx._part, context, jinja_env)
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\docxtpl\template.py", line 322, in render_xml_part
+    raise exc
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\docxtpl\template.py", line 312, in render_xml_part
+    template = Template(src_xml)
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\jinja2\environment.py", line 1214, in __new__
+    return env.from_string(source, template_class=cls)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\jinja2\environment.py", line 1111, in from_string
+    return cls.from_code(self, self.compile(source), gs, None)
+                               ~~~~~~~~~~~~^^^^^^^^
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\jinja2\environment.py", line 771, in compile
+    self.handle_exception(source=source_hint)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "<unknown>", line 53, in template
+jinja2.exceptions.TemplateSyntaxError: expected token 'end of print statement', got '_by_word'
+
+[2026-02-09T12:53:11.359677+00:00] Error generating docx for CON005
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional\project\myproject\views.py", line 1350, in get
+    tpl.render(ctx)
+    ~~~~~~~~~~^^^^^
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\docxtpl\template.py", line 489, in render
+    xml_src = self.build_xml(context, jinja_env)
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\docxtpl\template.py", line 436, in build_xml
+    xml = self.render_xml_part(xml, self.docx._part, context, jinja_env)
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\docxtpl\template.py", line 322, in render_xml_part
+    raise exc
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\docxtpl\template.py", line 312, in render_xml_part
+    template = Template(src_xml)
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\jinja2\environment.py", line 1214, in __new__
+    return env.from_string(source, template_class=cls)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\jinja2\environment.py", line 1111, in from_string
+    return cls.from_code(self, self.compile(source), gs, None)
+                               ~~~~~~~~~~~~^^^^^^^^
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\jinja2\environment.py", line 771, in compile
+    self.handle_exception(source=source_hint)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "<unknown>", line 53, in template
+jinja2.exceptions.TemplateSyntaxError: expected token 'end of print statement', got '_by_word'
+
+[2026-02-09T12:56:23.146566+00:00] Error generating docx for CON002
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional\project\myproject\views.py", line 1350, in get
+    tpl.render(ctx)
+    ~~~~~~~~~~^^^^^
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\docxtpl\template.py", line 489, in render
+    xml_src = self.build_xml(context, jinja_env)
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\docxtpl\template.py", line 436, in build_xml
+    xml = self.render_xml_part(xml, self.docx._part, context, jinja_env)
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\docxtpl\template.py", line 322, in render_xml_part
+    raise exc
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\docxtpl\template.py", line 312, in render_xml_part
+    template = Template(src_xml)
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\jinja2\environment.py", line 1214, in __new__
+    return env.from_string(source, template_class=cls)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\jinja2\environment.py", line 1111, in from_string
+    return cls.from_code(self, self.compile(source), gs, None)
+                               ~~~~~~~~~~~~^^^^^^^^
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\jinja2\environment.py", line 771, in compile
+    self.handle_exception(source=source_hint)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "<unknown>", line 53, in template
+jinja2.exceptions.TemplateSyntaxError: expected token 'end of print statement', got '_by_word'
+
+[2026-02-09T13:05:53.962506+00:00] Error generating docx for CON002
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional\project\myproject\views.py", line 1430, in get
+    tpl.render(ctx)
+    ~~~~~~~~~~^^^^^
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\docxtpl\template.py", line 489, in render
+    xml_src = self.build_xml(context, jinja_env)
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\docxtpl\template.py", line 436, in build_xml
+    xml = self.render_xml_part(xml, self.docx._part, context, jinja_env)
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\docxtpl\template.py", line 322, in render_xml_part
+    raise exc
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\docxtpl\template.py", line 312, in render_xml_part
+    template = Template(src_xml)
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\jinja2\environment.py", line 1214, in __new__
+    return env.from_string(source, template_class=cls)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\jinja2\environment.py", line 1111, in from_string
+    return cls.from_code(self, self.compile(source), gs, None)
+                               ~~~~~~~~~~~~^^^^^^^^
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\jinja2\environment.py", line 771, in compile
+    self.handle_exception(source=source_hint)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "<unknown>", line 53, in template
+jinja2.exceptions.TemplateSyntaxError: expected token 'end of print statement', got '_by_word'
+
+[2026-02-09T13:07:04.474001+00:00] Error generating docx for CON002
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional\project\myproject\views.py", line 1430, in get
+    tpl.render(ctx)
+    ~~~~~~~~~~^^^^^
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\docxtpl\template.py", line 489, in render
+    xml_src = self.build_xml(context, jinja_env)
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\docxtpl\template.py", line 436, in build_xml
+    xml = self.render_xml_part(xml, self.docx._part, context, jinja_env)
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\docxtpl\template.py", line 322, in render_xml_part
+    raise exc
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\docxtpl\template.py", line 312, in render_xml_part
+    template = Template(src_xml)
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\jinja2\environment.py", line 1214, in __new__
+    return env.from_string(source, template_class=cls)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\jinja2\environment.py", line 1111, in from_string
+    return cls.from_code(self, self.compile(source), gs, None)
+                               ~~~~~~~~~~~~^^^^^^^^
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\jinja2\environment.py", line 771, in compile
+    self.handle_exception(source=source_hint)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "<unknown>", line 53, in template
+jinja2.exceptions.TemplateSyntaxError: expected token 'end of print statement', got '_by_word'
+
+[2026-02-09T13:08:57.079000+00:00] Error generating docx for CON002
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional\project\myproject\views.py", line 1430, in get
+    tpl.render(ctx)
+    ~~~~~~~~~~^^^^^
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\docxtpl\template.py", line 489, in render
+    xml_src = self.build_xml(context, jinja_env)
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\docxtpl\template.py", line 436, in build_xml
+    xml = self.render_xml_part(xml, self.docx._part, context, jinja_env)
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\docxtpl\template.py", line 322, in render_xml_part
+    raise exc
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\docxtpl\template.py", line 312, in render_xml_part
+    template = Template(src_xml)
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\jinja2\environment.py", line 1214, in __new__
+    return env.from_string(source, template_class=cls)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\jinja2\environment.py", line 1111, in from_string
+    return cls.from_code(self, self.compile(source), gs, None)
+                               ~~~~~~~~~~~~^^^^^^^^
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\jinja2\environment.py", line 771, in compile
+    self.handle_exception(source=source_hint)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "<unknown>", line 53, in template
+jinja2.exceptions.TemplateSyntaxError: expected token 'end of print statement', got '_by_word'
+
+[2026-02-09T13:11:13.160394+00:00] Error generating docx for CON002
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional\project\myproject\views.py", line 1460, in get
+    tpl.render(ctx)
+    ~~~~~~~~~~^^^^^
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\docxtpl\template.py", line 489, in render
+    xml_src = self.build_xml(context, jinja_env)
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\docxtpl\template.py", line 436, in build_xml
+    xml = self.render_xml_part(xml, self.docx._part, context, jinja_env)
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\docxtpl\template.py", line 322, in render_xml_part
+    raise exc
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\docxtpl\template.py", line 312, in render_xml_part
+    template = Template(src_xml)
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\jinja2\environment.py", line 1214, in __new__
+    return env.from_string(source, template_class=cls)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\jinja2\environment.py", line 1111, in from_string
+    return cls.from_code(self, self.compile(source), gs, None)
+                               ~~~~~~~~~~~~^^^^^^^^
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\jinja2\environment.py", line 771, in compile
+    self.handle_exception(source=source_hint)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "<unknown>", line 53, in template
+jinja2.exceptions.TemplateSyntaxError: expected token 'end of print statement', got '_by_word'
+
+[2026-02-09T13:13:10.229857+00:00] Error generating docx for CON001
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional\project\myproject\views.py", line 1460, in get
+    tpl.render(ctx)
+    ~~~~~~~~~~^^^^^
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\docxtpl\template.py", line 489, in render
+    xml_src = self.build_xml(context, jinja_env)
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\docxtpl\template.py", line 436, in build_xml
+    xml = self.render_xml_part(xml, self.docx._part, context, jinja_env)
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\docxtpl\template.py", line 322, in render_xml_part
+    raise exc
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\docxtpl\template.py", line 312, in render_xml_part
+    template = Template(src_xml)
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\jinja2\environment.py", line 1214, in __new__
+    return env.from_string(source, template_class=cls)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\jinja2\environment.py", line 1111, in from_string
+    return cls.from_code(self, self.compile(source), gs, None)
+                               ~~~~~~~~~~~~^^^^^^^^
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\jinja2\environment.py", line 771, in compile
+    self.handle_exception(source=source_hint)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional\project\venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "<unknown>", line 53, in template
+jinja2.exceptions.TemplateSyntaxError: expected token 'end of print statement', got '_by_word'
+
+[2026-02-11T05:05:50.363402+00:00] Error generating docx for CON001
+Traceback (most recent call last):
+  File "C:\Users\LTP-IT-AYU\AppData\Local\Python\pythoncore-3.14-64\Lib\shutil.py", line 701, in _rmtree_unsafe
+    os.unlink(fullname)
+    ~~~~~~~~~^^^^^^^^^^
+PermissionError: [WinError 32] The process cannot access the file because it is being used by another process: 'C:\\Users\\LTP-IT~1\\AppData\\Local\\Temp\\tmpi_ybynhc\\bl_agreement_CON001.docx'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional5\operasional\project\myproject\views.py", line 2371, in get
+    with tempfile.TemporaryDirectory() as tmpdir:
+         ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\LTP-IT-AYU\AppData\Local\Python\pythoncore-3.14-64\Lib\tempfile.py", line 971, in __exit__
+    self.cleanup()
+    ~~~~~~~~~~~~^^
+  File "C:\Users\LTP-IT-AYU\AppData\Local\Python\pythoncore-3.14-64\Lib\tempfile.py", line 975, in cleanup
+    self._rmtree(self.name, ignore_errors=self._ignore_cleanup_errors)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LTP-IT-AYU\AppData\Local\Python\pythoncore-3.14-64\Lib\tempfile.py", line 955, in _rmtree
+    _shutil.rmtree(name, onexc=onexc)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LTP-IT-AYU\AppData\Local\Python\pythoncore-3.14-64\Lib\shutil.py", line 852, in rmtree
+    _rmtree_impl(path, dir_fd, onexc)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LTP-IT-AYU\AppData\Local\Python\pythoncore-3.14-64\Lib\shutil.py", line 705, in _rmtree_unsafe
+    onexc(os.unlink, fullname, err)
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LTP-IT-AYU\AppData\Local\Python\pythoncore-3.14-64\Lib\tempfile.py", line 930, in onexc
+    _os.unlink(path)
+    ~~~~~~~~~~^^^^^^
+PermissionError: [WinError 32] The process cannot access the file because it is being used by another process: 'C:\\Users\\LTP-IT~1\\AppData\\Local\\Temp\\tmpi_ybynhc\\bl_agreement_CON001.docx'
+
+[2026-02-11T09:17:33.459454+00:00] Error generating docx for CON123
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional5\operasional\project\myproject\views.py", line 2447, in get
+    tpl.render(ctx)
+    ~~~~~~~~~~^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\docxtpl\template.py", line 489, in render
+    xml_src = self.build_xml(context, jinja_env)
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\docxtpl\template.py", line 436, in build_xml
+    xml = self.render_xml_part(xml, self.docx._part, context, jinja_env)
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\docxtpl\template.py", line 322, in render_xml_part
+    raise exc
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\docxtpl\template.py", line 312, in render_xml_part
+    template = Template(src_xml)
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\jinja2\environment.py", line 1214, in __new__
+    return env.from_string(source, template_class=cls)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\jinja2\environment.py", line 1111, in from_string
+    return cls.from_code(self, self.compile(source), gs, None)
+                               ~~~~~~~~~~~~^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\jinja2\environment.py", line 771, in compile
+    self.handle_exception(source=source_hint)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "<unknown>", line 42, in template
+jinja2.exceptions.TemplateSyntaxError: unexpected char '…' at 70161
+
+[2026-02-11T09:20:24.397228+00:00] Error generating docx for CON123
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional5\operasional\project\myproject\views.py", line 2453, in get
+    tpl.render(ctx)
+    ~~~~~~~~~~^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\docxtpl\template.py", line 489, in render
+    xml_src = self.build_xml(context, jinja_env)
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\docxtpl\template.py", line 436, in build_xml
+    xml = self.render_xml_part(xml, self.docx._part, context, jinja_env)
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\docxtpl\template.py", line 322, in render_xml_part
+    raise exc
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\docxtpl\template.py", line 312, in render_xml_part
+    template = Template(src_xml)
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\jinja2\environment.py", line 1214, in __new__
+    return env.from_string(source, template_class=cls)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\jinja2\environment.py", line 1111, in from_string
+    return cls.from_code(self, self.compile(source), gs, None)
+                               ~~~~~~~~~~~~^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\jinja2\environment.py", line 771, in compile
+    self.handle_exception(source=source_hint)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "<unknown>", line 42, in template
+jinja2.exceptions.TemplateSyntaxError: expected name or number
+
+[2026-02-11T09:22:52.435159+00:00] Error generating docx for CON123
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional5\operasional\project\myproject\views.py", line 2453, in get
+    tpl.render(ctx)
+    ~~~~~~~~~~^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\docxtpl\template.py", line 489, in render
+    xml_src = self.build_xml(context, jinja_env)
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\docxtpl\template.py", line 436, in build_xml
+    xml = self.render_xml_part(xml, self.docx._part, context, jinja_env)
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\docxtpl\template.py", line 322, in render_xml_part
+    raise exc
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\docxtpl\template.py", line 312, in render_xml_part
+    template = Template(src_xml)
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\jinja2\environment.py", line 1214, in __new__
+    return env.from_string(source, template_class=cls)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\jinja2\environment.py", line 1111, in from_string
+    return cls.from_code(self, self.compile(source), gs, None)
+                               ~~~~~~~~~~~~^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\jinja2\environment.py", line 771, in compile
+    self.handle_exception(source=source_hint)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\laragon\www\operasional5\operasional\.venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "<unknown>", line 42, in template
+jinja2.exceptions.TemplateSyntaxError: expected name or number
+
+[2026-02-11T09:29:58.208328+00:00] Error generating docx for CON123
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional5\operasional\project\myproject\views.py", line 2497, in get
+    tpl.save(docx_path)
+    ^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'save'
+
+[2026-02-11T09:34:02.101900+00:00] Error generating docx for CON123
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional5\operasional\project\myproject\views.py", line 2497, in get
+    tpl.save(docx_path)
+    ^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'save'
+
+[2026-02-11T11:35:40.189814+00:00] Error generating docx for CON123
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional5\operasional\project\myproject\views.py", line 2586, in get
+    with open(docx_path, 'rb') as fh:
+FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\LTP-IT~1\\AppData\\Local\\Temp\\docx_out_3akwf19g\\bl_agreement_CON123.docx'
+
+[2026-02-11T11:36:02.071556+00:00] Error generating docx for CON123
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional5\operasional\project\myproject\views.py", line 2586, in get
+    with open(docx_path, 'rb') as fh:
+FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\LTP-IT~1\\AppData\\Local\\Temp\\docx_out_f4hj0l8s\\bl_agreement_CON123.docx'
+

@@ -1,0 +1,20 @@
+[2026-02-11T15:31:46.564652+00:00] Error generating UV docx for CON089\
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional5\operasional\project\myproject\views.py", line 2902, in get
+    tpl.save(docx_path)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\docxtpl\template.py", line 890, in save
+    self.docx.save(filename, *args, **kwargs)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\docx\document.py", line 204, in save
+    self._part.save(path_or_stream)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\docx\parts\document.py", line 114, in save
+    self.package.save(path_or_stream)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\docx\opc\package.py", line 166, in save
+    PackageWriter.write(pkg_file, self.rels, self.parts)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\docx\opc\pkgwriter.py", line 34, in write
+    phys_writer = PhysPkgWriter(pkg_file)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\docx\opc\phys_pkg.py", line 109, in __init__
+    self._zipf = ZipFile(pkg_file, "w", compression=ZIP_DEFLATED)
+  File "C:\laragon\bin\python\python-3.10\lib\zipfile.py", line 1249, in __init__
+    self.fp = io.open(file, filemode)
+FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\LTP-IT~1\\AppData\\Local\\Temp\\docx_out_uv_q_egu640\\uv_agreement_CON089\\.docx'
+

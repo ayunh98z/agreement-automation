@@ -1,0 +1,9 @@
+Admin Login Credentials
+==================================================
+Username: admin
+Password: admin123
+Email: admin@example.com
+
+==================================================
+Access Token:
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzcwMTc1NDUzLCJpYXQiOjE3NzAxNzE4NTMsImp0aSI6IjczN2I5MDRiNTJlNDQ5NWI4YzkzYzVhOTljNmE4OGNiIiwidXNlcl9pZCI6IjEifQ.inyzifCECfNn13IFNenm93m9vLz9hQgyDkig1LcJMKw
