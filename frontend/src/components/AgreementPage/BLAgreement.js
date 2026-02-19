@@ -1,121 +1,32 @@
 ﻿/* eslint-disable unicode-bom, no-unused-vars, react-hooks/exhaustive-deps */
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { toast } from 'react-toastify';
 import '../UserManagement/UserManagement.css';
 import docxIcon from '../../assets/icons/docx-icon.svg';
 import pdfIcon from '../../assets/icons/pdf-icon.svg';
- 
-// --- Helper utilities copied from AgreementForm ---
-const parseDateFromDisplay = (display) => {
-  if (!display) return '';
-  const s = String(display).trim();
-  const m1 = s.match(new RegExp('^(\\d{2})[\\/\\-\\s](\\d{2})[\\/\\-\\s]?(\\d{4})$'));
-  if (m1) { const [, dd, mm, yyyy] = m1; return `${yyyy}-${mm}-${dd}`; }
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-  const isoDate = new Date(s);
-  if (!isNaN(isoDate.getTime())) {
-    const y = isoDate.getFullYear();
-    const m = String(isoDate.getMonth() + 1).padStart(2, '0');
-    const d = String(isoDate.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
-  }
-  return '';
-};
+import { getIndonesianNumberWord, getIndonesianDateInWords, parseDateFromDisplay, getIndonesianDayName, getIndonesianDateDisplay, formatNumberWithDots, formatDateDisplay, isDateFieldName, formatFieldName } from '../../utils/formatting';
 
-const getIndonesianDayName = (dateString) => {
-  if (!dateString) return '';
-  const date = new Date(dateString + 'T00:00:00');
-  const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-  return days[date.getDay()];
-};
-
-const getIndonesianDateInWords = (dateString) => {
-  if (!dateString) return '';
-  const iso = parseDateFromDisplay(dateString);
-  if (!iso) return '';
-  const date = new Date(iso + 'T00:00:00');
-  if (isNaN(date.getTime())) return '';
-  const monthsInWords = ['januari', 'februari', 'maret', 'april', 'mei', 'juni','juli', 'agustus', 'september', 'oktober', 'november', 'desember'];
-  const day = date.getDate();
-  const month = monthsInWords[date.getMonth()];
-  const year = date.getFullYear();
-  return `${getIndonesianNumberWord(day)} ${month} ${getIndonesianNumberWord(year)}`;
-};
-
-const getIndonesianDateDisplay = (dateString) => {
-  if (!dateString) return '';
-  const iso = parseDateFromDisplay(dateString);
-  if (!iso) return '';
-  const date = new Date(iso + 'T00:00:00');
-  if (isNaN(date.getTime())) return '';
-  const months = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
-  return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
-};
-
-const isIsoDate = (s) => {
-  if (!s) return false;
-  return /^\d{4}-\d{2}-\d{2}$/.test(String(s));
-};
-
-const getIndonesianNumberWord = (num) => {
-  const units = ['', 'satu', 'dua', 'tiga', 'empat', 'lima', 'enam', 'tujuh', 'delapan', 'sembilan'];
-  const spellInt = (n) => {
-    n = Math.floor(n);
-    if (n === 0) return 'nol';
-    const parts = [];
-    const billions = Math.floor(n / 1000000000);
-    if (billions) { parts.push(spellInt(billions) + ' miliar'); n %= 1000000000; }
-    const millions = Math.floor(n / 1000000);
-    if (millions) { parts.push(spellInt(millions) + ' juta'); n %= 1000000; }
-    const thousands = Math.floor(n / 1000);
-    if (thousands) {
-      if (thousands === 1) parts.push('seribu'); else parts.push(spellInt(thousands) + ' ribu');
-      n %= 1000;
-    }
-    const hundreds = Math.floor(n / 100);
-    if (hundreds) {
-      if (hundreds === 1) parts.push('seratus'); else parts.push(units[hundreds] + ' ratus');
-      n %= 100;
-    }
-    if (n >= 20) {
-      const tens = Math.floor(n / 10);
-      const rest = n % 10;
-      const tensWord = ['','','dua puluh','tiga puluh','empat puluh','lima puluh','enam puluh','tujuh puluh','delapan puluh','sembilan puluh'][tens];
-      parts.push(tensWord + (rest ? ' ' + units[rest] : ''));
-      return parts.join(' ').trim();
-    }
-    if (n >= 10 && n < 20) {
-      if (n === 10) parts.push('sepuluh');
-      else if (n === 11) parts.push('sebelas');
-      else parts.push(units[n - 10] + ' belas');
-    } else if (n > 0 && n < 10) {
-      parts.push(units[n]);
-    }
-    return parts.join(' ').trim();
-  };
+// Helper: Extract branch_id from JWT token
+export const getUserBranchIdFromToken = (token) => {
   try {
-    if (num === '' || num === null || num === undefined) return '';
-    const s = String(num).trim().replace(',', '.');
-    if (s.indexOf('.') >= 0) {
-      const [intPart, decPart] = s.split('.', 2);
-      const intNum = intPart === '' ? 0 : parseInt(intPart, 10);
-      const intWords = intNum === 0 ? 'nol' : spellInt(intNum);
-      const decWords = decPart.split('').map(d => units[parseInt(d,10)] || d).join(' ');
-      return (intWords + ' koma ' + decWords).trim();
-    } else {
-      const n = parseInt(s, 10);
-      return spellInt(n);
-    }
-  } catch (e) { return String(num); }
+    if (!token) return null;
+    const parts = token.split('.');
+    if (parts.length < 2) return null;
+    const payload = JSON.parse(window.atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+    return payload.branch_id || payload.branch || null;
+  } catch (e) {
+    return null;
+  }
 };
 
-const getMonthInRomanNumeral = (monthNumber) => {
+export const getMonthInRomanNumeral = (monthNumber) => {
   const romanNumerals = ['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII'];
   return romanNumerals[monthNumber - 1] || '';
 };
 
 // Recursively remove any primary-key keys from payloads to avoid duplicate-PK insertions
-const stripIdKeys = (obj) => {
+export const stripIdKeys = (obj) => {
   if (!obj || typeof obj !== 'object') return;
   if (Array.isArray(obj)) {
     obj.forEach(item => stripIdKeys(item));
@@ -133,7 +44,7 @@ const stripIdKeys = (obj) => {
 };
 
 // Styles constant used by the inlined form
-const styles = {
+export const styles = {
   container: { padding: '20px', backgroundColor: '#f5f5f5', minHeight: '100vh' },
   label: { fontSize: '13px', fontWeight: '600', color: '#333', letterSpacing: '0.5px' },
   input: { padding: '10px 12px', fontSize: '14px', border: '1px solid #ddd', borderRadius: '6px', outline: 'none', backgroundColor: '#f9f9f9', fontFamily: 'inherit' },
@@ -141,8 +52,7 @@ const styles = {
   btnSecondary: { padding: '10px 20px', fontSize: '14px', fontWeight: '600', backgroundColor: 'white', color: '#0a1e3d', border: '2px solid #0a1e3d', borderRadius: '6px', cursor: 'pointer' }
 };
 
-// --- End helpers ---
-function BLAgreementForm({ initialContractNumber = '', initialContractData = null, onSaved, onContractSaved, contractOnly = false, editOnly = false, createOnly = false, hideFilter = false, hideHeader = false, isUV = false, inModal = false, submitTrigger, downloadOnSubmit = false } = {}) {
+function BLAgreementForm({ initialContractNumber = '', initialContractData = null, onSaved, onContractSaved, contractOnly = false, editOnly = false, createOnly = false, hideFilter = false, hideHeader = false, isUV = false, inModal = false, submitTrigger, downloadOnSubmit = false, initialSelectedBranchId = '' } = {}) {
   // State UI lokal
   const [saving, setSaving] = useState(false);
   const [usernameDisplay, setUsernameDisplay] = useState('');
@@ -181,33 +91,57 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
   }, []);
 
   // Pembantu: unduh DOCX untuk nomor kontrak
+  // Pembantu: unduh Agreement dan SP3 (DOCX atau PDF bila diminta)
   const triggerDocxDownload = async (contractNum, accessToken, asPdf = false) => {
     if (!contractNum || String(contractNum).trim() === '') return;
     try {
       const token = accessToken || localStorage.getItem('access_token');
       const base = isUV ? 'uv-agreement' : 'bl-agreement';
-      const url = `http://localhost:8000/api/${base}/download-docx/?contract_number=${encodeURIComponent(contractNum)}${asPdf ? '&download=pdf' : ''}`;
-      const resp = await axios.get(url, {
-        responseType: 'blob',
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
-      });
-      const contentType = (resp.headers && resp.headers['content-type']) || '';
-      const isPdf = contentType.includes('pdf');
-      const blob = new Blob([resp.data], { type: contentType || (isPdf ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') });
-      const link = document.createElement('a');
-      link.href = window.URL.createObjectURL(blob);
-      link.download = `${isUV ? 'uv_agreement' : 'BL_Agreement'}_${contractNum}${isPdf ? '.pdf' : '.docx'}`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(link.href);
+      const downloadType = asPdf ? '&download=pdf' : '';
+
+      // Agreement
+      const url1 = `http://localhost:8000/api/${base}/download-docx/?contract_number=${encodeURIComponent(contractNum)}${downloadType}&type=agreement`;
+      const resp1 = await axios.get(url1, { responseType: 'blob', headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      const contentType1 = (resp1.headers && resp1.headers['content-type']) || '';
+      const isPdf1 = contentType1.includes('pdf');
+      const blob1 = new Blob([resp1.data], { type: contentType1 || (isPdf1 ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') });
+      if (contentType1.includes('application/json')) {
+        const text = await blob1.text();
+        try { const js = JSON.parse(text); console.error('Download failed', js); return; } catch (e) { console.error('Download failed (unparseable json)', e); return; }
+      }
+      const link1 = document.createElement('a');
+      link1.href = window.URL.createObjectURL(blob1);
+      link1.download = `${isUV ? 'uv_agreement' : 'BL_Agreement'}_${contractNum}${isPdf1 ? '.pdf' : '.docx'}`;
+      document.body.appendChild(link1);
+      link1.click(); link1.remove();
+      window.URL.revokeObjectURL(link1.href);
+
+      // small delay to avoid browser blocking multiple quick downloads
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // SP3
+      const url2 = `http://localhost:8000/api/${base}/download-docx/?contract_number=${encodeURIComponent(contractNum)}${downloadType}&type=sp3`;
+      const resp2 = await axios.get(url2, { responseType: 'blob', headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      const contentType2 = (resp2.headers && resp2.headers['content-type']) || '';
+      const isPdf2 = contentType2.includes('pdf');
+      const blob2 = new Blob([resp2.data], { type: contentType2 || (isPdf2 ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') });
+      if (contentType2.includes('application/json')) {
+        const text = await blob2.text();
+        try { const js = JSON.parse(text); console.error('SP3 download failed', js); return; } catch (e) { console.error('SP3 download failed (unparseable json)', e); return; }
+      }
+      const link2 = document.createElement('a');
+      link2.href = window.URL.createObjectURL(blob2);
+      link2.download = `${isUV ? 'uv_sp3' : 'BL_SP3'}_${contractNum}${isPdf2 ? '.pdf' : '.docx'}`;
+      document.body.appendChild(link2);
+      link2.click(); link2.remove();
+      window.URL.revokeObjectURL(link2.href);
     } catch (e) {
-      console.error('DOCX download failed', e);
+      console.error('DOCX/SP3 download failed', e);
     }
   };
 
   // Fungsi untuk menangani penyimpanan (dengan refresh token saat kadaluwarsa)
-  const handleSave = async (doDownload = false) => {
+  const handleSave = async () => {
     setSaving(true);
     setError('');
 
@@ -240,7 +174,7 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
         });
 
         const headerFieldsToSave = { ...headerFields };
-        // (no _display fields added — visual formatting handled in inputs)
+        // (no _display fields added â€” visual formatting handled in inputs)
         if (headerFieldsToSave.agreement_date) {
           headerFieldsToSave.agreement_day_in_word = getIndonesianDayName(headerFieldsToSave.agreement_date) || headerFieldsToSave.agreement_day_in_word || '';
           headerFieldsToSave.agreement_date_in_word = getIndonesianDateInWords(headerFieldsToSave.agreement_date) || headerFieldsToSave.agreement_date_in_word || '';
@@ -293,20 +227,55 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
           'Authorization': accessToken ? `Bearer ${accessToken}` : `Bearer ${localStorage.getItem('access_token')}`,
           'Content-Type': 'application/json'
         };
-        // Always POST — backend does not accept PATCH on this endpoint in some deployments.
+        // Always POST â€” backend does not accept PATCH on this endpoint in some deployments.
         // Recursively strip any `id`/`pk` keys from the payload to avoid primary-key insertion errors.
         try { stripIdKeys(payload); } catch (e) { /* ignore */ }
-        return axios.post(`http://localhost:8000/api/${saveBase}/`, payload, { headers });
+
+        // Normalize numeric fields to avoid sending empty strings for numeric DB columns
+        const normalizeSection = (obj) => {
+          if (!obj || typeof obj !== 'object') return obj;
+          const out = {};
+          Object.keys(obj).forEach((k) => {
+            let v = obj[k];
+            if (/_in_word$|_by_word$/.test(k)) { out[k] = v; return; }
+            if (numericFields && numericFields.includes(k)) {
+              if (v === null || v === undefined || (typeof v === 'string' && v.trim() === '')) {
+                out[k] = 0;
+              } else {
+                const s = String(v).replace(/\./g, '').replace(/,/g, '').trim();
+                const n = Number(s);
+                out[k] = Number.isNaN(n) ? 0 : n;
+              }
+            } else {
+              out[k] = v;
+            }
+          });
+          return out;
+        };
+
+        const normalizedPayload = { ...payload };
+        ['contract_data','debtor','collateral_data','bm_data','branch_data','header_fields','extra_fields'].forEach(sec => {
+          if (payload[sec]) normalizedPayload[sec] = normalizeSection(payload[sec]);
+        });
+        // ensure top-level branch_id is present
+        if (!normalizedPayload.branch_id) {
+          const resolved = selectedBranchId || (branchData && (branchData.branch_id || branchData.id));
+          if (resolved) normalizedPayload.branch_id = resolved;
+        }
+        // Remove client-side created/updated fields; server will set authoritative values
+        try { delete normalizedPayload.created_by; delete normalizedPayload.created_at; delete normalizedPayload.updated_at; } catch (e) {}
+
+        return axios.post(`http://localhost:8000/api/${saveBase}/`, normalizedPayload, { headers });
     };
     try {
       await doSave(localStorage.getItem('access_token'));
       const savedContractNumber = contractNumber || initialContractNumber || '';
+      const isUpdate = !!(editOnly || initialContractNumber || initialContractData);
+      toast.success(isUpdate ? 'Data updated successfully!' : 'Data added successfully!');
       if (typeof onSaved === 'function') {
         try { onSaved(savedContractNumber); } catch (e) { console.warn('onSaved callback failed', e); }
       }
-      if (doDownload) {
-        try { await triggerDocxDownload(savedContractNumber, localStorage.getItem('access_token'), true); } catch (e) { /* ignore download errors */ }
-      }
+      // no automatic download on save; button now only saves data
     } catch (err) {
       const respData = err?.response?.data || {};
       const isTokenExpired = respData.code === 'token_not_valid' || (respData.messages && Array.isArray(respData.messages) && respData.messages.some(m => m.message && m.message.toLowerCase().includes('expired')));
@@ -321,12 +290,12 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
             localStorage.setItem('access_token', newAccess);
             await doSave(newAccess);
             const savedContractNumberRetry = contractNumber || initialContractNumber || '';
+            const isUpdate = !!(editOnly || initialContractNumber || initialContractData);
+            toast.success(isUpdate ? 'Data updated successfully!' : 'Data added successfully!', { className: 'toast-success' });
             if (typeof onSaved === 'function') {
               try { onSaved(savedContractNumberRetry); } catch (e) { console.warn('onSaved callback failed', e); }
             }
-            if (doDownload) {
-              try { await triggerDocxDownload(savedContractNumberRetry, newAccess, true); } catch (e) { /* ignore */ }
-            }
+            // no automatic download on save after token refresh
           } else {
             throw new Error('Refresh failed');
           }
@@ -334,7 +303,9 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
           console.error('Token refresh failed', refreshErr);
           localStorage.removeItem('access_token');
           localStorage.removeItem('refresh_token');
-          setError('Session expired. Please login again.');
+          const errMsg = 'Session expired. Please login again.';
+          setError(errMsg);
+          toast.error(errMsg);
         }
       } else {
         const resp = err?.response;
@@ -343,10 +314,14 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
           const url = resp.request?.responseURL || resp.config?.url || 'unknown';
           let body = '';
           try { body = typeof resp.data === 'string' ? resp.data : JSON.stringify(resp.data); } catch (e) { body = String(resp.data); }
-          setError(`Failed to save (${status}) ${url}: ${body && body.substring(0,200)}`);
+          const errMsg = `Failed to save (${status}): ${body && body.substring(0,200)}`;
+          setError(errMsg);
+          toast.error(errMsg);
           console.error('Save error response:', resp);
         } else {
-          setError('Failed to save data: ' + (err.message || 'unknown error'));
+          const errMsg = 'Failed to save data: ' + (err.message || 'unknown error');
+          setError(errMsg);
+          toast.error(errMsg);
           console.error('Save error:', err);
         }
       }
@@ -359,8 +334,10 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
     useEffect(() => {
       if (typeof submitTrigger === 'undefined') return;
       (async () => {
-        try { await handleSave(!!downloadOnSubmit); } catch (e) { console.error('submitTrigger save failed', e); }
-      })();
+          try {
+            await handleSave();
+          } catch (e) { console.error('submitTrigger save failed', e); }
+        })();
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [submitTrigger]);
 
@@ -391,6 +368,16 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
     setContractOnlySaving(true);
     setContractOnlyError('');
     try {
+      // If this is the modal "Add Contract" flow, enforce NIK must be 16 digits
+      if (inModal && contractOnly) {
+        const nikRaw = (contractData && (contractData.nik_number_of_debtor || contractData.nik)) || '';
+        const digits = String(nikRaw).replace(/\D/g, '');
+        if (digits.length !== 16) {
+          setContractOnlyError('NIK must consist of 16 digits');
+          setContractOnlySaving(false);
+          return;
+        }
+      }
       const token = localStorage.getItem('access_token');
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const payload = {};
@@ -565,21 +552,25 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
 
   const numericFields = ['loan_amount','notaris_fee','admin_fee','net_amount','previous_topup_amount','mortgage_amount','tlo','life_insurance',
     'stamp_amount','financing_agreement_amount','security_agreement_amount','upgrading_land_rights_amount','total_amount'];
+  const rateFields = ['flat_rate', 'admin_rate'];
 
   const contractFields = [
+    // Identitiy debtor
     'contract_number','nik_number_of_debtor','name_of_debtor','place_birth_of_debtor','date_birth_of_debtor','date_birth_of_debtor_in_word',
     'street_of_debtor','subdistrict_of_debtor','district_of_debtor','city_of_debtor','province_of_debtor',
     'phone_number_of_debtor','business_partners_relationship','business_type',
     // Bank fields
     'bank_account_number','name_of_bank','name_of_account_holder','virtual_account_number',
+    // Previous contract
+    'topup_contract','previous_topup_amount',
     // New numeric fields to show in create-contract modal
     'loan_amount','loan_amount_in_word','term','term_by_word','flat_rate','flat_rate_by_word','notaris_fee','notaris_fee_in_word','admin_fee','admin_fee_in_word',
-    'mortgage_amount','mortgage_amount_in_word','net_amount','net_amount_in_word','admin_rate','admin_rate_in_word','tlo','tlo_in_word','life_insurance','life_insurance_in_word',
-    'topup_contract','previous_topup_amount','stamp_amount','financing_agreement_amount','security_agreement_amount','upgrading_land_rights_amount','total_amount'
+    'mortgage_amount','mortgage_amount_in_word','net_amount','net_amount_in_word','admin_rate','admin_rate_in_word','tlo','tlo_in_word',
+    'life_insurance','life_insurance_in_word','stamp_amount','financing_agreement_amount','security_agreement_amount','upgrading_land_rights_amount','total_amount'
   ];
-
+  
   const hiddenForUV = new Set(['mortgage_amount', 'mortgage_amount_in_word']);
-  const hiddenForBLCreate = new Set(['tlo', 'tlo_in_word', 'life_insurance', 'life_insurance_in_word']);
+  const hiddenForBLCreate = new Set(['tlo', 'tlo_in_word','life_insurance_in_word']);
 
   const getVisibleContractFields = (forContractOnly = false) => {
     const shouldHide = forContractOnly || !!createOnly;
@@ -616,6 +607,41 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
   };
 
   useEffect(() => { loadContracts(); loadBranches(); loadDirectors(); }, []);
+
+  // If user is BM or CSA, auto-select user's branch_id after branches load
+  useEffect(() => {
+    try {
+      if (!branches || branches.length === 0) return;
+      if (selectedBranchId) return;
+      const raw = localStorage.getItem('user_data');
+      if (!raw) return;
+      const ud = JSON.parse(raw);
+      const role = (ud.role || ud.role_name || '').toString().toLowerCase();
+      const bid = ud.branch_id || ud.branch || ud.branchId || null;
+      if (!bid) return;
+      if (role.includes('bm') || role.includes('csa')) {
+        setSelectedBranchId(String(bid));
+        handleBranchSelectLoad(bid);
+      }
+    } catch (e) { /* ignore */ }
+  }, [branches]);
+
+  // Auto-select user's branch in CREATE modal (khusus untuk modal create)
+  useEffect(() => {
+    try {
+      if (!createOnly) return; // Hanya untuk modal create
+      if (!branches || branches.length === 0) return;
+      if (selectedBranchId) return; // Jika sudah ada pilihan, skip
+      const raw = localStorage.getItem('user_data');
+      if (!raw) return;
+      const ud = JSON.parse(raw);
+      const bid = ud.branch_id || ud.branch || ud.branchId || null;
+      if (!bid) return;
+      // Auto-select branch berdasarkan user's branch_id
+      setSelectedBranchId(String(bid));
+      handleBranchSelectLoad(bid);
+    } catch (e) { /* ignore */ }
+  }, [createOnly, branches, selectedBranchId]);
 
   // Keep total_amount in sync with component numeric fields
   useEffect(() => {
@@ -692,8 +718,8 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
       city: sel.city ?? sel.city_of_bm ?? sel.name ?? '',
       province: sel.province ?? sel.province_of_bm ?? ''
     });
-    // Setel `place_of_agreement` ke nama cabang untuk alur pembuatan (dan berguna secara umum)
-    setHeaderFields(prev => ({ ...prev, place_of_agreement: sel.name ?? prev.place_of_agreement ?? '' }));
+    // Setel `place_of_agreement` ke name cabang (dari tabel branches)
+    setHeaderFields(prev => ({ ...prev, place_of_agreement: sel.name ?? '' }));
     setBmData(prev => ({
       ...prev,
       name_of_bm: sel.name_of_bm ?? sel.name ?? prev.name_of_bm ?? '',
@@ -709,6 +735,21 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
     }));
     if ((!sel.name_of_bm || !sel.date_birth_of_bm) && sel.bm_id) loadBMByCity(sel.bm_id);
   };
+
+  // If parent passed an initial selected branch id (from the top filter), apply it
+  useEffect(() => {
+    try {
+      if (!initialSelectedBranchId) return;
+      setSelectedBranchId(initialSelectedBranchId);
+      // If branches already loaded, populate branch/bm data for the selected id
+      if (Array.isArray(branches) && branches.length > 0) {
+        const found = (branches || []).find(b => String(b.id) === String(initialSelectedBranchId));
+        if (found) handleBranchSelectLoad(initialSelectedBranchId);
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, [initialSelectedBranchId]);
 
   const loadBMByCity = async (city) => {
     if (!city) return;
@@ -731,25 +772,45 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
     setLoading(true); setError('');
     try {
       const base = isUV ? 'uv-agreement' : 'bl-agreement';
-      const response = await axios.get(`http://localhost:8000/api/${base}/`, { params: { contract_number: cn }, headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` } });
+      // mode=create â†’ fetch from source tables (contract + collateral); default â†’ fetch from agreement table
+      const params = { contract_number: cn };
+      if (forCreate || createOnly) { params.mode = 'create'; }
+      const response = await axios.get(`http://localhost:8000/api/${base}/`, { params, headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` } });
 
       setDebtor(response.data.debtor || null);
       setCollateral(response.data.collateral || null);
 
-      if (editOnly || initialContractNumber) {
+      if (editOnly || initialContractNumber || forCreate) {
         const blRow = response.data.debtor || response.data || {};
         const directContractData = {};
         contractFields.forEach((f) => { directContractData[f] = findValueInObj(blRow, f) ?? ''; });
+        
+        // BM & branch data: only populate from API response in EDIT mode
+        // In CREATE mode, these stay empty â€” user selects branch via dropdown
+        const isCreateMode = forCreate || createOnly;
         const directBmData = {};
-        bmFields.forEach((f) => { directBmData[f] = findValueInObj(blRow, f) ?? ''; });
-        const branchResp = response.data.branch || {};
-        const directBranchData = {
-          street_name: blRow.street_name ?? blRow.street_of_bm ?? '',
-          subdistrict: blRow.subdistrict ?? blRow.subdistrict_of_bm ?? '',
-          district: blRow.district ?? blRow.district_of_bm ?? '',
-          city: blRow.city ?? blRow.city_of_bm ?? '',
-          province: blRow.province ?? blRow.province_of_bm ?? ''
-        };
+        if (!isCreateMode) {
+          const bmResp = response.data.branch_manager || {};
+          bmFields.forEach((f) => { directBmData[f] = bmResp[f] ?? ''; });
+        } else {
+          bmFields.forEach((f) => { directBmData[f] = ''; });
+        }
+        
+        const directBranchData = {};
+        if (!isCreateMode) {
+          const branchResp = response.data.branch || {};
+          directBranchData.street_name = branchResp.street_name ?? '';
+          directBranchData.subdistrict = branchResp.subdistrict ?? '';
+          directBranchData.district = branchResp.district ?? '';
+          directBranchData.city = branchResp.city ?? '';
+          directBranchData.province = branchResp.province ?? '';
+        } else {
+          directBranchData.street_name = '';
+          directBranchData.subdistrict = '';
+          directBranchData.district = '';
+          directBranchData.city = '';
+          directBranchData.province = '';
+        }
 
         const coll = response.data.collateral || {};
         let directCollateralData = {};
@@ -757,24 +818,38 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
           directCollateralData = { ...(coll || {}) };
           try { const uvKeys = Object.keys(directCollateralData).filter(k => !/^id$|contract_number$/i.test(k)); setUvCollateralFields(uvKeys); } catch (e) {}
         } else {
-          collateralFields.forEach((f) => { directCollateralData[f] = findValueInObj(coll, f) ?? findValueInObj(blRow, f) ?? ''; });
+          // Only take collateral data from bl_collateral table (coll), no fallback to blRow
+          collateralFields.forEach((f) => { directCollateralData[f] = findValueInObj(coll, f) ?? ''; });
         }
 
         const directHeader = {
           ...headerFields,
-          agreement_date: blRow.agreement_date ?? headerFields.agreement_date,
-          place_of_agreement: blRow.city ?? headerFields.place_of_agreement,
-          name_of_director: blRow.name_of_director ?? blRow.Name_of_director ?? headerFields.name_of_director,
-          phone_number_of_lolc: blRow.phone_number_of_lolc ?? blRow.phone_number_of_lolc ?? headerFields.phone_number_of_lolc,
-          sp3_number: blRow.sp3_number ?? blRow.sp3No ?? headerFields.sp3_number,
-          sp3_date: blRow.sp3_date ?? blRow.sp3Date ?? headerFields.sp3_date
+          agreement_date: isCreateMode ? headerFields.agreement_date : (blRow.agreement_date ?? headerFields.agreement_date),
+          place_of_agreement: isCreateMode ? headerFields.place_of_agreement : (blRow.place_of_agreement ?? headerFields.place_of_agreement),
+          name_of_director: isCreateMode ? headerFields.name_of_director : (blRow.name_of_director ?? blRow.Name_of_director ?? headerFields.name_of_director),
+          phone_number_of_lolc: isCreateMode ? headerFields.phone_number_of_lolc : (blRow.phone_number_of_lolc ?? headerFields.phone_number_of_lolc),
+          sp3_number: isCreateMode ? headerFields.sp3_number : (blRow.sp3_number ?? blRow.sp3No ?? headerFields.sp3_number),
+          sp3_date: isCreateMode ? headerFields.sp3_date : (blRow.sp3_date ?? blRow.sp3Date ?? headerFields.sp3_date)
         };
+        // In create mode, remove stale SP3/date values so auto-generate useEffect values are preserved
+        if (isCreateMode) { delete directHeader.sp3_number; delete directHeader.sp3_date; delete directHeader.agreement_date; }
 
         setContractData(directContractData);
-        setBmData(directBmData);
-        setBranchData(directBranchData);
+        // In create mode, don't overwrite BM/branch â€” they come from branch dropdown selection
+        if (!isCreateMode) {
+          setBmData(directBmData);
+        }
+        // Ensure branch selector is populated when editing (not creating) so top-level `branch_id` is sent
+        if (!isCreateMode) {
+          try {
+            const branchResp = response.data.branch || {};
+            const resolvedBranchId = branchResp?.id || branchResp?.branch_id || blRow?.branch_id || blRow?.branch || blRow?.branchId || '';
+            if (resolvedBranchId) setSelectedBranchId(String(resolvedBranchId));
+          } catch (e) { /* ignore */ }
+          setBranchData(directBranchData);
+        }
         setCollateralData(directCollateralData);
-        const known = new Set([...contractFields, ...bmFields, ...branchFields, ...collateralFields, Object.keys(directHeader || {})]);
+        const known = new Set([...contractFields, ...bmFields, ...branchFields, ...collateralFields, ...Object.keys(directHeader || {})]);
         const extras = {};
         Object.keys(blRow || {}).forEach(k => { if (!known.has(k) && k !== 'id') extras[k] = blRow[k]; });
         setExtraFields(extras);
@@ -788,96 +863,17 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
       const newContractData = {};
       contractFields.forEach((f) => { newContractData[f] = d[f] ?? '' });
 
+      // BM data: only use from API response in non-create mode
       const newBmData = {};
       bmFields.forEach((f) => { newBmData[f] = '' });
-      const bmFromResp = response.data.bm || response.data.branch_manager || response.data.bm_data || {};
-      if (bmFromResp && Object.keys(bmFromResp).length > 0) {
-        const respKeys = Object.keys(bmFromResp || {});
-        const normalize = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '').replace(/of/g, '');
-        const normMap = {};
-        respKeys.forEach(k => { normMap[normalize(k)] = k; });
-        bmFields.forEach((f) => {
-          const candidates = [f, f.replace(/_of_/g, '_'), f.replace(/_of_/g, '_of_'), f.replace(/_birth_/g, '_of_birth_')];
-          let found = null;
-          for (const cnd of candidates) { if (bmFromResp[cnd] !== undefined) { found = cnd; break; } }
-          if (!found) {
-            const nf = normalize(f);
-            if (normMap[nf]) found = normMap[nf];
-            else {
-              const parts = f.split('_').filter(p => p && p !== 'of');
-              for (const k of respKeys) {
-                const lk = k.toLowerCase();
-                const matches = parts.reduce((acc, p) => acc + (p && p.length > 2 && lk.includes(p) ? 1 : 0), 0);
-                if (matches >= Math.max(1, Math.floor(parts.length / 2))) { found = k; break; }
-              }
+      if (!forCreate && !createOnly) {
+        const bmFromResp = response.data.branch_manager || {};
+        if (bmFromResp && Object.keys(bmFromResp).length > 0) {
+          bmFields.forEach((f) => {
+            if (bmFromResp[f] !== undefined) {
+              newBmData[f] = bmFromResp[f] ?? '';
             }
-          }
-          const value = found ? bmFromResp[found] : undefined;
-          newBmData[f] = value !== undefined && value !== null ? value : '';
-        });
-        const debtorObj = d || {};
-        const debtorKeys = Object.keys(debtorObj || {});
-        const normalizeKey = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '').replace(/of/g, '');
-        const debtorNormMap = {};
-        debtorKeys.forEach(k => { debtorNormMap[normalizeKey(k)] = k; });
-        bmFields.forEach((f) => {
-          if (newBmData[f] && String(newBmData[f]).trim() !== '') return;
-          const variants = [f, f.replace(/_of_/g, '_'), f.replace(/_of_/g, '_of_'), f.replace(/_birth_/g, '_of_birth_'), f.replace(/_of_bm/g, ''), f.replace(/_bm/g, '')];
-          let foundKey = null;
-          for (const v of variants) { if (debtorObj[v] !== undefined) { foundKey = v; break; } }
-          if (!foundKey) {
-            const nf = normalizeKey(f);
-            if (debtorNormMap[nf]) foundKey = debtorNormMap[nf];
-            else {
-              const parts = f.split('_').filter(p => p && p !== 'of');
-              for (const k of debtorKeys) {
-                const lk = k.toLowerCase();
-                const matches = parts.reduce((acc, p) => acc + (p && p.length > 2 && lk.includes(p) ? 1 : 0), 0);
-                if (matches >= Math.max(1, Math.floor(parts.length / 2))) { foundKey = k; break; }
-              }
-            }
-          }
-          if (foundKey) { newBmData[f] = debtorObj[foundKey] ?? ''; }
-        });
-      } else {
-        let mapped = false;
-        const debtorKeys = Object.keys(d || {}).map(k => k.toLowerCase());
-        bmFields.forEach((f) => {
-          const lf = f.toLowerCase();
-          if (d[f] !== undefined) { newBmData[f] = d[f] ?? ''; mapped = true; return; }
-          if (f === 'place_birth_of_bm' && d['place_of_birth_of_bm'] !== undefined) { newBmData[f] = d['place_of_birth_of_bm'] ?? ''; mapped = true; return; }
-          if (f === 'date_birth_of_bm' && d['date_of_birth_of_bm'] !== undefined) { newBmData[f] = d['date_of_birth_of_bm'] ?? ''; mapped = true; return; }
-          const parts = lf.split('_').filter(p => p && p !== 'of' && p !== 'number' && p !== 'the');
-          let foundKey = null;
-          for (const k of Object.keys(d || {})) {
-            const lk = k.toLowerCase();
-            const mentionsBM = lk.includes('bm') || lk.includes('branch_manager') || lk.includes('branchmanager');
-            const tokenMatch = parts.some(p => p.length > 2 && lk.includes(p));
-            if (tokenMatch && mentionsBM) { foundKey = k; break; }
-            if (!foundKey && tokenMatch) foundKey = k;
-          }
-          if (foundKey) { newBmData[f] = d[foundKey] ?? ''; mapped = true; }
-        });
-        if (!mapped && selectedBranchId) {
-          const selectedBranch = (branches || []).find(b => String(b.id) === String(selectedBranchId));
-          if (selectedBranch) {
-            newBmData.street_of_bm = selectedBranch.street_name_of_bm ?? selectedBranch.street_of_bm ?? selectedBranch.street_name ?? newBmData.street_of_bm;
-            newBmData.subdistrict_of_bm = selectedBranch.subdistrict_of_bm ?? selectedBranch.subdistrict ?? newBmData.subdistrict_of_bm;
-            newBmData.district_of_bm = selectedBranch.district_of_bm ?? selectedBranch.district ?? newBmData.district_of_bm;
-            newBmData.city_of_bm = selectedBranch.city_of_bm ?? selectedBranch.city ?? selectedBranch.name ?? newBmData.city_of_bm;
-            newBmData.province_of_bm = selectedBranch.province_of_bm ?? selectedBranch.province ?? newBmData.province_of_bm;
-            newBmData.name_of_bm = selectedBranch.name_of_bm ?? selectedBranch.name_of_bm ?? newBmData.name_of_bm;
-            newBmData.place_birth_of_bm = selectedBranch.place_birth_of_bm ?? selectedBranch.place_birth_of_bm ?? newBmData.place_birth_of_bm;
-            newBmData.date_birth_of_bm = selectedBranch.date_birth_of_bm ?? selectedBranch.date_of_birth_of_bm ?? newBmData.date_birth_of_bm;
-            newBmData.nik_number_of_bm = selectedBranch.nik_number_of_bm ?? newBmData.nik_number_of_bm;
-            newBmData.phone_number_of_bm = selectedBranch.phone_number_of_bm ?? newBmData.phone_number_of_bm;
-            if ((!newBmData.place_birth_of_bm || !newBmData.date_birth_of_bm || !newBmData.name_of_bm) && selectedBranch.bm_id) { loadBMByCity(selectedBranch.bm_id); }
-            mapped = true;
-          }
-        }
-        if (!mapped) {
-          let bmLookup = response.data.branch?.bm_id || d.bm_id || response.data.branch?.city_of_bm || d.city_of_debtor || d.city || response.data.branch?.name;
-          if (bmLookup) loadBMByCity(bmLookup);
+          });
         }
       }
 
@@ -888,7 +884,37 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
         setUvCollateralFields(keys);
       } else {
         newCollateralData = {};
-        collateralFields.forEach((f) => { newCollateralData[f] = c[f] ?? '' });
+        const collResp = c || {};
+        const collKeys = Object.keys(collResp);
+        const normalize = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '').replace(/of/g, '');
+        const collNormMap = {};
+        collKeys.forEach(k => { collNormMap[normalize(k)] = k; });
+        
+        collateralFields.forEach((f) => {
+          // Try direct match first
+          if (collResp[f] !== undefined) {
+            newCollateralData[f] = collResp[f] ?? '';
+            return;
+          }
+          // Try normalized match
+          const nf = normalize(f);
+          if (collNormMap[nf]) {
+            newCollateralData[f] = collResp[collNormMap[nf]] ?? '';
+            return;
+          }
+          // Try partial match
+          const parts = f.split('_').filter(p => p && p !== 'of');
+          let foundKey = null;
+          for (const k of collKeys) {
+            const lk = k.toLowerCase();
+            const matches = parts.reduce((acc, p) => acc + (p.length > 2 && lk.includes(p) ? 1 : 0), 0);
+            if (matches >= Math.max(1, Math.floor(parts.length / 2))) {
+              foundKey = k;
+              break;
+            }
+          }
+          newCollateralData[f] = foundKey ? (collResp[foundKey] ?? '') : '';
+        });
       }
 
       const newHeaderFields = { ...headerFields, phone_number_of_lolc: d.phone_number_of_lolc ?? headerFields.phone_number_of_lolc, name_of_director: selectedDirector || headerFields.name_of_director };
@@ -898,22 +924,25 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
       setCollateralData(newCollateralData);
       if (!forCreate) setBmData(newBmData);
 
-      let newBranchData = {};
-      if (selectedBranchId) {
-        const sel = (branches || []).find(b => String(b.id) === String(selectedBranchId));
-        if (sel) { newBranchData = { street_name: sel.street_name ?? sel.street_of_bm ?? '', subdistrict: sel.subdistrict ?? sel.subdistrict_of_bm ?? '', district: sel.district ?? sel.district_of_bm ?? '', city: sel.city ?? sel.city_of_bm ?? sel.name ?? '', province: sel.province ?? sel.province_of_bm ?? '' }; }
-      }
-      if (!Object.keys(newBranchData).length) {
+      // Branch data: only use from API response in non-create mode
+      let newBranchData = { street_name: '', subdistrict: '', district: '', city: '', province: '' };
+      if (!forCreate && !createOnly) {
         const branchResp = response.data.branch || {};
-        newBranchData = { street_name: branchResp.street_of_bm ?? branchResp.street_name ?? '', subdistrict: branchResp.subdistrict_of_bm ?? branchResp.subdistrict ?? '', district: branchResp.district_of_bm ?? branchResp.district ?? '', city: branchResp.city_of_bm ?? branchResp.city ?? branchResp.name ?? '', province: branchResp.province_of_bm ?? branchResp.province ?? '' };
+        newBranchData = {
+          street_name: branchResp.street_name ?? '',
+          subdistrict: branchResp.subdistrict ?? '',
+          district: branchResp.district ?? '',
+          city: branchResp.city ?? '',
+          province: branchResp.province ?? ''
+        };
       }
       if (!forCreate) {
         setBranchData(newBranchData);
+      }
+      if (!forCreate) {
         if (selectedBranchId) {
           const branch = (branches || []).find(b => String(b.id) === String(selectedBranchId));
-          if (branch) setHeaderFields(prev => ({ ...prev, place_of_agreement: branch.name }));
-        } else if (newBmData.city_of_bm) {
-          setHeaderFields(prev => ({ ...prev, place_of_agreement: newBmData.city_of_bm }));
+          if (branch) setHeaderFields(prev => ({ ...prev, place_of_agreement: branch.name ?? '' }));
         }
         if (selectedDirector) setHeaderFields(prev => ({ ...prev, name_of_director: selectedDirector }));
       }
@@ -931,7 +960,54 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
   };
 
   const formatFieldName = (fieldName) => {
-    return fieldName.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase()).trim();
+    if (!fieldName) return '';
+    // Small helper to Title Case each word
+    const toTitleCase = (s) => String(s).split(/\s+/).filter(Boolean).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+
+    const f = String(fieldName);
+    // Frontend-only override: rename BPKB field label
+    if (f.toLowerCase().replace(/[^a-z0-9]/g, '') === 'namebpkbowner') return 'Collateral Owner';
+    // preserve existing special-case: previous_topup_amount -> Outstanding Previous Contract
+    if (f.startsWith('previous_topup_amount')) {
+      const raw = f.replace(/^previous_topup_amount/, 'Outstanding Previous Contract').replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').trim();
+      return toTitleCase(raw);
+    }
+    // (no special-case mapping for collateral owner here)
+
+    // Normalize raw label into words
+    const raw = f.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').trim();
+    const parts = raw.split(/\s+/).filter(Boolean);
+
+    // Build label with token-specific casing and simple pattern rules
+    const outParts = [];
+    for (let i = 0; i < parts.length; i++) {
+      const p = parts[i];
+      const pl = p.toLowerCase();
+
+      // Handle NIK followed by 'number of' -> produce 'NIK Of ...' (drop 'Number')
+      if (pl === 'nik') {
+        outParts.push('NIK');
+        // skip next token if it's 'number'
+        if (parts[i+1] && parts[i+1].toLowerCase() === 'number') {
+          i += 1; // skip 'number'
+        }
+        continue;
+      }
+
+      // Uppercase BM tokens
+      if (pl === 'bm') { outParts.push('BM'); continue; }
+
+      // TLO tokens
+      if (pl === 'tlo') { outParts.push('TLO'); continue; }
+
+      // SP3 -> SP3K mapping
+      if (pl === 'sp3') { outParts.push('SP3K'); continue; }
+
+      // default: Title Case this token
+      outParts.push(p.charAt(0).toUpperCase() + p.slice(1).toLowerCase());
+    }
+
+    return outParts.join(' ');
   };
 
   const formatFieldValue = (value) => {
@@ -941,17 +1017,7 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
     return String(value);
   };
 
-  const isDateFieldName = (name) => {
-    if (!name) return false;
-    const s = String(name).toLowerCase();
-    // common date-related tokens
-    if (/date|birth|born|ttl|tanggal|tgl/.test(s)) {
-      // explicit exceptions that contain 'birth' or 'date' but are not date inputs
-      if (s.includes('place_birth') || s.includes('place_of_birth')) return false;
-      return true;
-    }
-    return false;
-  };
+  
 
   const handleContractNumberChange = (value) => {
     setContractNumber(value);
@@ -995,6 +1061,11 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
         setContractData(prev => ({ ...prev, [field]: raw }));
         return;
       }
+      if (rateFields.includes(field)) {
+        const rateVal = String(value || '').replace(',', '.');
+        setContractData(prev => ({ ...prev, [field]: rateVal }));
+        return;
+      }
       if (numericFields.includes(field)) {
         const raw = (value || '').toString().replace(/\./g, '').replace(/,/g, '').trim();
         // update numeric field and recompute total_amount
@@ -1017,16 +1088,15 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
     if (section === 'header') { if (isDateFieldName(field)) { const iso = parseDateFromDisplay(value); setHeaderFields(prev => ({ ...prev, [field]: iso })); } else { setHeaderFields(prev => ({ ...prev, [field]: value })); } }
   };
 
-  const formatNumberWithDots = (val) => { if (val === null || val === undefined || val === '') return ''; try { const s = String(val).replace(/\./g, '').replace(/,/g, ''); if (s === '') return ''; const n = Number(s); if (Number.isNaN(n)) return val; return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.'); } catch (e) { return val; } };
-
-  const formatDateDisplay = (isoDate) => { if (!isoDate) return ''; try { const s = String(isoDate).trim(); if ((new RegExp('^\\d{2}[-/\\s]\\d{2}[-/\\s]\\d{4}$')).test(s)) return s.replace(/-/g, '/'); const d = s.split('T')[0]; const parts = d.split('-'); if (parts.length === 3) { return `${parts[2]}/${parts[1]}/${parts[0]}`; } return s; } catch (e) { return isoDate; } };
-
-  const parseDateFromDisplay = (display) => { if (!display) return ''; const s = String(display).trim(); const m1 = s.match(new RegExp('^(\\d{2})[\\/\\-\\s](\\d{2})[\\/\\-\\s]?(\\d{4})$')); if (m1) { const [, dd, mm, yyyy] = m1; return `${yyyy}-${mm}-${dd}`; } if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s; const isoDate = new Date(s); if (!isNaN(isoDate.getTime())) { const y = isoDate.getFullYear(); const m = String(isoDate.getMonth() + 1).padStart(2, '0'); const d = String(isoDate.getDate()).padStart(2, '0'); return `${y}-${m}-${d}`; } return ''; };
+  
 
   // compact styles when rendered inside modal to better fit header
   const compact = !!inModal;
-  const labelStyle = compact ? { ...styles.label, fontSize: 12, marginBottom: 4 } : styles.label;
-  const inputStyle = compact ? { ...styles.input, padding: '8px 10px', fontSize: 13, borderRadius: 4 } : styles.input;
+  const baseLabelStyle = compact ? { ...styles.label, fontSize: 12, marginBottom: 4 } : styles.label;
+  const baseInputStyle = compact ? { ...styles.input, padding: '8px 10px', fontSize: 13, borderRadius: 4 } : styles.input;
+  // Label/input styles (use base styles; modal chrome handled by CSS)
+  let labelStyle = baseLabelStyle;
+  let inputStyle = baseInputStyle;
   const sectionPadding = compact ? 8 : 12;
   const h4Style = { marginTop: 0, fontSize: compact ? 14 : 16 };
 
@@ -1050,7 +1120,7 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
         </div>
       );
     }
-    const isNumericField = /amount|loan|flat_rate|mortgage|previous_topup_amount|notaris_fee|admin_fee|tlo|stamp_amount|financing_agreement_amount|security_agreement_amount|upgrading_land_rights_amount|net_amount|total_amount|life_insurance/i.test(f) || numericFields.includes(f);
+    const isNumericField = /amount|loan|mortgage|previous_topup_amount|notaris_fee|admin_fee|tlo|stamp_amount|financing_agreement_amount|security_agreement_amount|upgrading_land_rights_amount|net_amount|total_amount|life_insurance/i.test(f) || numericFields.includes(f);
     if (isNumericField) {
       return (
         <div key={f} style={{ display: 'flex', flexDirection: 'column' }}>
@@ -1068,10 +1138,19 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
       );
     }
     const inputType = isDateFieldName(f) ? 'date' : 'text';
+    const isNikField = /nik/i.test(f);
     return (
       <div key={f} style={{ display: 'flex', flexDirection: 'column' }}>
         <label style={labelStyle}>{formatFieldName(f)}</label>
-        <input type={inputType} value={contractData[f] ?? ''} onChange={(e) => handleInputChange('contract', f, e.target.value)} style={inputStyle} />
+        <input
+          type={inputType}
+          value={rateFields.includes(f) ? String(contractData[f] || '').replace('.', ',') : (contractData[f] ?? '')}
+          onChange={(e) => handleInputChange('contract', f, e.target.value)}
+          inputMode={isNikField ? 'numeric' : undefined}
+          pattern={isNikField ? "\\d*" : undefined}
+          maxLength={isNikField ? 16 : undefined}
+          style={inputStyle}
+        />
       </div>
     );
   };
@@ -1088,27 +1167,44 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
     } else if (banksToInsert.length) {
       visibleOrdered = visibleOrdered.concat(banksToInsert);
     }
+
+    // Use same styles as the Add Collateral modal
+    const fieldLabelStyleLocal = { fontSize: 13, fontWeight: 600, color: '#333', marginBottom: 6 };
+    const fieldInputStyleLocal = { padding: '10px 12px', fontSize: 14, border: '1px solid #ddd', borderRadius: 6, outline: 'none', width: '100%', boxSizing: 'border-box' };
+    const fieldGroupStyleLocal = { display: 'flex', flexDirection: 'column' };
+
     return (
       <div style={{ padding: 20, minWidth: 560 }}>
         {contractOnlyError && <div style={{ marginBottom: 12, color: '#a33' }}>{contractOnlyError}</div>}
+
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          {visibleOrdered.map(f => {
+          {visibleOrdered.map((f) => {
             const isWordField = /(_in_word|_by_word)$/.test(f);
             const baseField = f.replace(/(_in_word|_by_word)$/, '');
-            let value = '';
-            let disabled = false;
             if (isWordField) {
-              disabled = true;
-              if (isDateFieldName(baseField)) { value = getIndonesianDateInWords(contractData[baseField]) || contractData[f] || ''; } else { const num = Number(contractData[baseField] || 0) || 0; value = getIndonesianNumberWord(num) || contractData[f] || ''; }
-            } else { if (isDateFieldName(f)) { value = formatDateDisplay(contractData[f]); } else if (numericFields.includes(f)) { value = formatNumberWithDots(contractData[f]); } else { value = contractData[f] ?? ''; } }
+              let value = '';
+              if (/date|birth/i.test(baseField)) {
+                value = getIndonesianDateInWords(contractData[baseField]) || contractData[f] || '';
+              } else {
+                const n = Number(contractData[baseField] || 0) || 0;
+                value = getIndonesianNumberWord(n) || contractData[f] || '';
+              }
+              return (
+                <div key={f} style={fieldGroupStyleLocal}>
+                  <label style={fieldLabelStyleLocal}>{formatFieldName(f)}</label>
+                  <input type="text" placeholder="" style={fieldInputStyleLocal} value={value} disabled />
+                </div>
+              );
+            }
+
             if (f === 'business_partners_relationship') {
               return (
-                <div key={f} style={{ display: 'flex', flexDirection: 'column' }}>
-                  <label style={styles.label}>{formatFieldName(f)}</label>
+                <div key={f} style={fieldGroupStyleLocal}>
+                  <label style={fieldLabelStyleLocal}>{formatFieldName(f)}</label>
                   <select
                     value={contractData[f] ?? ''}
                     onChange={(e) => handleInputChange('contract', f, e.target.value)}
-                    style={styles.input}
+                    style={fieldInputStyleLocal}
                   >
                     <option value="">-- Select relationship --</option>
                     <option value="Suami">Suami</option>
@@ -1120,34 +1216,52 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
                 </div>
               );
             }
+
+            const isNumericField = /amount|loan|mortgage|previous_topup_amount|notaris_fee|admin_fee|tlo|stamp_amount|financing_agreement_amount|security_agreement_amount|upgrading_land_rights_amount|net_amount|total_amount|life_insurance/i.test(f) || numericFields.includes(f);
+            if (isNumericField) {
+              return (
+                <div key={f} style={fieldGroupStyleLocal}>
+                  <label style={fieldLabelStyleLocal}>{formatFieldName(f)}</label>
+                  <input
+                    type="text"
+                    value={formatNumberWithDots(contractData[f])}
+                    onChange={(e) => {
+                      const raw = (e.target.value || '').toString().replace(/\./g, '').replace(/,/g, '').trim();
+                      handleInputChange('contract', f, raw);
+                    }}
+                    style={fieldInputStyleLocal}
+                  />
+                </div>
+              );
+            }
+
+            const inputType = isDateFieldName(f) ? 'date' : 'text';
+            const isNikField = /nik/i.test(f);
             return (
-              <div key={f} style={{ display: 'flex', flexDirection: 'column' }}>
-                <label style={styles.label}>{formatFieldName(f)}</label>
-                {(!isWordField && isDateFieldName(f)) ? (
-                  <input type="date" style={styles.input} value={disabled ? value : (contractData[f] || '')} disabled={disabled} onChange={(e) => { if (!disabled) handleInputChange('contract', f, e.target.value); }} />
-                ) : (
-                  (numericFields.includes(f) && !isWordField) ? (
-                    <input
-                      type="text"
-                      style={styles.input}
-                      value={disabled ? value : formatNumberWithDots(contractData[f])}
-                      disabled={disabled}
-                      onChange={(e) => { if (!disabled) handleInputChange('contract', f, e.target.value); }}
-                    />
-                  ) : (
-                    <input type="text" placeholder={isDateFieldName(f) ? 'DD/MM/YYYY' : ''} style={styles.input} value={disabled ? value : value} disabled={disabled} onChange={(e) => { if (!disabled) handleInputChange('contract', f, e.target.value); }} />
-                  )
-                )}
+              <div key={f} style={fieldGroupStyleLocal}>
+                <label style={fieldLabelStyleLocal}>{formatFieldName(f)}</label>
+                <input
+                  type={inputType}
+                  value={rateFields.includes(f) ? String(contractData[f] || '').replace('.', ',') : (contractData[f] ?? '')}
+                  onChange={(e) => handleInputChange('contract', f, e.target.value)}
+                  inputMode={isNikField ? 'numeric' : undefined}
+                  pattern={isNikField ? "\\d*" : undefined}
+                  maxLength={isNikField ? 16 : undefined}
+                  style={fieldInputStyleLocal}
+                />
               </div>
             );
           })}
         </div>
+
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
           <button className="btn-save" onClick={handleContractOnlySave} disabled={contractOnlySaving}>{contractOnlySaving ? 'Saving...' : 'Save Contract'}</button>
         </div>
       </div>
     );
   }
+
+  
 
   return (
     <div style={inModal ? { padding: 12, backgroundColor: 'transparent' } : styles.container}>
@@ -1199,8 +1313,8 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
             <h4 style={h4Style}>Agreement Detail</h4>
               <div style={{ display: 'grid', gridTemplateColumns: inModal ? '1fr 1fr' : '1fr 1fr 1fr', gap: 8 }}>
                 {(() => {
-                  const modalOrder = ['date_of_delegated','agreement_date','sp3_date','sp3_number','name_of_director','phone_number_of_lolc'];
-                  const normalOrder = ['agreement_date','agreement_day_in_word','agreement_date_in_word','sp3_date','sp3_number','date_of_delegated','name_of_director','phone_number_of_lolc'];
+                  const modalOrder = ['place_of_agreement','date_of_delegated','agreement_date','sp3_date','sp3_number','name_of_director','phone_number_of_lolc'];
+                  const normalOrder = ['place_of_agreement','agreement_date','agreement_day_in_word','agreement_date_in_word','sp3_date','sp3_number','date_of_delegated','name_of_director','phone_number_of_lolc'];
                   const order = inModal ? modalOrder : normalOrder;
                   return order.map(f => (
                     <div key={f} style={{ display: 'flex', flexDirection: 'column' }}>
@@ -1277,21 +1391,49 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-          <button style={{ ...styles.btnPrimary, minWidth: 120 }} onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : (createOnly ? 'Save & Download' : ((editOnly || initialContractNumber) ? 'Update' : 'Save'))}</button>
+          <button style={{ ...styles.btnPrimary, minWidth: 120 }} onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : (createOnly ? 'Save Document' : ((editOnly || initialContractNumber) ? 'Update' : 'Save'))}</button>
         </div>
       </div>
     </div>
   );
 }
 
-// Sediakan pembungkus lokal sehingga Create/Edit dapat diimpor dari file ini
-export function BLAgreementCreate(props = {}) {
-  return <BLAgreementForm {...props} createOnly={true} editOnly={false} hideFilter={false} hideHeader={false} isUV={false} />;
+//  Thin wrappers 
+
+function BLCreateForm(props = {}) {
+  return (
+    <BLAgreementForm
+      {...props}
+      createOnly={true}
+      editOnly={false}
+      hideFilter={false}
+      hideHeader={false}
+      isUV={false}
+    />
+  );
 }
 
-export function BLAgreementEdit({ initialContractNumber = '', onSaved, ...rest } = {}) {
-  return <BLAgreementForm initialContractNumber={initialContractNumber} onSaved={onSaved} createOnly={false} editOnly={true} hideFilter={true} hideHeader={true} isUV={false} inModal={true} {...rest} />;
+function BLEditForm({ initialContractNumber = '', onSaved, ...rest } = {}) {
+  return (
+    <BLAgreementForm
+      initialContractNumber={initialContractNumber}
+      onSaved={onSaved}
+      createOnly={false}
+      editOnly={true}
+      hideFilter={true}
+      hideHeader={true}
+      isUV={false}
+      inModal={true}
+      {...rest}
+    />
+  );
 }
+
+// Named exports for backward compatibility
+export { BLCreateForm as BLAgreementCreate };
+export { BLEditForm as BLAgreementEdit };
+
+//  Page Component 
 
 export default function BLAgreement() {
   const [agreements, setAgreements] = useState([]);
@@ -1301,6 +1443,7 @@ export default function BLAgreement() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [modalMode, setModalMode] = useState('create'); // 'create' or 'edit'
   const [contractNumber, setContractNumber] = useState('');
+  const [selectedBranchId, setSelectedBranchId] = useState('');
   const [formDebtorName, setFormDebtorName] = useState('');
   const [formNik, setFormNik] = useState('');
   const [formCollateralType, setFormCollateralType] = useState('');
@@ -1322,6 +1465,17 @@ export default function BLAgreement() {
   });
   const [collateralSaving, setCollateralSaving] = useState(false);
   const [collateralError, setCollateralError] = useState('');
+
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const visibleAgreements = (() => {
+    const q = (searchQuery || '').toString().trim().toLowerCase();
+    if (!q) return agreements || [];
+    return (agreements || []).filter((r) => {
+      const hay = `${r.contract_number || ''} ${r.name_of_debtor || ''} ${r.nik_number_of_debtor || ''}`.toLowerCase();
+      return hay.includes(q);
+    });
+  })();
 
   // Additional fields for Create Document modal
   const [agreementData, setAgreementData] = useState({ agreement_date: '', agreement_type: '' });
@@ -1397,7 +1551,7 @@ export default function BLAgreement() {
     const cn = row.contract_number;
     setError('');
     if (!cn) {
-      setModalMode('create'); setContractNumber(''); setFormDebtorName(''); setFormNik(''); setFormCollateralType(''); setShowCreateModal(true); return;
+      setModalMode('create'); setContractNumber(''); setFormDebtorName(''); setFormNik(''); setFormCollateralType(''); setSelectedBranchId(''); setShowCreateModal(true); return;
     }
 
     // Untuk Edit: JANGAN gabungkan nilai lokal — biarkan BLAgreement2 memuat semua data langsung
@@ -1420,14 +1574,13 @@ export default function BLAgreement() {
   const handleDownloadRow = async (row) => {
     if (!row.contract_number) { setError('Contract number not available'); return; }
     try {
-      // Minta PDF jika tersedia
-      const url = `http://localhost:8000/api/bl-agreement/download-docx/?contract_number=${encodeURIComponent(row.contract_number)}`;
-      const res = await requestWithAuth({ method: 'get', url, responseType: 'blob' });
-      const contentType = (res.headers && res.headers['content-type']) || '';
-      const blob = new Blob([res.data], { type: contentType || 'application/octet-stream' });
-      // If server returned JSON (error), parse and show message instead of downloading
-      if (contentType.includes('application/json')) {
-        const text = await blob.text();
+      // Download Agreement DOCX
+      const url1 = `http://localhost:8000/api/bl-agreement/download-docx/?contract_number=${encodeURIComponent(row.contract_number)}&type=agreement`;
+      const res1 = await requestWithAuth({ method: 'get', url: url1, responseType: 'blob' });
+      const contentType1 = (res1.headers && res1.headers['content-type']) || '';
+      const blob1 = new Blob([res1.data], { type: contentType1 || 'application/octet-stream' });
+      if (contentType1.includes('application/json')) {
+        const text = await blob1.text();
         try {
           const js = JSON.parse(text);
           const msg = js.error || js.detail || JSON.stringify(js);
@@ -1438,33 +1591,73 @@ export default function BLAgreement() {
           return;
         }
       }
-      const isPdf = contentType.includes('pdf');
-      const link = document.createElement('a');
-      link.href = window.URL.createObjectURL(blob);
-      link.download = `BL_Agreement_${row.contract_number}${isPdf ? '.pdf' : '.docx'}`;
-      document.body.appendChild(link);
-      link.click(); link.remove();
+      const link1 = document.createElement('a');
+      link1.href = window.URL.createObjectURL(blob1);
+      link1.download = `BL_Agreement_${row.contract_number}.docx`;
+      document.body.appendChild(link1);
+      link1.click(); link1.remove();
+
+      // Wait 500ms then download SP3 DOCX
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const url2 = `http://localhost:8000/api/bl-agreement/download-docx/?contract_number=${encodeURIComponent(row.contract_number)}&type=sp3`;
+      const res2 = await requestWithAuth({ method: 'get', url: url2, responseType: 'blob' });
+      const contentType2 = (res2.headers && res2.headers['content-type']) || '';
+      const blob2 = new Blob([res2.data], { type: contentType2 || 'application/octet-stream' });
+      if (contentType2.includes('application/json')) {
+        const text = await blob2.text();
+        try {
+          const js = JSON.parse(text);
+          const msg = js.error || js.detail || JSON.stringify(js);
+          setError(`Download SP3 failed: ${msg}`);
+          return;
+        } catch (e) {
+          setError('Download SP3 failed: unable to parse server response');
+          return;
+        }
+      }
+      const link2 = document.createElement('a');
+      link2.href = window.URL.createObjectURL(blob2);
+      link2.download = `BL_SP3_${row.contract_number}.docx`;
+      document.body.appendChild(link2);
+      link2.click(); link2.remove();
     } catch (err) {
-      console.error('Download failed', err); setError('Failed to download the document');
+      console.error('Download failed', err); setError('Failed to download the documents');
     }
   };
 
   const handleDownloadPdf = async (row) => {
     if (!row.contract_number) { setError('Contract number not available'); return; }
     try {
-      const url = `http://localhost:8000/api/bl-agreement/download-docx/?contract_number=${encodeURIComponent(row.contract_number)}&download=pdf`;
-      const res = await requestWithAuth({ method: 'get', url, responseType: 'blob' });
-      const contentType = (res.headers && res.headers['content-type']) || '';
-      const blob = new Blob([res.data], { type: contentType || 'application/pdf' });
-      if (contentType.includes('application/json')) {
-        const text = await blob.text();
+      // Download Agreement PDF
+      const url1 = `http://localhost:8000/api/bl-agreement/download-docx/?contract_number=${encodeURIComponent(row.contract_number)}&type=agreement&download=pdf`;
+      const res1 = await requestWithAuth({ method: 'get', url: url1, responseType: 'blob' });
+      const contentType1 = (res1.headers && res1.headers['content-type']) || '';
+      const blob1 = new Blob([res1.data], { type: contentType1 || 'application/pdf' });
+      if (contentType1.includes('application/json')) {
+        const text = await blob1.text();
         try { const js = JSON.parse(text); setError(js.error || js.detail || 'PDF conversion failed'); return; } catch (e) { setError('PDF conversion failed'); return; }
       }
-      const link = document.createElement('a');
-      link.href = window.URL.createObjectURL(blob);
-      link.download = `BL_Agreement_${row.contract_number}.pdf`;
-      document.body.appendChild(link);
-      link.click(); link.remove();
+      const link1 = document.createElement('a');
+      link1.href = window.URL.createObjectURL(blob1);
+      link1.download = `BL_Agreement_${row.contract_number}.pdf`;
+      document.body.appendChild(link1);
+      link1.click(); link1.remove();
+
+      // Wait 500ms then download SP3 PDF
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const url2 = `http://localhost:8000/api/bl-agreement/download-docx/?contract_number=${encodeURIComponent(row.contract_number)}&type=sp3&download=pdf`;
+      const res2 = await requestWithAuth({ method: 'get', url: url2, responseType: 'blob' });
+      const contentType2 = (res2.headers && res2.headers['content-type']) || '';
+      const blob2 = new Blob([res2.data], { type: contentType2 || 'application/pdf' });
+      if (contentType2.includes('application/json')) {
+        const text = await blob2.text();
+        try { const js = JSON.parse(text); setError(js.error || js.detail || 'PDF conversion failed for SP3'); return; } catch (e) { setError('PDF conversion failed for SP3'); return; }
+      }
+      const link2 = document.createElement('a');
+      link2.href = window.URL.createObjectURL(blob2);
+      link2.download = `BL_SP3_${row.contract_number}.pdf`;
+      document.body.appendChild(link2);
+      link2.click(); link2.remove();
     } catch (err) {
       console.error('PDF download failed', err);
       try {
@@ -1473,7 +1666,6 @@ export default function BLAgreement() {
           const status = resp.status;
           const contentType = (resp.headers && resp.headers['content-type']) || '';
           if (contentType.includes('application/json')) {
-            // axios with responseType blob may wrap JSON in blob - try to read
             const data = resp.data;
             if (data && typeof data.text === 'function') {
               const txt = await data.text();
@@ -1488,7 +1680,7 @@ export default function BLAgreement() {
       } catch (e) {
         console.error('Error while formatting PDF download error', e);
       }
-      setError('Failed to download PDF');
+      setError('Failed to download PDFs');
     }
   };
 
@@ -1498,11 +1690,14 @@ export default function BLAgreement() {
       const payload = { contract_number: contractNumber, debtor: { name_of_debtor: formDebtorName, nik_number_of_debtor: formNik }, collateral: { collateral_type: formCollateralType } };
       try { stripIdKeys(payload); } catch (e) {}
       await requestWithAuth({ method: 'post', url: 'http://localhost:8000/api/bl-agreement/', data: payload });
+      toast.success('Data saved successfully!');
       setShowCreateModal(false);
       await loadAgreements();
     } catch (err) {
       console.error('Save failed', err);
-      setError('Failed to save');
+      const errMsg = 'Failed to save data';
+      setError(errMsg);
+      toast.error(errMsg);
     } finally {
       setSavingModal(false);
     }
@@ -1514,6 +1709,7 @@ export default function BLAgreement() {
       const payload = { contract_number: contractNumber, debtor: { name_of_debtor: formDebtorName, nik_number_of_debtor: formNik }, collateral: { collateral_type: formCollateralType } };
       try { stripIdKeys(payload); } catch (e) {}
       await requestWithAuth({ method: 'post', url: 'http://localhost:8000/api/bl-agreement/', data: payload });
+      toast.success('Data saved successfully!');
       // refresh daftar lalu unduh
       await loadAgreements();
       // Request PDF when available
@@ -1527,11 +1723,13 @@ export default function BLAgreement() {
           const js = JSON.parse(text);
           const msg = js.error || js.detail || JSON.stringify(js);
           setError(`Download failed: ${msg}`);
+          toast.error(`Failed to download: ${msg}`, { className: 'toast-error' });
           setShowCreateModal(false);
           setSavingModal(false);
           return;
         } catch (e) {
           setError('Download failed: unable to parse server response');
+          toast.error('Failed to download: unable to parse server response', { className: 'toast-error' });
           setShowCreateModal(false);
           setSavingModal(false);
           return;
@@ -1542,7 +1740,9 @@ export default function BLAgreement() {
       setShowCreateModal(false);
     } catch (err) {
       console.error('Save & Download failed', err);
-      setError('Failed to save and download');
+      const errMsg = 'Failed to save and download';
+      setError(errMsg);
+      toast.error(errMsg);
     } finally {
       setSavingModal(false);
     }
@@ -1585,24 +1785,37 @@ export default function BLAgreement() {
         <p>Before creating the document, make sure to fill in the contract and collateral data first.</p>
       </div>
 
-      <div className="user-management-actions" style={{ justifyContent: 'flex-end', marginTop: 16 }}>
-        <button
-          className="btn-primary"
-          onClick={() => { setModalMode('create'); setContractNumber(''); setFormDebtorName(''); setFormNik(''); setFormCollateralType(''); setError(''); setContractOnlyMode(true); setShowCreateModal(true); }}
-          title="Add a new contract"
-        >
-          Add Contract
-        </button>
+      <div className="user-management-actions" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <input
+            type="text"
+            placeholder="Search contract, debtor, NIK..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            aria-label="Search agreements"
+            style={{ padding: '8px 10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px', width: '260px' }}
+          />
+        </div>
 
-        <button
-          className="btn-primary"
-          onClick={() => { setModalMode('create'); setContractNumber(''); setFormDebtorName(''); setFormNik(''); setFormCollateralType(''); setError(''); setCollateralMode(true); setShowCreateModal(true); }}
-          title="Add a new BL collateral"
-        >
-          Add Collateral
-        </button>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <button
+            className="btn-primary"
+            onClick={() => { setModalMode('create'); setContractNumber(''); setFormDebtorName(''); setFormNik(''); setFormCollateralType(''); setError(''); setSelectedBranchId(''); setContractOnlyMode(true); setShowCreateModal(true); }}
+            title="Add a new contract"
+          >
+            Add Contract
+          </button>
 
-        <button className="btn-save" onClick={() => { setModalMode('create'); setContractNumber(''); setFormDebtorName(''); setFormNik(''); setFormCollateralType(''); setError(''); setContractOnlyMode(false); setCollateralMode(false); setShowCreateModal(true); }}>Create Document</button>
+          <button
+            className="btn-primary"
+            onClick={() => { setModalMode('create'); setContractNumber(''); setFormDebtorName(''); setFormNik(''); setFormCollateralType(''); setError(''); setSelectedBranchId(''); setCollateralMode(true); setShowCreateModal(true); }}
+            title="Add a new BL collateral"
+          >
+            Add Collateral
+          </button>
+
+          <button className="btn-save" onClick={() => { setModalMode('create'); setContractNumber(''); setFormDebtorName(''); setFormNik(''); setFormCollateralType(''); setError(''); setSelectedBranchId(''); setContractOnlyMode(false); setCollateralMode(false); setShowCreateModal(true); }}>Create Document</button>
+        </div>
       </div>
 
       <div className="user-table-section" style={{ marginTop: 12 }}>
@@ -1628,10 +1841,10 @@ export default function BLAgreement() {
                   </tr>
                 </thead>
                 <tbody>
-                  {agreements.length === 0 ? (
+                  {visibleAgreements.length === 0 ? (
                     <tr><td className="no-data" colSpan={7}>No agreements found.</td></tr>
                   ) : (
-                    agreements.map((row) => (
+                    visibleAgreements.map((row) => (
                       <tr key={row.contract_number}>
                         <td>{formatDateShort(row.agreement_date)}</td>
                         <td>{row.contract_number}</td>
@@ -1666,7 +1879,7 @@ export default function BLAgreement() {
 
                             <button
                               onClick={() => handleDownloadRow(row)}
-                              title="Download DOCX"
+                              title="Download BL Agreement + BL SP3 (DOCX)"
                               aria-label={`Download ${row.contract_number || ''}`}
                               style={{
                                 border: '1px solid #0a1e3d',
@@ -1685,7 +1898,7 @@ export default function BLAgreement() {
                             </button>
                             <button
                               onClick={() => handleDownloadPdf(row)}
-                              title="Download PDF"
+                              title="Download BL Agreement + BL SP3 (PDF)"
                               aria-label={`Download PDF ${row.contract_number || ''}`}
                               style={{
                                 border: '1px solid #0a1e3d',
@@ -1715,8 +1928,8 @@ export default function BLAgreement() {
       </div>
 
       {showCreateModal && (
-        <div className="modal-overlay" style={{ zIndex: 99999, position: 'fixed' }} onClick={() => { setShowCreateModal(false); setContractOnlyMode(false); setCollateralMode(false); }}>
-          <div className="modal-content" style={{ zIndex: 100000, position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+        <div className="modal-overlay" onClick={() => { setShowCreateModal(false); setContractOnlyMode(false); setCollateralMode(false); }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
               <div className="modal-header">
               <h3 className="modal-title">
                 {modalMode === 'edit' && contractNumber ? `Edit ${contractNumber}` : (
@@ -1728,8 +1941,9 @@ export default function BLAgreement() {
 
             <div className="modal-form">
               {modalMode === 'edit' ? (
-                <BLAgreementEdit
+                <BLEditForm
                   initialContractNumber={contractNumber}
+                  initialSelectedBranchId={selectedBranchId}
                   onSaved={(cn) => { setShowCreateModal(false); setContractOnlyMode(false); loadAgreements(); if (cn) setContractNumber(cn); }}
                 />
               ) : collateralMode ? (
@@ -1823,10 +2037,12 @@ export default function BLAgreement() {
                         loadAgreements();
                         setSuccessMessage('Collateral data saved successfully');
                         setTimeout(() => setSuccessMessage(''), 4000);
+                        toast.success('Collateral data saved successfully');
                       } catch (err) {
                         console.error('Save collateral failed', err);
                         const msg = err?.response?.data?.error || 'Failed to save collateral';
                         setCollateralError(msg);
+                        toast.error(msg);
                       } finally {
                         setCollateralSaving(false);
                       }
@@ -1835,10 +2051,11 @@ export default function BLAgreement() {
                 </div>
                 ) : (
                 <div>
-                <BLAgreementCreate
+                <BLCreateForm
                   initialContractData={lastSavedContract}
                   contractOnly={contractOnlyMode}
                   inModal={true}
+                  initialSelectedBranchId={selectedBranchId}
                   onContractSaved={(saved) => {
                     // Jika pengguna membatalkan entri kontrak, tutup modal
                     if (!saved) {
@@ -1851,9 +2068,7 @@ export default function BLAgreement() {
                     setShowCreateModal(false);
                     setContractOnlyMode(false);
                     loadAgreements();
-                    setSuccessMessage('Contract data saved successfully');
-                    // hapus otomatis pesan sukses setelah 4 detik
-                    setTimeout(() => setSuccessMessage(''), 4000);
+                    toast.success('Contract data saved successfully');
                   }}
                   onSaved={(cn) => { setShowCreateModal(false); setContractOnlyMode(false); loadAgreements(); if (cn) setContractNumber(cn); }}
                 />

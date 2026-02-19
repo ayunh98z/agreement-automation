@@ -6,7 +6,7 @@ import '../UserManagement/UserManagement.css';
 import { buildCollateralPayload } from './collateralUtils';
 import docxIcon from '../../assets/icons/docx-icon.svg';
 import pdfIcon from '../../assets/icons/pdf-icon.svg';
-import { getIndonesianNumberWord, getIndonesianDateInWords, getIndonesianDateDisplay, parseDateFromDisplay, getIndonesianDayName } from '../../utils/formatting';
+import { getIndonesianNumberWord, getIndonesianDateInWords, getIndonesianDateDisplay, parseDateFromDisplay, getIndonesianDayName, formatNumberWithDots, formatDateDisplay, isDateFieldName, formatFieldName } from '../../utils/formatting';
 import { stripIdKeys, normalizeSection } from '../../utils/payloadUtils';
 
 // Payload id/pk stripping and normalization moved to shared util `payloadUtils`.
@@ -404,16 +404,7 @@ const getMonthInRomanNumeral = (monthNumber) => {
   return romanNumerals[monthNumber - 1] || '';
 };
 
-const isDateFieldName = (name) => {
-  if (!name) return false;
-  const s = String(name).toLowerCase();
-  if (/date|birth|born|ttl|tanggal|tgl/.test(s)) {
-    // explicit exceptions that contain 'birth' or 'date' but are not date inputs
-    if (s.includes('place_birth') || s.includes('place_of_birth')) return false;
-    return true;
-  }
-  return false;
-};
+ 
 
 // Styles constant used by the inlined form
 const styles = {
@@ -727,9 +718,7 @@ const styles = {
     if (section === 'header') { if (String(field).toLowerCase().includes('date')) { const iso = parseDateFromDisplay(value); setHeaderFields(prev => ({ ...prev, [field]: iso })); } else { setHeaderFields(prev => ({ ...prev, [field]: value })); } }
   };
 
-  const formatNumberWithDots = (val) => { if (val === null || val === undefined || val === '') return ''; try { const s = String(val).replace(/\./g, '').replace(/,/g, ''); if (s === '') return ''; const n = Number(s); if (Number.isNaN(n)) return val; return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.'); } catch (e) { return val; } };
-
-  const formatDateDisplay = (isoDate) => { if (!isoDate) return ''; try { const s = String(isoDate).trim(); if ((new RegExp('^\\d{2}[-/\\s]\\d{2}[-/\\s]\\d{4}$')).test(s)) return s.replace(/-/g, '/'); const d = s.split('T')[0]; const parts = d.split('-'); if (parts.length === 3) { return `${parts[2]}/${parts[1]}/${parts[0]}`; } return s; } catch (e) { return isoDate; } };
+  
 
   // compact styles when rendered inside modal to better fit header (match BLAgreement behavior)
   const compact = !!inModal;
