@@ -7,13 +7,9 @@ import { buildCollateralPayload } from './collateralUtils';
 import docxIcon from '../../assets/icons/docx-icon.svg';
 import pdfIcon from '../../assets/icons/pdf-icon.svg';
 import { getIndonesianNumberWord, getIndonesianDateInWords, getIndonesianDateDisplay, parseDateFromDisplay, getIndonesianDayName } from '../../utils/formatting';
+import { stripIdKeys, normalizeSection } from '../../utils/payloadUtils';
 
-// Remove id/pk from payload recursively to avoid inserting primary key 0
-const removeIdPk = (obj) => {
-  if (!obj || typeof obj !== 'object') return;
-  ['id', 'pk'].forEach(k => { if (Object.prototype.hasOwnProperty.call(obj, k)) delete obj[k]; });
-  Object.keys(obj).forEach(k => { try { if (obj[k] && typeof obj[k] === 'object') removeIdPk(obj[k]); } catch (e) {} });
-};
+// Payload id/pk stripping and normalization moved to shared util `payloadUtils`.
 
 
 // Inlined AgreementForm copied from AgreementForm.js and renamed to UVAgreementForm
@@ -137,43 +133,51 @@ function UVAgreementForm({ initialContractNumber = '', initialContractData = nul
 
       try { console.log('Agreement save payload (contract_number):', effectiveContractNumber, payload); } catch (e) {}
       try {
-        try { removeIdPk(payload); } catch (e) {}
-        // Normalize collateral_data so backend columns that are NOT NULL
-        // (e.g. vehicle_colour) are present. Map common frontend keys
-        // (colour, vehicle_types) to backend-expected keys and ensure
-        // empty-string defaults instead of null.
-        try {
-          payload.collateral_data = payload.collateral_data || {};
-          const cd = payload.collateral_data;
-          if (cd.vehicle_colour === undefined) {
-            if (cd.colour !== undefined) cd.vehicle_colour = cd.colour;
-            else if (cd.color !== undefined) cd.vehicle_colour = cd.color;
-            else cd.vehicle_colour = '';
+        try { stripIdKeys(payload); } catch (e) {}
+          // Normalize collateral_data so backend columns that are NOT NULL
+          // (e.g. vehicle_colour) are present. Map common frontend keys
+          // (colour, vehicle_types) to backend-expected keys and ensure
+          // empty-string defaults instead of null.
+          try {
+            payload.collateral_data = payload.collateral_data || {};
+            const cd = payload.collateral_data;
+            if (cd.vehicle_colour === undefined) {
+              if (cd.colour !== undefined) cd.vehicle_colour = cd.colour;
+              else if (cd.color !== undefined) cd.vehicle_colour = cd.color;
+              else cd.vehicle_colour = '';
+            }
+            if (cd.vehicle_type === undefined) {
+              if (cd.vehicle_types !== undefined) cd.vehicle_type = cd.vehicle_types;
+              else if (cd.vehicle_type_name !== undefined) cd.vehicle_type = cd.vehicle_type_name;
+              else cd.vehicle_type = '';
+            }
+            // ensure plate/chassis/engine keys exist (avoid NULLs)
+            if (cd.plate_number === undefined && cd.plat_number !== undefined) cd.plate_number = cd.plat_number;
+            if (cd.plate_number === undefined) cd.plate_number = cd.plate_number ?? '';
+            if (cd.chassis_number === undefined && cd.chasis_number !== undefined) cd.chassis_number = cd.chasis_number;
+            if (cd.chassis_number === undefined) cd.chassis_number = cd.chassis_number ?? '';
+            if (cd.engine_number === undefined) cd.engine_number = cd.engine_number ?? '';
+          } catch (e) {
+            // non-fatal normalization error
+            console.warn('Collateral normalization failed', e);
           }
-          if (cd.vehicle_type === undefined) {
-            if (cd.vehicle_types !== undefined) cd.vehicle_type = cd.vehicle_types;
-            else if (cd.vehicle_type_name !== undefined) cd.vehicle_type = cd.vehicle_type_name;
-            else cd.vehicle_type = '';
-          }
-          // ensure plate/chassis/engine keys exist (avoid NULLs)
-          if (cd.plate_number === undefined && cd.plat_number !== undefined) cd.plate_number = cd.plat_number;
-          if (cd.plate_number === undefined) cd.plate_number = cd.plate_number ?? '';
-          if (cd.chassis_number === undefined && cd.chasis_number !== undefined) cd.chassis_number = cd.chasis_number;
-          if (cd.chassis_number === undefined) cd.chassis_number = cd.chassis_number ?? '';
-          if (cd.engine_number === undefined) cd.engine_number = cd.engine_number ?? '';
-        } catch (e) {
-          // non-fatal normalization error
-          console.warn('Collateral normalization failed', e);
+          const nowIso = new Date().toISOString();
+          payload.created_by = payload.created_by || usernameDisplay || '';
+          payload.created_at = payload.created_at || nowIso;
+          payload.updated_at = nowIso;
+        } catch (e) {}
+        const headers = { 'Authorization': accessToken ? `Bearer ${accessToken}` : `Bearer ${localStorage.getItem('access_token')}`, 'Content-Type': 'application/json' };
+        // Normalize sections and ensure numeric fields are numbers (avoid empty strings)
+        const normalizedPayload = { ...payload };
+        ['contract_data','debtor','collateral_data','bm_data','branch_data','header_fields','extra_fields'].forEach(sec => {
+          if (payload[sec]) normalizedPayload[sec] = normalizeSection(payload[sec], numericFields);
+        });
+        if (!normalizedPayload.branch_id) {
+          const resolved = selectedBranchId || (branchData && (branchData.branch_id || branchData.id));
+          if (resolved) normalizedPayload.branch_id = resolved;
         }
-        const nowIso = new Date().toISOString();
-        payload.created_by = payload.created_by || usernameDisplay || '';
-        payload.created_at = payload.created_at || nowIso;
-        payload.updated_at = nowIso;
-      } catch (e) {}
-      const headers = { 'Authorization': accessToken ? `Bearer ${accessToken}` : `Bearer ${localStorage.getItem('access_token')}`, 'Content-Type': 'application/json' };
-      // Always POST — align with BLAgreement behavior and avoid PUT failures
-      ['id', 'pk'].forEach(k => { if (payload.hasOwnProperty(k)) delete payload[k]; });
-      return axios.post(`http://localhost:8000/api/uv-agreement/`, payload, { headers });
+        try { delete normalizedPayload.created_by; delete normalizedPayload.created_at; delete normalizedPayload.updated_at; } catch (e) {}
+        return axios.post(`http://localhost:8000/api/uv-agreement/`, normalizedPayload, { headers });
     };
 
     try {
@@ -1371,7 +1375,7 @@ export default function UVAgreement() {
     setSavingModal(true);
     try {
       const payload = { contract_number: contractNumber, debtor: { name_of_debtor: formDebtorName, nik_number_of_debtor: formNik }, collateral: { collateral_type: formCollateralType } };
-      try { removeIdPk(payload); } catch (e) {}
+      try { stripIdKeys(payload); } catch (e) {}
       await requestWithAuth({ method: 'post', url: 'http://localhost:8000/api/uv-agreement/', data: payload });
       // refresh daftar lalu unduh
       await loadAgreements();
@@ -1409,7 +1413,7 @@ export default function UVAgreement() {
     setError('');
     try {
       const payload = { contract_number: contractNumber, debtor: { name_of_debtor: formDebtorName, nik_number_of_debtor: formNik }, collateral: { collateral_type: formCollateralType } };
-      try { removeIdPk(payload); } catch (e) {}
+      try { stripIdKeys(payload); } catch (e) {}
       await requestWithAuth({ method: 'post', url: 'http://localhost:8000/api/uv-agreement/', data: payload });
       setShowCreateModal(false);
       await loadAgreements();
@@ -1670,7 +1674,7 @@ export default function UVAgreement() {
                           const collPayload = buildCollateralPayload({ ...collateralForm, contract_number: cn }, 'uv');
                           // ensure we send top-level contract_number and nested collateral object
                           const postData = { contract_number: cn, collateral: collPayload };
-                          try { removeIdPk(postData); } catch (e) {}
+                          try { stripIdKeys(postData); } catch (e) {}
                           await requestWithAuth({ method: 'post', url: 'http://localhost:8000/api/uv-collateral/', data: postData });
                           setShowCreateModal(false);
                           setCollateralMode(false);
