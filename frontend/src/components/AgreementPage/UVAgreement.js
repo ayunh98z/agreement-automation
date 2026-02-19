@@ -31,6 +31,10 @@ function UVAgreementForm({ initialContractNumber = '', initialContractData = nul
       const contentType1 = (resp1.headers && resp1.headers['content-type']) || '';
       const isPdf1 = contentType1.includes('pdf');
       const blob1 = new Blob([resp1.data], { type: contentType1 || (isPdf1 ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') });
+      if (contentType1.includes('application/json')) {
+        const text = await blob1.text();
+        try { const js = JSON.parse(text); const msg = js.error || js.detail || js.message || JSON.stringify(js); toast.error(`Download failed: ${msg}`); return; } catch (e) { toast.error('Download failed: unexpected server response'); return; }
+      }
       const link1 = document.createElement('a');
       link1.href = window.URL.createObjectURL(blob1);
       link1.download = `UV_Agreement_${contractNum}${isPdf1 ? '.pdf' : '.docx'}`;
@@ -47,6 +51,10 @@ function UVAgreementForm({ initialContractNumber = '', initialContractData = nul
       const contentType2 = (resp2.headers && resp2.headers['content-type']) || '';
       const isPdf2 = contentType2.includes('pdf');
       const blob2 = new Blob([resp2.data], { type: contentType2 || (isPdf2 ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') });
+      if (contentType2.includes('application/json')) {
+        const text2 = await blob2.text();
+        try { const js2 = JSON.parse(text2); const msg2 = js2.error || js2.detail || js2.message || JSON.stringify(js2); toast.error(`SP3 download failed: ${msg2}`); return; } catch (e) { toast.error('SP3 download failed: unexpected server response'); return; }
+      }
       const link2 = document.createElement('a');
       link2.href = window.URL.createObjectURL(blob2);
       link2.download = `UV_SP3_${contractNum}${isPdf2 ? '.pdf' : '.docx'}`;
