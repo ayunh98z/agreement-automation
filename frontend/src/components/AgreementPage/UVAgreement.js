@@ -1,10 +1,12 @@
 /* eslint-disable unicode-bom, no-unused-vars, react-hooks/exhaustive-deps */
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import { toast } from 'react-toastify';
 import '../UserManagement/UserManagement.css';
 import { buildCollateralPayload } from './collateralUtils';
 import docxIcon from '../../assets/icons/docx-icon.svg';
 import pdfIcon from '../../assets/icons/pdf-icon.svg';
+import { getIndonesianNumberWord, getIndonesianDateInWords, getIndonesianDateDisplay, parseDateFromDisplay, getIndonesianDayName } from '../../utils/formatting';
 
 // Remove id/pk from payload recursively to avoid inserting primary key 0
 const removeIdPk = (obj) => {
@@ -13,133 +15,57 @@ const removeIdPk = (obj) => {
   Object.keys(obj).forEach(k => { try { if (obj[k] && typeof obj[k] === 'object') removeIdPk(obj[k]); } catch (e) {} });
 };
 
-// Helper: convert numbers to Indonesian words (module-level so all components can use)
-function getIndonesianNumberWord(num) {
-  const units = ['', 'satu', 'dua', 'tiga', 'empat', 'lima', 'enam', 'tujuh', 'delapan', 'sembilan'];
-  const spellInt = (n) => {
-    n = Math.floor(n);
-    if (n === 0) return 'nol';
-    const parts = [];
-    const billions = Math.floor(n / 1000000000);
-    if (billions) { parts.push(spellInt(billions) + ' miliar'); n %= 1000000000; }
-    const millions = Math.floor(n / 1000000);
-    if (millions) { parts.push(spellInt(millions) + ' juta'); n %= 1000000; }
-    const thousands = Math.floor(n / 1000);
-    if (thousands) {
-      if (thousands === 1) parts.push('seribu'); else parts.push(spellInt(thousands) + ' ribu');
-      n %= 1000;
-    }
-    const hundreds = Math.floor(n / 100);
-    if (hundreds) {
-      if (hundreds === 1) parts.push('seratus'); else parts.push(units[hundreds] + ' ratus');
-      n %= 100;
-    }
-    if (n >= 10 && n < 20) {
-      if (n === 10) parts.push('sepuluh');
-      else if (n === 11) parts.push('sebelas');
-      else parts.push(units[n - 10] + ' belas');
-    } else if (n > 0 && n < 10) {
-      parts.push(units[n]);
-    } else if (n >= 20) {
-      const tens = Math.floor(n / 10);
-      const rest = n % 10;
-      const tensWord = ['','','dua puluh','tiga puluh','empat puluh','lima puluh','enam puluh','tujuh puluh','delapan puluh','sembilan puluh'][tens];
-      parts.push(tensWord + (rest ? ' ' + units[rest] : ''));
-    }
-    return parts.join(' ').trim();
-  };
-  try {
-    if (num === '' || num === null || num === undefined) return '';
-    const s = String(num).trim().replace(',', '.');
-    if (s.indexOf('.') >= 0) {
-      const [intPart, decPart] = s.split('.', 2);
-      const intNum = intPart === '' ? 0 : parseInt(intPart, 10);
-      const intWords = intNum === 0 ? 'nol' : spellInt(intNum);
-      const decWords = decPart.split('').map(d => units[parseInt(d,10)] || d).join(' ');
-      return (intWords + ' koma ' + decWords).trim();
-    } else {
-      const n = parseInt(s, 10);
-      return spellInt(n);
-    }
-  } catch (e) { return String(num); }
-}
-
-function getIndonesianDateInWords(dateString) {
-  if (!dateString) return '';
-  const iso = parseDateFromDisplay(dateString);
-  if (!iso) return '';
-  const date = new Date(iso + 'T00:00:00');
-  if (isNaN(date.getTime())) return '';
-  const monthsInWords = ['januari', 'februari', 'maret', 'april', 'mei', 'juni','juli', 'agustus', 'september', 'oktober', 'november', 'desember'];
-  const day = date.getDate();
-  const month = monthsInWords[date.getMonth()];
-  const year = date.getFullYear();
-  return `${getIndonesianNumberWord(day)} ${month} ${getIndonesianNumberWord(year)}`;
-}
-
-function getIndonesianDateDisplay(dateString) {
-  if (!dateString) return '';
-  const iso = parseDateFromDisplay(dateString);
-  if (!iso) return '';
-  const date = new Date(iso + 'T00:00:00');
-  if (isNaN(date.getTime())) return '';
-  const months = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
-  return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
-}
-
-// parse various displayed date formats into ISO YYYY-MM-DD
-function parseDateFromDisplay(display) {
-  if (!display) return '';
-  const s = String(display).trim();
-  const m1 = s.match(new RegExp('^(\\d{2})[\\/\\-\\s](\\d{2})[\\/\\-\\s]?(\\d{4})$'));
-  if (m1) {
-    const [, dd, mm, yyyy] = m1;
-    return `${yyyy}-${mm}-${dd}`;
-  }
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-  const isoDate = new Date(s);
-  if (!isNaN(isoDate.getTime())) {
-    const y = isoDate.getFullYear();
-    const m = String(isoDate.getMonth() + 1).padStart(2, '0');
-    const d = String(isoDate.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
-  }
-  return '';
-}
 
 // Inlined AgreementForm copied from AgreementForm.js and renamed to UVAgreementForm
 function UVAgreementForm({ initialContractNumber = '', initialContractData = null, initialFilterNumber = '', initialFilterTrigger = 0, onSaved, onContractSaved, contractOnly = false, editOnly = false, createOnly = false, hideFilter = false, hideHeader = false, initialUvCollateralFields = null, inModal = false } = {}) {
   const [saving, setSaving] = React.useState(false);
   const [usernameDisplay, setUsernameDisplay] = React.useState('');
 
-  const triggerDocxDownload = async (contractNum, accessToken) => {
+  // Download both Agreement and SP3 documents (DOCX or PDF when asPdf=true)
+  const triggerDocxDownload = async (contractNum, accessToken, asPdf = false) => {
     if (!contractNum || String(contractNum).trim() === '') return;
     try {
       const token = accessToken || localStorage.getItem('access_token');
       const base = 'uv-agreement';
-      const url = `http://localhost:8000/api/${base}/download-docx/?contract_number=${encodeURIComponent(contractNum)}&download=pdf`;
-      const resp = await axios.get(url, {
-        responseType: 'blob',
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
-      });
-      const contentType = (resp.headers && resp.headers['content-type']) || '';
-      const isPdf = contentType.includes('pdf');
-      const blob = new Blob([resp.data], { type: contentType || (isPdf ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') });
-      const link = document.createElement('a');
-      link.href = window.URL.createObjectURL(blob);
-      link.download = `UV_Agreement_${contractNum}${isPdf ? '.pdf' : '.docx'}`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(link.href);
+      const downloadType = asPdf ? '&download=pdf' : '';
+
+      // Agreement
+      const url1 = `http://localhost:8000/api/${base}/download-docx/?contract_number=${encodeURIComponent(contractNum)}${downloadType}&type=agreement`;
+      const resp1 = await axios.get(url1, { responseType: 'blob', headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      const contentType1 = (resp1.headers && resp1.headers['content-type']) || '';
+      const isPdf1 = contentType1.includes('pdf');
+      const blob1 = new Blob([resp1.data], { type: contentType1 || (isPdf1 ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') });
+      const link1 = document.createElement('a');
+      link1.href = window.URL.createObjectURL(blob1);
+      link1.download = `UV_Agreement_${contractNum}${isPdf1 ? '.pdf' : '.docx'}`;
+      document.body.appendChild(link1);
+      link1.click(); link1.remove();
+      window.URL.revokeObjectURL(link1.href);
+
+      // small delay to avoid browser blocking multiple quick downloads
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // SP3
+      const url2 = `http://localhost:8000/api/${base}/download-docx/?contract_number=${encodeURIComponent(contractNum)}${downloadType}&type=sp3`;
+      const resp2 = await axios.get(url2, { responseType: 'blob', headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      const contentType2 = (resp2.headers && resp2.headers['content-type']) || '';
+      const isPdf2 = contentType2.includes('pdf');
+      const blob2 = new Blob([resp2.data], { type: contentType2 || (isPdf2 ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') });
+      const link2 = document.createElement('a');
+      link2.href = window.URL.createObjectURL(blob2);
+      link2.download = `UV_SP3_${contractNum}${isPdf2 ? '.pdf' : '.docx'}`;
+      document.body.appendChild(link2);
+      link2.click(); link2.remove();
+      window.URL.revokeObjectURL(link2.href);
     } catch (e) {
-      console.error('DOCX download failed', e);
+      console.error('DOCX/SP3 download failed', e);
     }
   };
 
   
 
   const handleSave = async () => {
+    console.log('UVAgreement.handleSave triggered', { contractNumber, editOnly, initialContractNumber });
     setSaving(true);
     setError('');
 
@@ -245,30 +171,17 @@ function UVAgreementForm({ initialContractNumber = '', initialContractData = nul
         payload.updated_at = nowIso;
       } catch (e) {}
       const headers = { 'Authorization': accessToken ? `Bearer ${accessToken}` : `Bearer ${localStorage.getItem('access_token')}`, 'Content-Type': 'application/json' };
-      // Use POST for create; use PUT for explicit edits to avoid accidental INSERT
+      // Always POST — align with BLAgreement behavior and avoid PUT failures
       ['id', 'pk'].forEach(k => { if (payload.hasOwnProperty(k)) delete payload[k]; });
-      // If this save is an edit (editOnly or initialContractNumber present) and
-      // we have an effectiveContractNumber, prefer PUT to the specific resource.
-      try {
-        const shouldEdit = !!(editOnly || initialContractNumber);
-        const targetContract = String(effectiveContractNumber || '').trim();
-        if (shouldEdit && targetContract) {
-          const targetUrl = `http://localhost:8000/api/uv-agreement/${encodeURIComponent(targetContract)}/`;
-          return axios.put(targetUrl, payload, { headers });
-        }
-      } catch (e) {
-        console.warn('PUT fallback failed, will POST instead', e);
-      }
       return axios.post(`http://localhost:8000/api/uv-agreement/`, payload, { headers });
     };
 
     try {
       await doSave(localStorage.getItem('access_token'));
       const savedContractNumber = contractNumber || initialContractNumber || '';
+      const isUpdate = !!(editOnly || initialContractNumber || initialContractData);
+      toast.success(isUpdate ? 'Data updated successfully!' : 'Data added successfully!');
       if (typeof onSaved === 'function') { try { onSaved(savedContractNumber); } catch (e) { console.warn('onSaved callback failed', e); } }
-      if (!(editOnly || initialContractNumber)) {
-        try { await triggerDocxDownload(savedContractNumber, localStorage.getItem('access_token')); } catch (e) {}
-      }
     } catch (err) {
       const respData = err?.response?.data || {};
       const isTokenExpired = respData.code === 'token_not_valid' || (respData.messages && Array.isArray(respData.messages) && respData.messages.some(m => m.message && m.message.toLowerCase().includes('expired')));
@@ -282,20 +195,26 @@ function UVAgreementForm({ initialContractNumber = '', initialContractData = nul
               localStorage.setItem('access_token', newAccess);
               await doSave(newAccess);
               const savedContractNumberRetry = contractNumber || initialContractNumber || '';
+              const isUpdate = !!(editOnly || initialContractNumber || initialContractData);
+              toast.success(isUpdate ? 'Data updated successfully!' : 'Data added successfully!');
               if (typeof onSaved === 'function') { try { onSaved(savedContractNumberRetry); } catch (e) { console.warn('onSaved callback failed', e); } }
-              if (!(editOnly || initialContractNumber)) { try { await triggerDocxDownload(savedContractNumberRetry, newAccess); } catch (e) {} }
             } else { throw new Error('Refresh failed'); }
         } catch (refreshErr) {
           console.error('Token refresh failed', refreshErr);
-          localStorage.removeItem('access_token'); localStorage.removeItem('refresh_token'); setError('Session expired. Please login again.');
+          localStorage.removeItem('access_token'); localStorage.removeItem('refresh_token');
+          const msg = 'Session expired. Please login again.';
+          setError(msg);
+          try { toast.error(msg); } catch (e) {}
         }
       } else {
         const resp = err?.response;
         if (resp) {
           const status = resp.status; const url = resp.request?.responseURL || resp.config?.url || 'unknown'; let body = '';
           try { body = typeof resp.data === 'string' ? resp.data : JSON.stringify(resp.data); } catch (e) { body = String(resp.data); }
-          setError(`Failed to save (${status}) ${url}: ${body && body.substring(0,200)}`);
-          console.error('Save error response:', resp);
+          const errMsg = `Failed to save (${status}) ${url}: ${body && body.substring(0,200)}`;
+          setError(errMsg);
+          try { toast.error(errMsg); } catch (e) {}
+          console.error('Save error response:', resp, err);
         } else { setError('Failed to save data: ' + (err.message || 'unknown error')); console.error('Save error:', err); }
       }
     } finally { setSaving(false); }
@@ -465,29 +384,7 @@ function UVAgreementForm({ initialContractNumber = '', initialContractData = nul
 
   const collateralFields = [ 'wheeled_vehicle','vehicle_type','vehicle_brand','vehicle_model','plate_number','chassis_number','engine_number','manufactured_year','colour','bpkb_number','name_bpkb_owner'];
 
-// --- Helper utilities copied from AgreementForm ---
-const parseDateFromDisplay = (display) => {
-  if (!display) return '';
-  const s = String(display).trim();
-  const m1 = s.match(new RegExp('^(\\d{2})[\\/\\-\\s](\\d{2})[\\/\\-\\s]?(\\d{4})$'));
-  if (m1) { const [, dd, mm, yyyy] = m1; return `${yyyy}-${mm}-${dd}`; }
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-  const isoDate = new Date(s);
-  if (!isNaN(isoDate.getTime())) {
-    const y = isoDate.getFullYear();
-    const m = String(isoDate.getMonth() + 1).padStart(2, '0');
-    const d = String(isoDate.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
-  }
-  return '';
-};
-
-const getIndonesianDayName = (dateString) => {
-  if (!dateString) return '';
-  const date = new Date(dateString + 'T00:00:00');
-  const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-  return days[date.getDay()];
-};
+// Formatting helpers are imported from shared utilities to avoid duplication
 
 
 
@@ -776,6 +673,8 @@ const styles = {
 
   // Helper utilities (copied from BLAgreementForm) so render code can use them
   const formatFieldName = (fieldName) => {
+    const norm = (fieldName || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (norm === 'namebpkbowner') return 'Collateral Owner';
     return fieldName.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase()).trim();
   };
 
@@ -1052,6 +951,7 @@ const styles = {
                         <select value={collateralData[keyForState] ?? ''} onChange={(e) => handleInputChange('collateral', keyForState, e.target.value)} style={inputStyle}>
                           <option value="">-- Select --</option>
                           <option value="roda dua">Roda Dua</option>
+                          <option value="roda tiga">Roda Tiga</option>
                           <option value="roda empat">Roda Empat</option>
                         </select>
                       </div>
@@ -1110,7 +1010,7 @@ const styles = {
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-          <button style={{ ...styles.btnPrimary, minWidth: 120 }} onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : (createOnly ? 'Save & Download' : ((editOnly || initialContractNumber) ? 'Update' : 'Save'))}</button>
+          <button type="button" style={{ ...styles.btnPrimary, minWidth: 120 }} onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : ((editOnly || initialContractNumber) ? 'Update' : 'Save')}</button>
         </div>
       </div>
     </div>
@@ -1341,17 +1241,37 @@ export default function UVAgreement() {
   const handleDownloadRow = async (row) => {
     if (!row.contract_number) { setError('Contract number not available'); return; }
     try {
-      // Minta PDF jika tersedia
-      const url = `http://localhost:8000/api/uv-agreement/download-docx/?contract_number=${encodeURIComponent(row.contract_number)}`;
-      const res = await requestWithAuth({ method: 'get', url, responseType: 'blob' });
-      const contentType = (res.headers && res.headers['content-type']) || '';
-      const isPdf = contentType.includes('pdf');
-      const blob = new Blob([res.data], { type: contentType || (isPdf ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') });
-      const link = document.createElement('a');
-      link.href = window.URL.createObjectURL(blob);
-      link.download = `UV_Agreement_${row.contract_number}${isPdf ? '.pdf' : '.docx'}`;
-      document.body.appendChild(link);
-      link.click(); link.remove();
+      // Download Agreement (DOCX or PDF if backend returns PDF)
+      const url1 = `http://localhost:8000/api/uv-agreement/download-docx/?contract_number=${encodeURIComponent(row.contract_number)}&type=agreement`;
+      const res1 = await requestWithAuth({ method: 'get', url: url1, responseType: 'blob' });
+      const contentType1 = (res1.headers && res1.headers['content-type']) || '';
+      const isPdf1 = contentType1.includes('pdf');
+      const blob1 = new Blob([res1.data], { type: contentType1 || (isPdf1 ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') });
+      if (contentType1.includes('application/json')) {
+        const text = await blob1.text();
+        try { const js = JSON.parse(text); setError(js.error || js.detail || JSON.stringify(js)); return; } catch (e) { setError('Download failed: unable to parse server response'); return; }
+      }
+      const link1 = document.createElement('a');
+      link1.href = window.URL.createObjectURL(blob1);
+      link1.download = `UV_Agreement_${row.contract_number}${isPdf1 ? '.pdf' : '.docx'}`;
+      document.body.appendChild(link1);
+      link1.click(); link1.remove();
+
+      // small delay then download SP3
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const url2 = `http://localhost:8000/api/uv-agreement/download-docx/?contract_number=${encodeURIComponent(row.contract_number)}&type=sp3`;
+      const res2 = await requestWithAuth({ method: 'get', url: url2, responseType: 'blob' });
+      const contentType2 = (res2.headers && res2.headers['content-type']) || '';
+      const blob2 = new Blob([res2.data], { type: contentType2 || 'application/octet-stream' });
+      if (contentType2.includes('application/json')) {
+        const text = await blob2.text();
+        try { const js = JSON.parse(text); setError(js.error || js.detail || JSON.stringify(js)); return; } catch (e) { setError('Download SP3 failed: unable to parse server response'); return; }
+      }
+      const link2 = document.createElement('a');
+      link2.href = window.URL.createObjectURL(blob2);
+      link2.download = `UV_SP3_${row.contract_number}.docx`;
+      document.body.appendChild(link2);
+      link2.click(); link2.remove();
     } catch (err) {
       console.error('Download failed', err); setError('Failed to download the document');
     }
@@ -1360,15 +1280,28 @@ export default function UVAgreement() {
   const handleDownloadPdf = async (row) => {
     if (!row.contract_number) { setError('Contract number not available'); return; }
     try {
-      const url = `http://localhost:8000/api/uv-agreement/download-docx/?contract_number=${encodeURIComponent(row.contract_number)}&download=pdf`;
-      const res = await requestWithAuth({ method: 'get', url, responseType: 'blob' });
-      const contentType = (res.headers && res.headers['content-type']) || '';
-      const blob = new Blob([res.data], { type: contentType || 'application/pdf' });
-      if (contentType.includes('application/json')) {
-        const text = await blob.text();
+      // Agreement PDF
+      const url1 = `http://localhost:8000/api/uv-agreement/download-docx/?contract_number=${encodeURIComponent(row.contract_number)}&type=agreement&download=pdf`;
+      const res1 = await requestWithAuth({ method: 'get', url: url1, responseType: 'blob' });
+      const contentType1 = (res1.headers && res1.headers['content-type']) || '';
+      const blob1 = new Blob([res1.data], { type: contentType1 || 'application/pdf' });
+      if (contentType1.includes('application/json')) {
+        const text = await blob1.text();
         try { const js = JSON.parse(text); setError(js.error || js.detail || 'PDF conversion failed'); return; } catch (e) { setError('PDF conversion failed'); return; }
       }
-      const link = document.createElement('a'); link.href = window.URL.createObjectURL(blob); link.download = `UV_Agreement_${row.contract_number}.pdf`; document.body.appendChild(link); link.click(); link.remove();
+      const link1 = document.createElement('a'); link1.href = window.URL.createObjectURL(blob1); link1.download = `UV_Agreement_${row.contract_number}.pdf`; document.body.appendChild(link1); link1.click(); link1.remove();
+
+      // small delay then SP3 PDF
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const url2 = `http://localhost:8000/api/uv-agreement/download-docx/?contract_number=${encodeURIComponent(row.contract_number)}&type=sp3&download=pdf`;
+      const res2 = await requestWithAuth({ method: 'get', url: url2, responseType: 'blob' });
+      const contentType2 = (res2.headers && res2.headers['content-type']) || '';
+      const blob2 = new Blob([res2.data], { type: contentType2 || 'application/pdf' });
+      if (contentType2.includes('application/json')) {
+        const text = await blob2.text();
+        try { const js = JSON.parse(text); setError(js.error || js.detail || 'SP3 PDF conversion failed'); return; } catch (e) { setError('SP3 PDF conversion failed'); return; }
+      }
+      const link2 = document.createElement('a'); link2.href = window.URL.createObjectURL(blob2); link2.download = `UV_SP3_${row.contract_number}.pdf`; document.body.appendChild(link2); link2.click(); link2.remove();
     } catch (err) {
       console.error('PDF download failed', err);
       try {
@@ -1665,6 +1598,7 @@ export default function UVAgreement() {
                       <select value={collateralForm.wheeled_vehicle} onChange={(e) => setCollateralForm(prev => ({ ...prev, wheeled_vehicle: e.target.value }))} style={fieldInputStyle}>
                         <option value="">-- Select --</option>
                         <option value="roda dua">Roda Dua</option>
+                        <option value="roda tiga">Roda Tiga</option>
                         <option value="roda empat">Roda Empat</option>
                       </select>
                     </div>
@@ -1715,7 +1649,7 @@ export default function UVAgreement() {
                     </div>
 
                     <div style={fieldGroupStyle}>
-                      <label style={fieldLabelStyle}>Name BPKB Owner</label>
+                      <label style={fieldLabelStyle}>Collateral Owner</label>
                       <input type="text" value={collateralForm.name_bpkb_owner} onChange={(e) => setCollateralForm(prev => ({ ...prev, name_bpkb_owner: e.target.value }))} style={fieldInputStyle} />
                     </div>
                   </div>
