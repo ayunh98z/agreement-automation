@@ -6,10 +6,15 @@ import '../UserManagement/UserManagement.css';
 import { buildCollateralPayload } from './collateralUtils';
 import docxIcon from '../../assets/icons/docx-icon.svg';
 import pdfIcon from '../../assets/icons/pdf-icon.svg';
-import { getIndonesianNumberWord, getIndonesianDateInWords, getIndonesianDateDisplay, parseDateFromDisplay, getIndonesianDayName, formatNumberWithDots, formatDateDisplay, isDateFieldName, formatFieldName } from '../../utils/formatting';
+import { getIndonesianNumberWord, getIndonesianDateInWords, getIndonesianDateDisplay, parseDateFromDisplay, getIndonesianDayName, formatNumberWithDots, formatDateDisplay, isDateFieldName, formatFieldName, titleCasePayload } from '../../utils/formatting';
+import { t } from '../../utils/messages';
 import { stripIdKeys, normalizeSection } from '../../utils/payloadUtils';
+import { requestWithAuth } from '../../utils/api';
 
 // Payload id/pk stripping and normalization moved to shared util `payloadUtils`.
+
+// Rate fields that should display comma on UI but store with dot
+const rateFields = ['flat_rate', 'admin_rate'];
 
 
 // Inlined AgreementForm copied from AgreementForm.js and renamed to UVAgreementForm
@@ -27,13 +32,13 @@ function UVAgreementForm({ initialContractNumber = '', initialContractData = nul
 
       // Agreement
       const url1 = `http://localhost:8000/api/${base}/download-docx/?contract_number=${encodeURIComponent(contractNum)}${downloadType}&type=agreement`;
-      const resp1 = await axios.get(url1, { responseType: 'blob', headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      const resp1 = await requestWithAuth({ method: 'get', url: url1, responseType: 'blob', headers: token ? { Authorization: `Bearer ${token}` } : {} });
       const contentType1 = (resp1.headers && resp1.headers['content-type']) || '';
       const isPdf1 = contentType1.includes('pdf');
       const blob1 = new Blob([resp1.data], { type: contentType1 || (isPdf1 ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') });
       if (contentType1.includes('application/json')) {
         const text = await blob1.text();
-        try { const js = JSON.parse(text); const msg = js.error || js.detail || js.message || JSON.stringify(js); toast.error(`Download failed: ${msg}`); return; } catch (e) { toast.error('Download failed: unexpected server response'); return; }
+        try { const js = JSON.parse(text); const msg = js.error || js.detail || js.message || JSON.stringify(js); toast.error(t('download_failed_prefix') + msg); return; } catch (e) { toast.error(t('download_unparseable')); return; }
       }
       const link1 = document.createElement('a');
       link1.href = window.URL.createObjectURL(blob1);
@@ -47,13 +52,13 @@ function UVAgreementForm({ initialContractNumber = '', initialContractData = nul
 
       // SP3
       const url2 = `http://localhost:8000/api/${base}/download-docx/?contract_number=${encodeURIComponent(contractNum)}${downloadType}&type=sp3`;
-      const resp2 = await axios.get(url2, { responseType: 'blob', headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      const resp2 = await requestWithAuth({ method: 'get', url: url2, responseType: 'blob', headers: token ? { Authorization: `Bearer ${token}` } : {} });
       const contentType2 = (resp2.headers && resp2.headers['content-type']) || '';
       const isPdf2 = contentType2.includes('pdf');
       const blob2 = new Blob([resp2.data], { type: contentType2 || (isPdf2 ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') });
       if (contentType2.includes('application/json')) {
         const text2 = await blob2.text();
-        try { const js2 = JSON.parse(text2); const msg2 = js2.error || js2.detail || js2.message || JSON.stringify(js2); toast.error(`SP3 download failed: ${msg2}`); return; } catch (e) { toast.error('SP3 download failed: unexpected server response'); return; }
+        try { const js2 = JSON.parse(text2); const msg2 = js2.error || js2.detail || js2.message || JSON.stringify(js2); toast.error(t('sp3_download_failed_prefix') + msg2); return; } catch (e) { toast.error(t('download_unparseable')); return; }
       }
       const link2 = document.createElement('a');
       link2.href = window.URL.createObjectURL(blob2);
@@ -82,7 +87,7 @@ function UVAgreementForm({ initialContractNumber = '', initialContractData = nul
             contractDataToSave[f] = getIndonesianDateInWords(contractData[base]) || contractData[f] || '';
           } else {
             const n = Number(contractData[base] || 0) || 0;
-            contractDataToSave[f] = getIndonesianNumberWord(n) || contractData[f] || '';
+            contractDataToSave[f] = (n === 0) ? '' : (getIndonesianNumberWord(n) || contractData[f] || '');
           }
         }
       });
@@ -95,7 +100,7 @@ function UVAgreementForm({ initialContractNumber = '', initialContractData = nul
             bmDataToSave[f] = getIndonesianDateInWords(bmData[base]) || bmData[f] || '';
           } else {
             const n = Number(bmData[base] || 0) || 0;
-            bmDataToSave[f] = getIndonesianNumberWord(n) || bmData[f] || '';
+            bmDataToSave[f] = (n === 0) ? '' : (getIndonesianNumberWord(n) || bmData[f] || '');
           }
         }
       });
@@ -176,15 +181,20 @@ function UVAgreementForm({ initialContractNumber = '', initialContractData = nul
         } catch (e) {}
         const headers = { 'Authorization': accessToken ? `Bearer ${accessToken}` : `Bearer ${localStorage.getItem('access_token')}`, 'Content-Type': 'application/json' };
         // Normalize sections and ensure numeric fields are numbers (avoid empty strings)
-        const normalizedPayload = { ...payload };
+        let normalizedPayload = { ...payload };
         ['contract_data','debtor','collateral_data','bm_data','branch_data','header_fields','extra_fields'].forEach(sec => {
           if (payload[sec]) normalizedPayload[sec] = normalizeSection(payload[sec], numericFields);
         });
+        // If saving from modal (create or edit), convert text fields to Title Case before sending
+        if (inModal) {
+          try { normalizedPayload = titleCasePayload(normalizedPayload, numericFields); } catch (e) { /* non-fatal */ }
+        }
         if (!normalizedPayload.branch_id) {
           const resolved = selectedBranchId || (branchData && (branchData.branch_id || branchData.id));
           if (resolved) normalizedPayload.branch_id = resolved;
         }
         try { delete normalizedPayload.created_by; delete normalizedPayload.created_at; delete normalizedPayload.updated_at; } catch (e) {}
+        try { console.log('Final normalizedPayload to be sent (UV):', normalizedPayload); } catch (e) {}
         return axios.post(`http://localhost:8000/api/uv-agreement/`, normalizedPayload, { headers });
     };
 
@@ -192,7 +202,7 @@ function UVAgreementForm({ initialContractNumber = '', initialContractData = nul
       await doSave(localStorage.getItem('access_token'));
       const savedContractNumber = contractNumber || initialContractNumber || '';
       const isUpdate = !!(editOnly || initialContractNumber || initialContractData);
-      toast.success(isUpdate ? 'Data updated successfully!' : 'Data added successfully!');
+      toast.success(t(isUpdate ? 'save_updated' : 'save_added'));
       if (typeof onSaved === 'function') { try { onSaved(savedContractNumber); } catch (e) { console.warn('onSaved callback failed', e); } }
     } catch (err) {
       const respData = err?.response?.data || {};
@@ -208,7 +218,7 @@ function UVAgreementForm({ initialContractNumber = '', initialContractData = nul
               await doSave(newAccess);
               const savedContractNumberRetry = contractNumber || initialContractNumber || '';
               const isUpdate = !!(editOnly || initialContractNumber || initialContractData);
-              toast.success(isUpdate ? 'Data updated successfully!' : 'Data added successfully!');
+                toast.success(t(isUpdate ? 'save_updated' : 'save_added'));
               if (typeof onSaved === 'function') { try { onSaved(savedContractNumberRetry); } catch (e) { console.warn('onSaved callback failed', e); } }
             } else { throw new Error('Refresh failed'); }
         } catch (refreshErr) {
@@ -260,7 +270,7 @@ function UVAgreementForm({ initialContractNumber = '', initialContractData = nul
   const [branches, setBranches] = React.useState([]);
   const [selectedBranchId, setSelectedBranchId] = React.useState('');
   const [selectedDirector, setSelectedor] = React.useState('');
-  React.useEffect(() => { if (inModal && (createOnly || editOnly) && !selectedDirector) setSelectedor('Supriyono Soekarno'); }, [inModal, createOnly, editOnly]);
+  React.useEffect(() => { if (inModal && (createOnly || editOnly) && !selectedDirector) setSelectedor('Supriyono'); }, [inModal, createOnly, editOnly]);
   const [directors, setDirectors] = React.useState([]);
   React.useEffect(() => {
     if (!selectedDirector) return;
@@ -368,6 +378,17 @@ function UVAgreementForm({ initialContractNumber = '', initialContractData = nul
   };
 
   const [headerFields, setHeaderFields] = React.useState({ agreement_date: new Date().toISOString().split('T')[0], place_of_agreement: '', agreement_day_in_word: '', agreement_date_in_word: '', Name_of_director: '', date_of_delegated: new Date().toISOString().split('T')[0], sp3_number: '', sp3_date: new Date().toISOString().split('T')[0], phone_number_of_lolc: '' });
+  // Modal-level validator: require filter (contract, branch, director) and dates when inside modal
+  const isModalSaveAllowed = () => {
+    if (!inModal) return true;
+    const cn = (contractNumber || initialContractNumber || '').toString().trim();
+    if (!cn) return false;
+    if (!selectedBranchId || String(selectedBranchId).trim() === '') return false;
+    if (!selectedDirector || String(selectedDirector).trim() === '') return false;
+    if (!headerFields || !headerFields.agreement_date || String(headerFields.agreement_date).trim() === '') return false;
+    if (!headerFields || !headerFields.date_of_delegated || String(headerFields.date_of_delegated).trim() === '') return false;
+    return true;
+  };
   const [debtor, setDebtor] = React.useState(null);
   const [collateral, setCollateral] = React.useState(null);
   const [loading, setLoading] = React.useState(false);
@@ -386,8 +407,9 @@ function UVAgreementForm({ initialContractNumber = '', initialContractData = nul
 
   const bmFields = [ 'name_of_bm','place_birth_of_bm','date_birth_of_bm','date_birth_of_bm_in_word','street_of_bm','subdistrict_of_bm','district_of_bm','city_of_bm','province_of_bm','nik_number_of_bm','phone_number_of_bm' ];
   const branchFields = ['street_name','subdistrict','district','city','province'];
-  const numericFields = ['loan_amount','notaris_fee','admin_fee','handling_fee','net_amount','previous_topup_amount','mortgage_amount','admin_rate','tlo','life_insurance','stamp_amount','financing_agreement_amount','security_agreement_amount','upgrading_land_rights_amount','total_amount'];
-  const contractFields = [ 'contract_number','nik_number_of_debtor','name_of_debtor','place_birth_of_debtor','date_birth_of_debtor','date_birth_of_debtor_in_word','street_of_debtor','subdistrict_of_debtor','district_of_debtor','city_of_debtor','province_of_debtor','phone_number_of_debtor','business_partners_relationship','business_type','bank_account_number','name_of_bank','name_of_account_holder','virtual_account_number','topup_contract','previous_topup_amount','loan_amount','loan_amount_in_word','term','term_by_word','flat_rate','flat_rate_by_word','notaris_fee','notaris_fee_in_word','admin_rate','admin_rate_in_word','admin_fee','admin_fee_in_word','handling_fee','handling_fee_in_word','mortgage_amount','mortgage_amount_in_word','tlo','tlo_in_word','life_insurance','life_insurance_in_word','stamp_amount','financing_agreement_amount','security_agreement_amount','upgrading_land_rights_amount','total_amount','net_amount','net_amount_in_word' ];
+  const numericFields = ['loan_amount','notaris_fee','admin_fee','net_amount','previous_topup_amount','mortgage_amount','tlo','life_insurance','stamp_amount','financing_agreement_amount','security_agreement_amount','upgrading_land_rights_amount','total_amount'];
+  // rateFields is declared at file top-level to be accessible throughout
+  const contractFields = [ 'contract_number','nik_number_of_debtor','name_of_debtor','place_birth_of_debtor','date_birth_of_debtor','date_birth_of_debtor_in_word','street_of_debtor','subdistrict_of_debtor','district_of_debtor','city_of_debtor','province_of_debtor','phone_number_of_debtor','business_partners_relationship','business_type','bank_account_number','name_of_bank','name_of_account_holder','virtual_account_number','topup_contract','previous_topup_amount','loan_amount','loan_amount_in_word','term','term_by_word','flat_rate','flat_rate_by_word','notaris_fee','notaris_fee_in_word','admin_rate','admin_rate_in_word','admin_fee','admin_fee_in_word','mortgage_amount','mortgage_amount_in_word','tlo','tlo_in_word','life_insurance','life_insurance_in_word','stamp_amount','financing_agreement_amount','security_agreement_amount','upgrading_land_rights_amount','total_amount','net_amount','net_amount_in_word' ];
   const hiddenForUV = new Set(['mortgage_amount', 'mortgage_amount_in_word', 'stamp_amount', 'financing_agreement_amount', 'security_agreement_amount', 'upgrading_land_rights_amount']);
   const hiddenForBLCreate = new Set(['tlo', 'tlo_in_word', 'admin_rate', 'admin_rate_in_word', 'life_insurance', 'life_insurance_in_word']);
   const getVisibleContractFields = (forContractOnly = false) => { const shouldHide = forContractOnly || !!createOnly; if (!shouldHide) return contractFields; return contractFields.filter(f => !hiddenForUV.has(f)); };
@@ -582,6 +604,40 @@ const styles = {
 
   React.useEffect(() => { loadContracts(); loadBranches(); loadDirectors(); }, []);
 
+  // If user is BM or CSA, auto-select user's branch_id after branches load (match BL behavior)
+  React.useEffect(() => {
+    try {
+      if (!branches || branches.length === 0) return;
+      if (selectedBranchId) return;
+      const raw = localStorage.getItem('user_data');
+      if (!raw) return;
+      const ud = JSON.parse(raw);
+      const role = (ud.role || ud.role_name || '').toString().toLowerCase();
+      const bid = ud.branch_id || ud.branch || ud.branchId || null;
+      if (!bid) return;
+      if (role.includes('bm') || role.includes('csa')) {
+        setSelectedBranchId(String(bid));
+        handleBranchSelectLoad(bid);
+      }
+    } catch (e) { /* ignore */ }
+  }, [branches]);
+
+  // Auto-select user's branch in CREATE modal (same as BLAgreement)
+  React.useEffect(() => {
+    try {
+      if (!createOnly) return; // only for modal create
+      if (!branches || branches.length === 0) return;
+      if (selectedBranchId) return; // skip if already selected
+      const raw = localStorage.getItem('user_data');
+      if (!raw) return;
+      const ud = JSON.parse(raw);
+      const bid = ud.branch_id || ud.branch || ud.branchId || null;
+      if (!bid) return;
+      setSelectedBranchId(String(bid));
+      handleBranchSelectLoad(bid);
+    } catch (e) { /* ignore */ }
+  }, [createOnly, branches, selectedBranchId]);
+
   const handleBranchSelectLoad = (branchId) => {
     if (!branchId) return;
     const sel = (branches || []).find(b => String(b.id) === String(branchId));
@@ -630,12 +686,25 @@ const styles = {
 
   React.useEffect(() => { const raw = localStorage.getItem('user_data'); if (raw) { try { const parsed = JSON.parse(raw); setUsernameDisplay(parsed.username || parsed.full_name || ''); } catch (e) {} } (async () => { try { const token = localStorage.getItem('access_token'); if (!token) return; const res = await axios.get('http://localhost:8000/api/whoami/', { headers: { 'Authorization': `Bearer ${token}` } }); setUsernameDisplay(res.data.username || res.data.full_name || ''); } catch (err) { console.warn('whoami fetch failed', err); } })(); }, []);
 
-  React.useEffect(() => { if (headerFields.agreement_date) { setHeaderFields(prev => ({ ...prev, agreement_day_in_word: getIndonesianDayName(headerFields.agreement_date), agreement_date_in_word: getIndonesianDateInWords(headerFields.agreement_date), date_of_delegated: headerFields.agreement_date })); } }, [headerFields.agreement_date]);
-
-  // Keep SP3 date synced to agreement_date (original behavior)
   React.useEffect(() => {
-    setHeaderFields(prev => ({ ...prev, sp3_date: prev.agreement_date }));
-  }, [headerFields.agreement_date]);
+    try {
+      const ad = headerFields?.agreement_date;
+      if (!ad) return;
+      const iso = parseDateFromDisplay(ad) || ad;
+      const dayName = getIndonesianDayName(iso) || '';
+      const dateWords = getIndonesianDateInWords(iso) || '';
+      setHeaderFields(prev => ({ ...prev,
+        agreement_day_in_word: dayName || prev.agreement_day_in_word || '',
+        agreement_date_in_word: dateWords || prev.agreement_date_in_word || '',
+        // backward-compatible keys
+        agreement_day_inword: dayName || prev.agreement_day_inword || '',
+        agreement_date_inword: dateWords || prev.agreement_date_inword || '',
+        date_of_delegated: iso || prev.date_of_delegated,
+        // keep SP3 date following the agreement date by default
+        sp3_date: iso || prev.sp3_date
+      }));
+    } catch (e) { /* ignore */ }
+  }, [headerFields?.agreement_date]);
 
   // Auto-generate SP3 Number using agreement date (original shared behavior)
   React.useEffect(() => {
@@ -661,31 +730,34 @@ const styles = {
 
   React.useEffect(() => { const raw = contractData.date_birth_of_debtor; if (raw !== undefined && raw !== null && String(raw).trim() !== '') { const iso = parseDateFromDisplay(raw); const words = getIndonesianDateInWords(iso || raw); setContractData(prev => { if (prev.date_birth_of_debtor === iso && prev.date_birth_of_debtor_in_word === words) return prev; const out = { ...prev, date_birth_of_debtor_in_word: words }; if (iso && prev.date_birth_of_debtor !== iso) out.date_birth_of_debtor = iso; return out; }); console.log('Converted debtor date_birth to words:', raw, '=>', words, '(iso:', iso, ')'); } }, [contractData.date_birth_of_debtor]);
 
-  React.useEffect(() => { if (contractData.loan_amount !== undefined && contractData.loan_amount !== null && contractData.loan_amount !== '') { const words = getIndonesianNumberWord(Number(contractData.loan_amount) || 0); setContractData(prev => ({ ...prev, loan_amount_in_word: words })); console.log('Converted loan_amount to words:', contractData.loan_amount, '=>', words); } }, [contractData.loan_amount]);
+  React.useEffect(() => { if (contractData.loan_amount !== undefined && contractData.loan_amount !== null && contractData.loan_amount !== '') { const n = Number(String(contractData.loan_amount).replace(/\./g, '').replace(/,/g, '.')) || 0; const words = (n === 0) ? '' : getIndonesianNumberWord(n); setContractData(prev => ({ ...prev, loan_amount_in_word: words })); console.log('Converted loan_amount to words:', contractData.loan_amount, '=>', words); } }, [contractData.loan_amount]);
   React.useEffect(() => {
     const getNum = (v) => { if (v === undefined || v === null || v === '') return 0; const s = String(v).replace(/\./g, '').replace(/,/g, '').trim(); const n = Number(s); return Number.isNaN(n) ? 0 : n; };
     try {
-      const sum = getNum(contractData.admin_fee) + getNum(contractData.handling_fee) + getNum(contractData.tlo) + getNum(contractData.life_insurance);
+      const sum = getNum(contractData.admin_fee) + getNum(contractData.notaris_fee) + getNum(contractData.tlo) + getNum(contractData.life_insurance);
       if (String(contractData.total_amount || '') !== String(sum)) {
         setContractData(prev => ({ ...prev, total_amount: sum }));
       }
     } catch (e) { /* ignore */ }
-  }, [contractData.admin_fee, contractData.handling_fee, contractData.tlo, contractData.life_insurance]);
+  }, [contractData.admin_fee, contractData.notaris_fee, contractData.tlo, contractData.life_insurance]);
 
-  React.useEffect(() => { if (contractData.term !== undefined && contractData.term !== null && contractData.term !== '') { const words = getIndonesianNumberWord(Number(contractData.term) || 0); setContractData(prev => ({ ...prev, term_by_word: words })); console.log('Converted term to words:', contractData.term, '=>', words); } }, [contractData.term]);
+  React.useEffect(() => { if (contractData.term !== undefined && contractData.term !== null && contractData.term !== '') { const n = Number(String(contractData.term).replace(/\./g, '').replace(/,/g, '.')) || 0; const words = (n === 0) ? '' : getIndonesianNumberWord(n); setContractData(prev => ({ ...prev, term_by_word: words })); console.log('Converted term to words:', contractData.term, '=>', words); } }, [contractData.term]);
 
   // Helper utilities (copied from BLAgreementForm) so render code can use them
-  const formatFieldName = (fieldName) => {
-    const norm = (fieldName || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-    if (norm === 'namebpkbowner') return 'Collateral Owner';
-    return fieldName.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase()).trim();
-  };
+  // Use shared `formatFieldName` from utils/formatting for Title Case labels
 
   const formatFieldValue = (value) => {
     if (value === null || value === undefined) return '-';
     if (typeof value === 'boolean') return value ? 'Ya' : 'Tidak';
     if (typeof value === 'object') return JSON.stringify(value);
     return String(value);
+  };
+
+  const formatLabel = (f) => {
+    if (!f) return '';
+    if (f === 'notaris_fee') return 'Handling Fee';
+    if (f === 'notaris_fee_in_word') return 'Handling Fee In Word';
+    return formatFieldName(f);
   };
 
   const handleContractNumberChange = (value) => {
@@ -720,7 +792,23 @@ const styles = {
         setContractData(prev => ({ ...prev, [field]: raw }));
         return;
       }
-      if (numericFields.includes(field)) { const raw = (value || '').toString().replace(/\./g, '').replace(/,/g, '').trim(); setContractData(prev => ({ ...prev, [field]: raw })); } else { if (String(field).toLowerCase().includes('date')) { const iso = parseDateFromDisplay(value); setContractData(prev => ({ ...prev, [field]: iso })); } else { setContractData(prev => ({ ...prev, [field]: value })); } }
+      // handle rate fields (show comma on UI, store with dot)
+      if (rateFields && rateFields.includes(field)) {
+        const rateVal = String(value || '').replace(',', '.');
+        setContractData(prev => ({ ...prev, [field]: rateVal }));
+        return;
+      }
+      if (numericFields.includes(field)) {
+        const raw = (value || '').toString().replace(/\./g, '').replace(/,/g, '').trim();
+        setContractData(prev => ({ ...prev, [field]: raw }));
+      } else {
+        if (String(field).toLowerCase().includes('date')) {
+          const iso = parseDateFromDisplay(value);
+          setContractData(prev => ({ ...prev, [field]: iso }));
+        } else {
+          setContractData(prev => ({ ...prev, [field]: value }));
+        }
+      }
     }
     if (section === 'collateral') { if (numericFields.includes(field)) { const raw = (value || '').toString().replace(/\./g, '').replace(/,/g, '').trim(); setCollateralData(prev => ({ ...prev, [field]: raw })); } else { if (String(field).toLowerCase().includes('date')) { const iso = parseDateFromDisplay(value); setCollateralData(prev => ({ ...prev, [field]: iso })); } else { setCollateralData(prev => ({ ...prev, [field]: value })); } } }
     if (section === 'header') { if (String(field).toLowerCase().includes('date')) { const iso = parseDateFromDisplay(value); setHeaderFields(prev => ({ ...prev, [field]: iso })); } else { setHeaderFields(prev => ({ ...prev, [field]: value })); } }
@@ -740,8 +828,7 @@ const styles = {
   const contractFieldList = [
     'name_of_debtor','place_birth_of_debtor','date_birth_of_debtor','date_birth_of_debtor_in_word','street_of_debtor','subdistrict_of_debtor','district_of_debtor','city_of_debtor','province_of_debtor','nik_number_of_debtor','phone_number_of_debtor','business_partners_relationship','business_type','bank_account_number','name_of_bank','name_of_account_holder','virtual_account_number','topup_contract','previous_topup_amount','loan_amount','loan_amount_in_word','term','term_by_word','flat_rate','flat_rate_by_word','notaris_fee','notaris_fee_in_word','admin_fee','admin_fee_in_word','admin_rate','admin_rate_in_word','tlo','tlo_in_word','life_insurance','life_insurance_in_word','stamp_amount','financing_agreement_amount','security_agreement_amount','upgrading_land_rights_amount','total_amount','net_amount','net_amount_in_word'
   ];
-  // show handling_fee in UV agreement forms
-  if (!contractFieldList.includes('handling_fee')) contractFieldList.splice(contractFieldList.indexOf('admin_rate') + 2, 0, 'handling_fee', 'handling_fee_in_word');
+  // handling_fee removed from UV forms per request
   const renderContractField = (f) => {
     const isWordField = /(_in_word|_by_word)$/.test(f);
     const baseField = f.replace(/(_in_word|_by_word)$/, '');
@@ -751,23 +838,26 @@ const styles = {
         value = getIndonesianDateInWords(contractData[baseField]) || contractData[f] || '';
       } else {
         const n = Number(contractData[baseField] || 0) || 0;
-        value = getIndonesianNumberWord(n) || contractData[f] || '';
+        value = (n === 0) ? '' : (getIndonesianNumberWord(n) || contractData[f] || '');
       }
+      // ensure display is Capital Each Word
+      const titleCase = (s) => { if (!s || typeof s !== 'string') return s || ''; return s.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '); };
+      value = titleCase(value);
       return (
         <div key={f} style={{ display: 'flex', flexDirection: 'column' }}>
-          <label style={labelStyle}>{formatFieldName(f)}</label>
+          <label style={labelStyle}>{formatLabel(f)}</label>
           <input type="text" placeholder="" style={inputStyle} value={value} disabled />
         </div>
       );
     }
-    const isNumericInput = /amount|loan|flat_rate|mortgage|previous_topup_amount|notaris_fee|admin_fee|handling_fee|admin_rate|tlo|life_insurance|net_amount|stamp_amount|financing_agreement_amount|security_agreement_amount|upgrading_land_rights_amount|total_amount/i.test(f);
+    const isNumericInput = /amount|loan|flat_rate|mortgage|previous_topup_amount|notaris_fee|admin_fee|admin_rate|tlo|life_insurance|net_amount|stamp_amount|financing_agreement_amount|security_agreement_amount|upgrading_land_rights_amount|total_amount/i.test(f);
     const isDate = isDateFieldName(f);
     const inputType = isDate ? 'date' : (isNumericInput ? 'text' : 'text');
     // Render specific dropdown for business_partners_relationship
     if (f === 'business_partners_relationship') {
       return (
         <div key={f} style={{ display: 'flex', flexDirection: 'column' }}>
-          <label style={labelStyle}>{formatFieldName(f)}</label>
+          <label style={labelStyle}>{formatLabel(f)}</label>
           <select value={contractData[f] ?? ''} onChange={(e) => handleInputChange('contract', f, e.target.value)} style={inputStyle}>
             <option value="">-- Select relationship --</option>
             <option value="Suami">Suami</option>
@@ -781,10 +871,10 @@ const styles = {
     }
     return (
       <div key={f} style={{ display: 'flex', flexDirection: 'column' }}>
-        <label style={labelStyle}>{formatFieldName(f)}</label>
+        <label style={labelStyle}>{formatLabel(f)}</label>
         <input
           type={inputType}
-          value={isDate ? (contractData[f] || '') : (isNumericInput ? formatNumberWithDots(contractData[f]) : (contractData[f] ?? ''))}
+          value={isDate ? (contractData[f] || '') : (isNumericInput ? (rateFields && rateFields.includes(f) ? String(contractData[f] || '').replace('.', ',') : formatNumberWithDots(contractData[f])) : (contractData[f] ?? ''))}
           onChange={(e) => handleInputChange('contract', f, e.target.value)}
           style={inputStyle}
         />
@@ -806,15 +896,15 @@ const styles = {
             if (isWordField) {
               disabled = true;
               if (/date|birth/i.test(baseField)) { value = getIndonesianDateInWords(contractData[baseField]) || contractData[f] || ''; } else { const num = Number(contractData[baseField] || 0) || 0; value = getIndonesianNumberWord(num) || contractData[f] || ''; }
-            } else { if (String(f).toLowerCase().includes('date')) { value = formatDateDisplay(contractData[f]); } else if (numericFields.includes(f)) { value = formatNumberWithDots(contractData[f]); } else { value = contractData[f] ?? ''; } }
+            } else { if (String(f).toLowerCase().includes('date')) { value = formatDateDisplay(contractData[f]); } else if (numericFields.includes(f)) { value = (rateFields && rateFields.includes(f)) ? String(contractData[f] || '').replace('.', ',') : formatNumberWithDots(contractData[f]); } else { value = contractData[f] ?? ''; } }
             if (f === 'business_partners_relationship') {
               return (
                 <div key={f} style={{ display: 'flex', flexDirection: 'column' }}>
-                  <label style={styles.label}>{formatFieldName(f)}</label>
+                  <label style={labelStyle}>{formatLabel(f)}</label>
                   <select
                     value={contractData[f] ?? ''}
                     onChange={(e) => handleInputChange('contract', f, e.target.value)}
-                    style={styles.input}
+                    style={inputStyle}
                   >
                     <option value="">-- Select relationship --</option>
                     <option value="Suami">Suami</option>
@@ -827,21 +917,21 @@ const styles = {
               );
             }
             return (
-              <div key={f} style={{ display: 'flex', flexDirection: 'column' }}>
-                <label style={styles.label}>{formatFieldName(f)}</label>
+                <div key={f} style={{ display: 'flex', flexDirection: 'column' }}>
+                <label style={labelStyle}>{formatLabel(f)}</label>
                 {(!isWordField && String(f).toLowerCase().includes('date')) ? (
-                  <input type="date" style={styles.input} value={disabled ? value : (contractData[f] || '')} disabled={disabled} onChange={(e) => { if (!disabled) handleInputChange('contract', f, e.target.value); }} />
+                  <input type="date" style={inputStyle} value={disabled ? value : (contractData[f] || '')} disabled={disabled} onChange={(e) => { if (!disabled) handleInputChange('contract', f, e.target.value); }} />
                 ) : (
                   (numericFields.includes(f) && !isWordField) ? (
                     <input
                       type="text"
-                      style={styles.input}
-                      value={disabled ? value : formatNumberWithDots(contractData[f])}
+                      style={inputStyle}
+                      value={disabled ? value : (rateFields && rateFields.includes(f) ? String(contractData[f] || '').replace('.', ',') : formatNumberWithDots(contractData[f]))}
                       disabled={disabled}
                       onChange={(e) => { if (!disabled) handleInputChange('contract', f, e.target.value); }}
                     />
                   ) : (
-                    <input type="text" placeholder={String(f).toLowerCase().includes('date') ? 'DD/MM/YYYY' : ''} style={styles.input} value={disabled ? value : value} disabled={disabled} onChange={(e) => { if (!disabled) handleInputChange('contract', f, e.target.value); }} />
+                    <input type="text" placeholder={String(f).toLowerCase().includes('date') ? 'DD/MM/YYYY' : ''} style={inputStyle} value={disabled ? value : value} disabled={disabled} onChange={(e) => { if (!disabled) handleInputChange('contract', f, e.target.value); }} />
                   )
                 )}
               </div>
@@ -866,17 +956,25 @@ const styles = {
           <div style={{ border: '1px solid #e6e6e6', padding: sectionPadding, borderRadius: 6 }}>
             <h4 style={h4Style}>Filter</h4>
               <div style={{ display: 'flex', gap: 8 }}>
-              <input
-                placeholder="Contract Number"
-                value={contractNumber}
-                onChange={(e) => handleContractNumberChange(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') { handleView(contractNumber, true); } }}
-                style={inputStyle}
-              />
-              <select value={selectedBranchId || ''} onChange={(e) => { setSelectedBranchId(e.target.value); handleBranchSelectLoad(e.target.value); }} style={inputStyle}>
-                <option value="">-- Select Branch --</option>
-                {(branches || []).map(b => <option key={b.id} value={b.id}>{b.name || b.branch_name || b.city || b.id}</option>)}
-              </select>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <label style={labelStyle}>Contract Number{inModal && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
+                <input
+                  placeholder="Contract Number"
+                  value={contractNumber}
+                  onChange={(e) => handleContractNumberChange(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { handleView(contractNumber, true); } }}
+                  style={inputStyle}
+                />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <label style={labelStyle}>Branch{inModal && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
+                <select value={selectedBranchId || ''} onChange={(e) => { setSelectedBranchId(e.target.value); handleBranchSelectLoad(e.target.value); }} style={inputStyle}>
+                  <option value="">-- Select Branch --</option>
+                  {(branches || []).map(b => <option key={b.id} value={b.id}>{b.name || b.branch_name || b.city || b.id}</option>)}
+                </select>
+              </div>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <label style={labelStyle}>Director{inModal && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
                 <select value={selectedDirector || ''} onChange={(e) => {
                     const v = e.target.value;
                     setSelectedor(v);
@@ -903,6 +1001,7 @@ const styles = {
                     return <option key={key} value={value}>{label}</option>;
                   })}
                 </select>
+                </div>
             </div>
           </div>
 
@@ -911,13 +1010,28 @@ const styles = {
             <h4 style={h4Style}>Agreement Detail</h4>
             <div style={{ display: 'grid', gridTemplateColumns: inModal ? '1fr 1fr' : '1fr 1fr 1fr', gap: 8 }}>
               {(() => {
-                const modalOrder = ['date_of_delegated','agreement_date','sp3_date','sp3_number','name_of_director','phone_number_of_lolc'];
+                const modalOrder = ['date_of_delegated','agreement_date','sp3_number','name_of_director','phone_number_of_lolc'];
                 const normalOrder = ['agreement_date','agreement_day_in_word','agreement_date_in_word','sp3_date','sp3_number','date_of_delegated','name_of_director','phone_number_of_lolc'];
                 const order = inModal ? modalOrder : normalOrder;
                 return order.map(f => (
                   <div key={f} style={{ display: 'flex', flexDirection: 'column' }}>
-                    <label style={labelStyle}>{formatFieldName(f)}</label>
-                    <input type={/(^(agreement_date|date_of_delegated)$|_date$|^sp3_date$)/i.test(f) ? 'date' : 'text'} value={headerFields[f] ?? ''} onChange={(e) => handleInputChange('header', f, e.target.value)} style={inputStyle} />
+                    <label style={labelStyle}>{formatLabel(f)}{inModal && (f === 'agreement_date' || f === 'date_of_delegated') && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
+                    {/_in_word$|_by_word$/.test(f) ? (
+                      (() => {
+                        const base = f.replace(/(_in_word|_by_word)$/, '');
+                        let val = '';
+                        if (/date|birth/i.test(base)) {
+                          val = getIndonesianDateInWords(headerFields[base]) || headerFields[f] || '';
+                        } else {
+                          const n = Number(headerFields[base] || 0) || 0;
+                          val = getIndonesianNumberWord(n) || headerFields[f] || '';
+                        }
+                        const titleCase = (s) => { if (!s || typeof s !== 'string') return s || ''; return s.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '); };
+                        return <input type="text" value={titleCase(val)} disabled style={{ ...inputStyle, backgroundColor: '#f5f5f5' }} />;
+                      })()
+                    ) : (
+                      <input type={/(^(agreement_date|date_of_delegated)$|_date$|^sp3_date$)/i.test(f) ? 'date' : 'text'} value={headerFields[f] ?? ''} onChange={(e) => handleInputChange('header', f, e.target.value)} style={inputStyle} />
+                    )}
                   </div>
                 ));
               })()}
@@ -941,7 +1055,7 @@ const styles = {
                   // resolve actual key present in collateralData (handles plat/plate, chassis/chassis, vehicle/vehicle variants)
                   const actualKey = findKeyInObj(collateralData || {}, f) || f;
                   const keyForState = actualKey;
-                  const labelName = (keyForState === 'vehicle_types') ? 'Vehicle Types' : formatFieldName(keyForState);
+                  const labelName = (keyForState === 'vehicle_types') ? 'Vehicle Types' : formatLabel(keyForState);
                   // Treat only explicit numeric collateral fields as numbers; avoid treating plate_number or bpkb owner/name as numeric.
                   const inputType = /(?:surface_area|capacity_of_building|^number_of_|_amount$|^manufactured_year$)/i.test(keyForState) ? 'number' : (isDateFieldName(keyForState) ? 'date' : 'text');
                   // Render dropdown for wheeled_vehicle
@@ -977,9 +1091,9 @@ const styles = {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               {['name_of_bm','place_birth_of_bm','date_birth_of_bm','date_birth_of_bm_in_word','nik_number_of_bm','street_of_bm','subdistrict_of_bm','district_of_bm','city_of_bm','province_of_bm','phone_number_of_bm'].map(f => (
                 <div key={f} style={{ display: 'flex', flexDirection: 'column' }}>
-                  <label style={labelStyle}>{formatFieldName(f)}</label>
+                  <label style={labelStyle}>{formatLabel(f)}</label>
                   {f === 'date_birth_of_bm_in_word' ? (
-                    <input type="text" value={bmData[f] ?? ''} disabled style={{ ...inputStyle, backgroundColor: '#f5f5f5' }} />
+                    (() => { const base = 'date_birth_of_bm'; const val = getIndonesianDateInWords(bmData[base]) || bmData[f] || ''; const titleCase = (s) => { if (!s || typeof s !== 'string') return s || ''; return s.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '); }; return <input type="text" value={titleCase(val)} disabled style={{ ...inputStyle, backgroundColor: '#f5f5f5' }} /> })()
                   ) : (
                     <input type={/date/i.test(f) ? 'date' : 'text'} value={bmData[f] ?? ''} onChange={(e) => handleInputChange('bm', f, e.target.value)} style={inputStyle} />
                   )}
@@ -994,7 +1108,7 @@ const styles = {
             <div style={{ display: 'grid', gridTemplateColumns: inModal ? '1fr 1fr' : '1fr', gap: 8 }}>
               {['street_name','subdistrict','district','city','province'].map(f => (
                 <div key={f} style={{ display: 'flex', flexDirection: 'column' }}>
-                  <label style={labelStyle}>{formatFieldName(f)}</label>
+                  <label style={labelStyle}>{formatLabel(f)}</label>
                   <input type="text" value={branchData[f] ?? ''} onChange={(e) => handleInputChange('branch', f, e.target.value)} style={inputStyle} />
                 </div>
               ))}
@@ -1010,8 +1124,8 @@ const styles = {
           <div style={{ padding: '8px 12px', backgroundColor: '#fff', border: '1px solid #ddd', borderRadius: 6 }}>{usernameDisplay || '-'}</div>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-          <button type="button" style={{ ...styles.btnPrimary, minWidth: 120 }} onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : ((editOnly || initialContractNumber) ? 'Update' : 'Save')}</button>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+          <button type="button" style={{ ...styles.btnPrimary, minWidth: 120 }} onClick={handleSave} disabled={saving || (inModal && !isModalSaveAllowed())}>{saving ? 'Saving...' : ((editOnly || initialContractNumber) ? 'Update' : 'Save')}</button>
         </div>
       </div>
     </div>
@@ -1051,6 +1165,30 @@ export default function UVAgreement() {
   });
   const contractFieldRefs = useRef({});
   const [contractFormErrors, setContractFormErrors] = useState({});
+  // Return true when all visible, non-readonly contract fields (except
+  // virtual_account_number and topup_contract) are non-empty.
+  const getRequiredContractFields = () => {
+    const contractTableFields = ['contract_number','nik_number_of_debtor','name_of_debtor','place_birth_of_debtor','date_birth_of_debtor','date_birth_of_debtor_in_word','street_of_debtor','subdistrict_of_debtor','district_of_debtor','city_of_debtor','province_of_debtor','phone_number_of_debtor','business_partners_relationship','business_type','bank_account_number','name_of_bank','name_of_account_holder','virtual_account_number','topup_contract','previous_topup_amount','loan_amount','loan_amount_in_word','term','term_by_word','flat_rate','flat_rate_by_word','notaris_fee','notaris_fee_in_word','admin_rate','admin_rate_in_word','admin_fee','admin_fee_in_word','handling_fee','handling_fee_in_word','tlo','tlo_in_word','life_insurance','life_insurance_in_word','stamp_amount','financing_agreement_amount','security_agreement_amount','upgrading_land_rights_amount','total_amount','net_amount','net_amount_in_word'];
+    const hiddenForUVLocal = new Set(['mortgage_amount', 'mortgage_amount_in_word', 'stamp_amount', 'financing_agreement_amount', 'security_agreement_amount', 'upgrading_land_rights_amount']);
+    let fields = contractTableFields.filter(f => !hiddenForUVLocal.has(f));
+    // exclude the two optional fields
+    fields = fields.filter(f => f !== 'virtual_account_number' && f !== 'topup_contract');
+    // exclude Handling Fee from being considered required in Add Contract modal
+    fields = fields.filter(f => f !== 'handling_fee' && f !== 'handling_fee_in_word');
+    // exclude read-only word fields
+    fields = fields.filter(f => !(/(_in_word|_by_word)$/.test(f)));
+    return fields;
+  };
+
+  const isContractFormValid = () => {
+    const fields = getRequiredContractFields();
+    for (const f of fields) {
+      const v = contractFormData && contractFormData[f];
+      if (v === undefined || v === null) return false;
+      if (String(v).trim() === '') return false;
+    }
+    return true;
+  };
   const [collateralForm, setCollateralForm] = useState({
     contract_number: '',
     name_of_debtor: '',
@@ -1068,7 +1206,20 @@ export default function UVAgreement() {
   const [collateralSaving, setCollateralSaving] = useState(false);
   const [collateralError, setCollateralError] = useState('');
   const collateralFetchTimer = useRef(null);
+  // Required fields for UV collateral modal (all visible fields)
+  const requiredUvCollateralFields = ['contract_number','name_of_debtor','wheeled_vehicle','vehicle_types','vehicle_brand','vehicle_model','plate_number','chassis_number','engine_number','manufactured_year','colour','bpkb_number','name_bpkb_owner'];
+  const isUvCollateralFormValid = () => {
+    for (const f of requiredUvCollateralFields) {
+      const v = collateralForm[f];
+      if (v === undefined || v === null) return false;
+      if (String(v).trim() === '') return false;
+    }
+    return true;
+  };
 
+  
+
+  
   // Default UV collateral fields (local to this wrapper component)
   const blCollateralFields = [ 'collateral_type','number_of_certificate','number_of_ajb','surface_area','name_of_collateral_owner','capacity_of_building','location_of_land' ];
   const uvDefaultCollateralFields = [ 'vehicle_types','vehicle_brand','vehicle_model','plate_number','chassis_number','engine_number','manufactured_year','colour','bpkb_number','name_bpkb_owner' ];
@@ -1240,7 +1391,7 @@ export default function UVAgreement() {
   };
 
   const handleDownloadRow = async (row) => {
-    if (!row.contract_number) { setError('Contract number not available'); return; }
+    if (!row.contract_number) { setError(t('contract_number_empty')); return; }
     try {
       // Download Agreement (DOCX or PDF if backend returns PDF)
       const url1 = `http://localhost:8000/api/uv-agreement/download-docx/?contract_number=${encodeURIComponent(row.contract_number)}&type=agreement`;
@@ -1250,7 +1401,7 @@ export default function UVAgreement() {
       const blob1 = new Blob([res1.data], { type: contentType1 || (isPdf1 ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') });
       if (contentType1.includes('application/json')) {
         const text = await blob1.text();
-        try { const js = JSON.parse(text); setError(js.error || js.detail || JSON.stringify(js)); return; } catch (e) { setError('Download failed: unable to parse server response'); return; }
+        try { const js = JSON.parse(text); const msg = js.error || js.detail || JSON.stringify(js); setError(t('download_failed_prefix') + msg); return; } catch (e) { setError(t('download_unparseable')); return; }
       }
       const link1 = document.createElement('a');
       link1.href = window.URL.createObjectURL(blob1);
@@ -1266,7 +1417,7 @@ export default function UVAgreement() {
       const blob2 = new Blob([res2.data], { type: contentType2 || 'application/octet-stream' });
       if (contentType2.includes('application/json')) {
         const text = await blob2.text();
-        try { const js = JSON.parse(text); setError(js.error || js.detail || JSON.stringify(js)); return; } catch (e) { setError('Download SP3 failed: unable to parse server response'); return; }
+        try { const js = JSON.parse(text); const msg = js.error || js.detail || JSON.stringify(js); setError(t('sp3_download_failed_prefix') + msg); return; } catch (e) { setError(t('download_unparseable')); return; }
       }
       const link2 = document.createElement('a');
       link2.href = window.URL.createObjectURL(blob2);
@@ -1279,7 +1430,7 @@ export default function UVAgreement() {
   };
 
   const handleDownloadPdf = async (row) => {
-    if (!row.contract_number) { setError('Contract number not available'); return; }
+    if (!row.contract_number) { setError(t('contract_number_empty')); return; }
     try {
       // Agreement PDF
       const url1 = `http://localhost:8000/api/uv-agreement/download-docx/?contract_number=${encodeURIComponent(row.contract_number)}&type=agreement&download=pdf`;
@@ -1288,7 +1439,7 @@ export default function UVAgreement() {
       const blob1 = new Blob([res1.data], { type: contentType1 || 'application/pdf' });
       if (contentType1.includes('application/json')) {
         const text = await blob1.text();
-        try { const js = JSON.parse(text); setError(js.error || js.detail || 'PDF conversion failed'); return; } catch (e) { setError('PDF conversion failed'); return; }
+        try { const js = JSON.parse(text); setError(js.error || js.detail || t('pdf_conversion_failed')); return; } catch (e) { setError(t('pdf_conversion_failed')); return; }
       }
       const link1 = document.createElement('a'); link1.href = window.URL.createObjectURL(blob1); link1.download = `UV_Agreement_${row.contract_number}.pdf`; document.body.appendChild(link1); link1.click(); link1.remove();
 
@@ -1300,7 +1451,7 @@ export default function UVAgreement() {
       const blob2 = new Blob([res2.data], { type: contentType2 || 'application/pdf' });
       if (contentType2.includes('application/json')) {
         const text = await blob2.text();
-        try { const js = JSON.parse(text); setError(js.error || js.detail || 'SP3 PDF conversion failed'); return; } catch (e) { setError('SP3 PDF conversion failed'); return; }
+        try { const js = JSON.parse(text); setError(js.error || js.detail || t('pdf_conversion_failed')); return; } catch (e) { setError(t('pdf_conversion_failed')); return; }
       }
       const link2 = document.createElement('a'); link2.href = window.URL.createObjectURL(blob2); link2.download = `UV_SP3_${row.contract_number}.pdf`; document.body.appendChild(link2); link2.click(); link2.remove();
     } catch (err) {
@@ -1393,7 +1544,7 @@ export default function UVAgreement() {
   };
 
   const handleModalDownload = async () => {
-    if (!contractNumber) { setError('Contract number is empty'); return; }
+    if (!contractNumber) { setError(t('contract_number_empty')); return; }
     try {
       // Request PDF when available
       const url = `http://localhost:8000/api/uv-agreement/download-docx/?contract_number=${encodeURIComponent(contractNumber)}`;
@@ -1547,7 +1698,7 @@ export default function UVAgreement() {
                                 cursor: 'pointer'
                               }}
                             >
-                              <img src={pdfIcon} alt="PDF" style={{ width: 20, height: 20 }} />
+                              <img src={pdfIcon} alt="PDF" style={{ width: 24, height: 24 }} />
                             </button>
                           </div>
                         </td>
@@ -1585,17 +1736,17 @@ export default function UVAgreement() {
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                     <div style={fieldGroupStyle}>
-                      <label style={fieldLabelStyle}>Contract Number</label>
+                      <label style={fieldLabelStyle}>Contract Number{requiredUvCollateralFields.includes('contract_number') && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
                       <input type="text" value={collateralForm.contract_number} onChange={(e) => setCollateralForm(prev => ({ ...prev, contract_number: e.target.value }))} style={fieldInputStyle} />  
                     </div>
                     
                     <div style={fieldGroupStyle}>
-                      <label style={fieldLabelStyle}>Name of Debtor</label>
+                      <label style={fieldLabelStyle}>Name of Debtor{requiredUvCollateralFields.includes('name_of_debtor') && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
                       <input type="text" value={collateralForm.name_of_debtor} disabled style={{ ...fieldInputStyle, backgroundColor: '#f5f5f5' }} />
                     </div>
 
                     <div style={fieldGroupStyle}>
-                      <label style={fieldLabelStyle}>Wheeled Vehicle</label>
+                      <label style={fieldLabelStyle}>Wheeled Vehicle{requiredUvCollateralFields.includes('wheeled_vehicle') && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
                       <select value={collateralForm.wheeled_vehicle} onChange={(e) => setCollateralForm(prev => ({ ...prev, wheeled_vehicle: e.target.value }))} style={fieldInputStyle}>
                         <option value="">-- Select --</option>
                         <option value="roda dua">Roda Dua</option>
@@ -1605,52 +1756,52 @@ export default function UVAgreement() {
                     </div>
 
                     <div style={fieldGroupStyle}>
-                      <label style={fieldLabelStyle}>Vehicle Types</label>
+                      <label style={fieldLabelStyle}>Vehicle Types{requiredUvCollateralFields.includes('vehicle_types') && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
                       <input type="text" value={collateralForm.vehicle_types} onChange={(e) => setCollateralForm(prev => ({ ...prev, vehicle_types: e.target.value }))} style={fieldInputStyle} />
                     </div>
 
                     <div style={fieldGroupStyle}>
-                      <label style={fieldLabelStyle}>Vehicle Brand</label>
+                      <label style={fieldLabelStyle}>Vehicle Brand{requiredUvCollateralFields.includes('vehicle_brand') && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
                       <input type="text" value={collateralForm.vehicle_brand} onChange={(e) => setCollateralForm(prev => ({ ...prev, vehicle_brand: e.target.value }))} style={fieldInputStyle} />
                     </div>
 
                     <div style={fieldGroupStyle}>
-                      <label style={fieldLabelStyle}>Vehicle Model</label>
+                      <label style={fieldLabelStyle}>Vehicle Model{requiredUvCollateralFields.includes('vehicle_model') && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
                       <input type="text" value={collateralForm.vehicle_model} onChange={(e) => setCollateralForm(prev => ({ ...prev, vehicle_model: e.target.value }))} style={fieldInputStyle} />
                     </div>
 
                     <div style={fieldGroupStyle}>
-                      <label style={fieldLabelStyle}>Plate Number</label>
+                      <label style={fieldLabelStyle}>Plate Number{requiredUvCollateralFields.includes('plate_number') && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
                       <input type="text" value={collateralForm.plate_number} onChange={(e) => setCollateralForm(prev => ({ ...prev, plate_number: e.target.value }))} style={fieldInputStyle} />
                     </div>
 
                     <div style={fieldGroupStyle}>
-                      <label style={fieldLabelStyle}>Chassis Number</label>
+                      <label style={fieldLabelStyle}>Chassis Number{requiredUvCollateralFields.includes('chassis_number') && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
                       <input type="text" value={collateralForm.chassis_number} onChange={(e) => setCollateralForm(prev => ({ ...prev, chassis_number: e.target.value }))} style={fieldInputStyle} />
                     </div>
 
                     <div style={fieldGroupStyle}>
-                      <label style={fieldLabelStyle}>Engine Number</label>
+                      <label style={fieldLabelStyle}>Engine Number{requiredUvCollateralFields.includes('engine_number') && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
                       <input type="text" value={collateralForm.engine_number} onChange={(e) => setCollateralForm(prev => ({ ...prev, engine_number: e.target.value }))} style={fieldInputStyle} />
                     </div>
 
                     <div style={fieldGroupStyle}>
-                      <label style={fieldLabelStyle}>Manufactured Year</label>
+                      <label style={fieldLabelStyle}>Manufactured Year{requiredUvCollateralFields.includes('manufactured_year') && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
                       <input type="text" value={collateralForm.manufactured_year} onChange={(e) => setCollateralForm(prev => ({ ...prev, manufactured_year: e.target.value }))} style={fieldInputStyle} />
                     </div>
 
                     <div style={fieldGroupStyle}>
-                      <label style={fieldLabelStyle}>Colour</label>
+                      <label style={fieldLabelStyle}>Colour{requiredUvCollateralFields.includes('colour') && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
                       <input type="text" value={collateralForm.colour} onChange={(e) => setCollateralForm(prev => ({ ...prev, colour: e.target.value }))} style={fieldInputStyle} />
                     </div>
 
                     <div style={fieldGroupStyle}>
-                      <label style={fieldLabelStyle}>BPKB Number</label>
+                      <label style={fieldLabelStyle}>BPKB Number{requiredUvCollateralFields.includes('bpkb_number') && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
                       <input type="text" value={collateralForm.bpkb_number} onChange={(e) => setCollateralForm(prev => ({ ...prev, bpkb_number: e.target.value }))} style={fieldInputStyle} />
                     </div>
 
                     <div style={fieldGroupStyle}>
-                      <label style={fieldLabelStyle}>Collateral Owner</label>
+                      <label style={fieldLabelStyle}>Collateral Owner{requiredUvCollateralFields.includes('name_bpkb_owner') && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
                       <input type="text" value={collateralForm.name_bpkb_owner} onChange={(e) => setCollateralForm(prev => ({ ...prev, name_bpkb_owner: e.target.value }))} style={fieldInputStyle} />
                     </div>
                   </div>
@@ -1662,11 +1813,11 @@ export default function UVAgreement() {
                           // Prefer contract number from form, then modal filter, then parent contractNumber, then lastSavedContract
                           const cnRaw = (collateralForm.contract_number || modalFilterContractNumber || contractNumber || (lastSavedContract && lastSavedContract.contract_number) || '');
                           const cn = (cnRaw || '').toString().trim();
-                          if (!cn) {
-                            setCollateralError('Contract Number is required');
-                            setCollateralSaving(false);
-                            return;
-                          }
+                            if (!cn) {
+                              setCollateralError('Contract Number is required');
+                              setCollateralSaving(false);
+                              return;
+                            }
                           // Build collateral payload and send under `collateral` key as backend expects
                           const collPayload = buildCollateralPayload({ ...collateralForm, contract_number: cn }, 'uv');
                           // ensure we send top-level contract_number and nested collateral object
@@ -1685,7 +1836,7 @@ export default function UVAgreement() {
                         } finally {
                           setCollateralSaving(false);
                         }
-                      }} disabled={collateralSaving}>{collateralSaving ? 'Saving...' : 'Save Collateral'}</button>
+                      }} disabled={collateralSaving || !isUvCollateralFormValid()}>{collateralSaving ? 'Saving...' : 'Save Collateral'}</button>
                     </div>
                 </div>
               ) : (
@@ -1709,7 +1860,7 @@ export default function UVAgreement() {
                             if (f === 'business_partners_relationship') {
                               return (
                                 <div style={fieldGroupStyle} key={f}>
-                                  <label style={fieldLabelStyle}>{f.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</label>
+                                  <label style={fieldLabelStyle}>{f.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}{getRequiredContractFields().includes(f) && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
                                   <select
                                     ref={(el) => { contractFieldRefs.current[f] = el; }}
                                     id={`contract_field_${f}`}
@@ -1744,14 +1895,22 @@ export default function UVAgreement() {
 
                             return (
                               <div style={fieldGroupStyle} key={f}>
-                                <label style={fieldLabelStyle}>{f.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</label>
+                                <label style={fieldLabelStyle}>{f.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}{getRequiredContractFields().includes(f) && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
                                 <input
                                   ref={(el) => { contractFieldRefs.current[f] = el; }}
                                   id={`contract_field_${f}`}
                                   name={f}
                                   inputMode={numericInputs.has(f) ? 'numeric' : 'text'}
                                   type={f === 'date_birth_of_debtor' ? 'date' : 'text'}
-                                  value={contractFormData[f] || ''}
+                                  value={(() => {
+                                    if (!contractFormData) return '';
+                                    if (numericInputs.has(f)) {
+                                      // show rate fields with comma, other numerics with thousand separator
+                                      if (rateFields && rateFields.includes(f)) return String(contractFormData[f] || '').replace('.', ',');
+                                      try { return formatNumberWithDots(contractFormData[f]); } catch (e) { return contractFormData[f] || ''; }
+                                    }
+                                    return contractFormData[f] || '';
+                                  })()}
                                   onChange={(e) => {
                                     const raw = e.target.value;
                                     setContractFormData(prev => {
@@ -1761,9 +1920,20 @@ export default function UVAgreement() {
                                         next[f] = iso || '';
                                         try { next['date_birth_of_debtor_in_word'] = getIndonesianDateInWords(iso || raw); } catch (er) { next['date_birth_of_debtor_in_word'] = ''; }
                                       } else {
-                                          next[f] = raw;
+                                          // normalize rate inputs: display uses comma, but store with dot
+                                          if (rateFields && rateFields.includes(f)) {
+                                            next[f] = String(raw || '').replace(',', '.');
+                                          } else {
+                                            next[f] = raw;
+                                          }
                                           if (numericToWord[f]) {
-                                            try { next[numericToWord[f]] = getIndonesianNumberWord(raw); } catch (er) { next[numericToWord[f]] = ''; }
+                                            try {
+                                              const valForWords = (rateFields && rateFields.includes(f)) ? next[f] : next[f];
+                                              const s = (valForWords === undefined || valForWords === null || valForWords === '') ? '' : String(valForWords);
+                                              const parsed = Number(s.replace(/\./g, '').replace(/,/g, '.'));
+                                              const n = Number.isNaN(parsed) ? 0 : parsed;
+                                              next[numericToWord[f]] = (n === 0) ? '' : getIndonesianNumberWord(n);
+                                            } catch (er) { next[numericToWord[f]] = ''; }
                                           }
                                           try {
                                             const parseNum = (v) => { if (v === undefined || v === null || v === '') return 0; const s = String(v).replace(/\./g, '').replace(/,/g, '').trim(); const n = Number(s); return Number.isNaN(n) ? 0 : n; };
@@ -1799,7 +1969,8 @@ export default function UVAgreement() {
                     })()}
 
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
-                      <button className="btn-save" onClick={saveContractOnly} disabled={savingModal}>{savingModal ? 'Saving...' : 'Save Contract'}</button>
+                      {/* Save enabled only when required fields are filled (except VA & Topup) */}
+                      <button className="btn-save" onClick={saveContractOnly} disabled={savingModal || !isContractFormValid()}>{savingModal ? 'Saving...' : 'Save Contract'}</button>
                     </div>
                   </div>
                 ) : (
