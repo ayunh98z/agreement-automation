@@ -757,6 +757,8 @@ const styles = {
     if (!f) return '';
     if (f === 'notaris_fee') return 'Handling Fee';
     if (f === 'notaris_fee_in_word') return 'Handling Fee In Word';
+    if (f === 'flat_rate') return 'Effective Rate';
+    if (f === 'flat_rate_by_word') return 'Effective Rate In Word';
     return formatFieldName(f);
   };
 
