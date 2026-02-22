@@ -2,7 +2,7 @@
 
 from django.http import HttpResponse
 from django.contrib.auth import get_user_model, authenticate
-from django.db import connection
+from django.db import connection, IntegrityError
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from .serializers import UserSerializer
@@ -40,6 +40,8 @@ import re
 import shutil
 import binascii
 import time
+from myproject.models import DownloadLog
+from myproject.rbac import get_role_from_request, RolePermission
 
 # module logger
 logger = logging.getLogger(__name__)
@@ -308,6 +310,15 @@ def format_number_dot(val):
 def number_to_indonesian_words(val):
     units = ['', 'satu','dua','tiga','empat','lima','enam','tujuh','delapan','sembilan']
 
+    def _sentence_case(s):
+        try:
+            if not s:
+                return ''
+            s = str(s).strip()
+            return s[0].upper() + s[1:].lower() if len(s) > 1 else s.upper()
+        except Exception:
+            return s
+
     def spell_int(n):
         n = int(n)
         if n < 10:
@@ -349,16 +360,18 @@ def number_to_indonesian_words(val):
         if s == '':
             return ''
         s = s.replace(',', '.')
+        res = ''
         if '.' in s:
             int_part, dec_part = s.split('.', 1)
-            int_words = spell_int(int(int_part)) if int_part and int(int_part) != 0 else 'nol' if int_part == '0' else ''
+            int_words = spell_int(int(int_part)) if int_part and int(int_part) != 0 else ('nol' if int_part == '0' else '')
             dec_words = ' '.join([units[int(d)] if d.isdigit() else d for d in dec_part])
             if int_words:
-                return (int_words + ' koma ' + dec_words).strip()
+                res = (int_words + ' koma ' + dec_words).strip()
             else:
-                return ('koma ' + dec_words).strip()
+                res = ('koma ' + dec_words).strip()
         else:
-            return spell_int(int(float(s)))
+            res = spell_int(int(float(s)))
+        return _sentence_case(res)
     except Exception:
         return str(val)
 
@@ -387,7 +400,14 @@ def date_to_indonesian_words(val):
         day_word = number_to_indonesian_words(d.day)
         month_word = months[d.month-1]
         year_word = number_to_indonesian_words(d.year)
-        return f"{day_word} {month_word} {year_word}"
+        combined = f"{day_word} {month_word} {year_word}".strip()
+        try:
+            if not combined:
+                return ''
+            combined = combined[0].upper() + combined[1:].lower() if len(combined) > 1 else combined.upper()
+        except Exception:
+            pass
+        return combined
     except Exception:
         return ''
 
@@ -442,13 +462,13 @@ class SimpleLoginView(APIView):
             return Response({'error': 'Username dan password harus diisi'}, status=status.HTTP_400_BAD_REQUEST)
 
         with connection.cursor() as cursor:
-            cursor.execute('SELECT id, username, password, email, full_name, role, is_staff FROM auth_user WHERE username=%s', [username])
+            cursor.execute('SELECT id, username, password, email, full_name, role, is_staff, branch_id, area_id, region_id FROM auth_user WHERE username=%s', [username])
             row = cursor.fetchone()
 
         if not row:
             return Response({'error': 'Username atau password salah'}, status=status.HTTP_401_UNAUTHORIZED)
 
-        user_id, db_username, db_password, db_email, db_full_name, db_role, db_is_staff = row
+        user_id, db_username, db_password, db_email, db_full_name, db_role, db_is_staff, db_branch_id, db_area_id, db_region_id = row
 
         if not check_password(password, db_password):
             return Response({'error': 'Username atau password salah'}, status=status.HTTP_401_UNAUTHORIZED)
@@ -468,17 +488,11 @@ class SimpleLoginView(APIView):
                 'full_name': db_full_name,
                 'role': db_role,
                 'is_staff': bool(db_is_staff),
-            }
-        }, status=status.HTTP_200_OK)
-
-
-class RegisterView(APIView):
-    def post(self, request):
-        serializer = UserSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({'message': 'User created successfully'}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                'branch_id': db_branch_id,
+                'area_id': db_area_id,
+                'region_id': db_region_id,
+                }
+            })
 
 
 class UserListCreateView(APIView):
@@ -499,6 +513,77 @@ class UserListCreateView(APIView):
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+class DownloadLogListView(APIView):
+    permission_classes = [IsAuthenticated, RolePermission]
+    # Only users with these roles may list/download logs
+    required_roles = ['Admin', 'BOD']
+
+    def get(self, request):
+        qs = DownloadLog.objects.all().order_by('-timestamp')
+        file_type = request.query_params.get('file_type')
+        if file_type:
+            qs = qs.filter(file_type=file_type)
+        username = request.query_params.get('username')
+        if username:
+            qs = qs.filter(username__icontains=username)
+        user_id = request.query_params.get('user_id')
+        if user_id:
+            try:
+                qs = qs.filter(user_id=int(user_id))
+            except Exception:
+                pass
+        contract = request.query_params.get('contract_number') or request.query_params.get('file_identifier')
+        if contract:
+            qs = qs.filter(file_identifier__icontains=str(contract))
+        date_from = request.query_params.get('date_from')
+        date_to = request.query_params.get('date_to')
+        try:
+            from django.utils.dateparse import parse_datetime, parse_date
+            if date_from:
+                dt = parse_datetime(date_from) or parse_date(date_from)
+                if dt:
+                    qs = qs.filter(timestamp__gte=dt)
+            if date_to:
+                dt2 = parse_datetime(date_to) or parse_date(date_to)
+                if dt2:
+                    qs = qs.filter(timestamp__lte=dt2)
+        except Exception:
+            pass
+
+        # Pagination: support `page` (1-based) and `limit` (page size)
+        page = request.query_params.get('page')
+        limit = request.query_params.get('limit')
+        try:
+            page = int(page) if page else 1
+        except Exception:
+            page = 1
+        try:
+            limit = int(limit) if limit else 100
+        except Exception:
+            limit = 100
+
+        start = (page - 1) * limit
+        end = start + limit
+
+        items = []
+        for r in qs[start:end]:
+            items.append({
+                'id': r.id,
+                'user_id': r.user_id,
+                'username': r.username,
+                'email': r.email,
+                'file_type': r.file_type,
+                'file_identifier': r.file_identifier,
+                'filename': r.filename,
+                'timestamp': r.timestamp.isoformat() if r.timestamp else None,
+                'ip_address': r.ip_address,
+                'user_agent': r.user_agent,
+                'success': r.success,
+                'file_size': r.file_size,
+                'method': r.method,
+            })
+
+        return Response({'count': qs.count(), 'results': items}, status=status.HTTP_200_OK)
     def post(self, request):
         # create via serializer when available
         serializer = UserSerializer(data=request.data)
@@ -510,6 +595,44 @@ class UserListCreateView(APIView):
 
 class UserDetailView(APIView):
     permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            with connection.cursor() as cursor:
+                # Return richer contract objects similar to /api/bl-agreement/contracts/
+                cursor.execute("""
+                    SELECT DISTINCT contract_id, contract_number, name_of_debtor, nik_number_of_debtor, loan_amount
+                    FROM (
+                        SELECT id AS contract_id, contract_number, COALESCE(name_of_debtor, '') AS name_of_debtor,
+                               COALESCE(nik_number_of_debtor, '') AS nik_number_of_debtor,
+                               COALESCE(loan_amount, '') AS loan_amount
+                        FROM contract
+                        UNION
+                        SELECT NULL AS contract_id, contract_number, COALESCE(name_of_debtor, '') AS name_of_debtor,
+                               COALESCE(nik_number_of_debtor, '') AS nik_number_of_debtor,
+                               COALESCE(loan_amount, '') AS loan_amount
+                        FROM bl_agreement
+                        UNION
+                        SELECT NULL AS contract_id, contract_number, '' AS name_of_debtor, '' AS nik_number_of_debtor, '' AS loan_amount
+                        FROM bl_collateral
+                    ) t
+                    ORDER BY contract_number
+                """)
+
+                rows = cursor.fetchall()
+                contracts = []
+                for r in rows:
+                    contracts.append({
+                        'contract_id': r[0],
+                        'contract_number': r[1],
+                        'name_of_debtor': r[2],
+                        'nik_number_of_debtor': r[3],
+                        'loan_amount': r[4],
+                    })
+
+                return Response({'contracts': contracts}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': f'Error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def get(self, request, username):
         try:
@@ -583,21 +706,95 @@ class DashboardSummaryView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        # Return simple counts; if tables missing, return 0
-        def safe_count(table_name):
+        # Role-aware counts: Admin sees all, CSA sees rows they created,
+        # branch/area/region roles see rows matching their branch/area/region.
+        def safe_count_sql(sql, params=None):
             try:
                 with connection.cursor() as cursor:
-                    cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
+                    cursor.execute(sql, params or [])
                     row = cursor.fetchone()
                     return int(row[0]) if row and row[0] is not None else 0
             except Exception:
                 return 0
 
+        # Resolve user identity and role
+        user_id = None
+        username = None
+        user_role = None
+        user_branch = None
+        user_area = None
+        user_region = None
+        try:
+            if getattr(request, 'user', None) and getattr(request.user, 'is_authenticated', False):
+                user_id = getattr(request.user, 'id', None)
+                username = getattr(request.user, 'username', None)
+            if not user_id:
+                auth_header = request.META.get('HTTP_AUTHORIZATION', '')
+                if auth_header and auth_header.startswith('Bearer '):
+                    try:
+                        payload = AccessToken(auth_header.split(' ', 1)[1].strip())
+                        user_id = payload.get('user_id') or payload.get('uid') or payload.get('id')
+                        username = payload.get('username') or username
+                    except Exception:
+                        pass
+            if user_id:
+                with connection.cursor() as cursor:
+                    cursor.execute('SELECT username, role, branch_id, area_id, region_id FROM auth_user WHERE id=%s', [user_id])
+                    row = cursor.fetchone()
+                    if row:
+                        username, user_role, user_branch, user_area, user_region = row
+        except Exception:
+            pass
+
+        # Build WHERE clauses based on role
+        bl_where = ''
+        bl_params = []
+        uv_where = ''
+        uv_params = []
+
+        if user_role:
+            r = (user_role or '').strip().lower()
+            if r == 'csa':
+                # CSA must be scoped strictly to their branch_id. If branch_id
+                # is not available, return zero-counts by using a false WHERE.
+                if user_branch:
+                    bl_where = 'WHERE branch_id=%s'
+                    bl_params = [user_branch]
+                    uv_where = 'WHERE branch_id=%s'
+                    uv_params = [user_branch]
+                else:
+                    bl_where = 'WHERE 1=0'
+                    uv_where = 'WHERE 1=0'
+            elif r in ('bm', 'branchmanager', 'branch_manager'):
+                if user_branch:
+                    bl_where = 'WHERE branch_id=%s'
+                    bl_params = [user_branch]
+                    uv_where = 'WHERE branch_id=%s'
+                    uv_params = [user_branch]
+            elif r in ('area', 'areamanager', 'area_manager'):
+                if user_area:
+                    bl_where = 'WHERE area_id=%s'
+                    bl_params = [user_area]
+                    uv_where = 'WHERE area_id=%s'
+                    uv_params = [user_area]
+            elif r in ('region', 'regionmanager', 'region_manager'):
+                if user_region:
+                    bl_where = 'WHERE region_id=%s'
+                    bl_params = [user_region]
+                    uv_where = 'WHERE region_id=%s'
+                    uv_params = [user_region]
+            else:
+                # default: admins and others see all
+                bl_where = ''
+                uv_where = ''
+
+        # Fallback: if no role resolution, return global counts
+        bl_sql = f"SELECT COUNT(*) FROM bl_agreement {bl_where}".strip()
+        uv_sql = f"SELECT COUNT(*) FROM uv_agreement {uv_where}".strip()
+
         data = {
-            'bl_agreement': safe_count('bl_agreement'),
-            'bl_sp3': safe_count('bl_sp3'),
-            'uv_agreement': safe_count('uv_agreement'),
-            'uv_sp3': safe_count('uv_sp3'),
+            'bl_agreement': safe_count_sql(bl_sql, bl_params),
+            'uv_agreement': safe_count_sql(uv_sql, uv_params),
         }
         return Response(data)
 
@@ -635,7 +832,10 @@ class UVAgreementView(APIView):
 
                 data_map = {}
                 if contract_number:
-                    data_map['contract_number'] = contract_number
+                    try:
+                        data_map['contract_number'] = str(contract_number).upper()
+                    except Exception:
+                        data_map['contract_number'] = contract_number
 
                 client_created_by = data.get('created_by')
                 if client_created_by and 'created_by' in cols_info:
@@ -984,7 +1184,10 @@ class UVCollateralCreateView(APIView):
                 cols_info = [r[0] for r in cols_meta]
                 cols_lookup = {c.lower(): c for c in cols_info}
 
-                data_map = {'contract_number': contract_number}
+                try:
+                    data_map = {'contract_number': str(contract_number).upper()}
+                except Exception:
+                    data_map = {'contract_number': contract_number}
                 if isinstance(collateral, dict):
                     for k, v in collateral.items():
                         key = str(k).lower()
@@ -1008,21 +1211,17 @@ class UVCollateralCreateView(APIView):
                         else:
                             data_map[field_name] = '-'
 
-                cursor.execute("SELECT contract_number FROM uv_collateral WHERE contract_number=%s LIMIT 1", [contract_number])
-                exists = cursor.fetchone()
-                if exists:
-                    set_cols = []
-                    params = []
-                    for col, val in data_map.items():
-                        if col == 'contract_number':
-                            continue
-                        set_cols.append(f"{col}=%s")
-                        params.append(val)
-                    if set_cols:
-                        sql = f"UPDATE uv_collateral SET {', '.join(set_cols)} WHERE contract_number=%s"
-                        params.append(contract_number)
-                        cursor.execute(sql, params)
-                else:
+                # Prevent duplicate uv_collateral rows for same contract_number (case-insensitive)
+                try:
+                    cursor.execute("SELECT 1 FROM uv_collateral WHERE LOWER(contract_number)=LOWER(%s) LIMIT 1", [contract_number])
+                    if cursor.fetchone():
+                        return Response({'error': 'Duplicate contract_number: collateral already exists'}, status=status.HTTP_409_CONFLICT)
+                except Exception:
+                    # if uniqueness check fails for any reason, continue to attempt insert
+                    pass
+
+                # No existing row found -> insert new UV collateral row
+                
                     # server-side audit fields for new uv_collateral rows
                     now = timezone.now()
                     username = _resolve_username(request)
@@ -1076,7 +1275,11 @@ class UVCollateralCreateView(APIView):
                         placeholders.append('%s')
                         params.append(val)
                     sql = f"INSERT INTO uv_collateral ({', '.join(cols)}) VALUES ({', '.join(placeholders)})"
-                    cursor.execute(sql, params)
+                    try:
+                        cursor.execute(sql, params)
+                    except IntegrityError as ie:
+                        # likely a UNIQUE constraint on contract_number (or similar)
+                        return Response({'error': 'Duplicate contract_number: collateral already exists'}, status=status.HTTP_409_CONFLICT)
 
             return Response({'message': 'UV collateral saved'}, status=status.HTTP_200_OK)
         except Exception as e:
@@ -1534,7 +1737,7 @@ class BLAgreementView(APIView):
                 bl_row = cursor.fetchone()
                 bl_data = dict(zip(cols, bl_row)) if bl_row else None
 
-                # Attempt to get collateral data from bl_collateral
+                # Attempt to get collateral data from bl_collateral ONLY
                 cursor.execute(
                     "SELECT * FROM bl_collateral WHERE LOWER(contract_number) = LOWER(%s) LIMIT 1",
                     [contract_number]
@@ -1870,7 +2073,10 @@ class BLAgreementView(APIView):
                         cols_info = [r[0] for r in cols_meta]
                         cols_lookup = {c.lower(): c for c in cols_info}
 
-                        data_map = {'contract_number': contract_number}
+                        try:
+                            data_map = {'contract_number': str(contract_number).upper()}
+                        except Exception:
+                            data_map = {'contract_number': contract_number}
                         if isinstance(collateral, dict):
                             for k, v in collateral.items():
                                 key = str(k).lower()
@@ -1894,30 +2100,23 @@ class BLAgreementView(APIView):
                                 else:
                                     data_map[field_name] = '-'
 
-                        cursor.execute("SELECT contract_number FROM uv_collateral WHERE contract_number=%s LIMIT 1", [contract_number])
-                        exists = cursor.fetchone()
-                        if exists:
-                            set_cols = []
-                            params = []
-                            for col, val in data_map.items():
-                                if col == 'contract_number':
-                                    continue
-                                set_cols.append(f"{col}=%s")
-                                params.append(val)
-                            if set_cols:
-                                sql = f"UPDATE uv_collateral SET {', '.join(set_cols)} WHERE contract_number=%s"
-                                params.append(contract_number)
-                                cursor.execute(sql, params)
-                        else:
-                            cols = []
-                            placeholders = []
-                            params = []
-                            for col, val in data_map.items():
-                                cols.append(col)
-                                placeholders.append('%s')
-                                params.append(val)
-                            sql = f"INSERT INTO uv_collateral ({', '.join(cols)}) VALUES ({', '.join(placeholders)})"
+                        # Prevent duplicate uv_collateral rows for same contract_number (case-insensitive)
+                        cursor.execute("SELECT 1 FROM uv_collateral WHERE LOWER(contract_number)=LOWER(%s) LIMIT 1", [contract_number])
+                        if cursor.fetchone():
+                            return Response({'error': 'Duplicate contract_number: collateral already exists'}, status=status.HTTP_409_CONFLICT)
+
+                        cols = []
+                        placeholders = []
+                        params = []
+                        for col, val in data_map.items():
+                            cols.append(col)
+                            placeholders.append('%s')
+                            params.append(val)
+                        sql = f"INSERT INTO uv_collateral ({', '.join(cols)}) VALUES ({', '.join(placeholders)})"
+                        try:
                             cursor.execute(sql, params)
+                        except IntegrityError:
+                            return Response({'error': 'Duplicate contract_number: collateral already exists'}, status=status.HTTP_409_CONFLICT)
 
                     return Response({'message': 'UV collateral saved'}, status=status.HTTP_200_OK)
                 except Exception as e:
@@ -1933,24 +2132,41 @@ class BLAgreementContractListView(APIView):
     def get(self, request):
         try:
             with connection.cursor() as cursor:
-                # Get unique contract numbers dari `contract` table
-                cursor.execute(
-                    "SELECT DISTINCT contract_number FROM contract ORDER BY contract_number"
-                )
-                bl_contracts = [row[0] for row in cursor.fetchall()]
-                
-                # Get unique contract numbers dari bl_collateral
-                cursor.execute(
-                    "SELECT DISTINCT contract_number FROM bl_collateral ORDER BY contract_number"
-                )
-                bl_collateral_contracts = [row[0] for row in cursor.fetchall()]
-                
-                # Merge dan unique
-                all_contracts = sorted(list(set(bl_contracts + bl_collateral_contracts)))
-                
-                return Response({
-                    'contracts': all_contracts
-                }, status=status.HTTP_200_OK)
+                # Return richer contract objects. Combine possible contract sources
+                # `contract`, `bl_agreement`, and `bl_collateral` using UNION so frontend
+                # receives objects with requested fields even when some tables only
+                # contain the contract_number.
+                cursor.execute("""
+                    SELECT DISTINCT contract_id, contract_number, name_of_debtor, nik_number_of_debtor, loan_amount
+                    FROM (
+                        SELECT id AS contract_id, contract_number, COALESCE(name_of_debtor, '') AS name_of_debtor,
+                               COALESCE(nik_number_of_debtor, '') AS nik_number_of_debtor,
+                               COALESCE(loan_amount, '') AS loan_amount
+                        FROM contract
+                        UNION
+                        SELECT NULL AS contract_id, contract_number, COALESCE(name_of_debtor, '') AS name_of_debtor,
+                               COALESCE(nik_number_of_debtor, '') AS nik_number_of_debtor,
+                               COALESCE(loan_amount, '') AS loan_amount
+                        FROM bl_agreement
+                        UNION
+                        SELECT NULL AS contract_id, contract_number, '' AS name_of_debtor, '' AS nik_number_of_debtor, '' AS loan_amount
+                        FROM bl_collateral
+                    ) t
+                    ORDER BY contract_number
+                """)
+
+                rows = cursor.fetchall()
+                contracts = []
+                for r in rows:
+                    contracts.append({
+                        'contract_id': r[0],
+                        'contract_number': r[1],
+                        'name_of_debtor': r[2],
+                        'nik_number_of_debtor': r[3],
+                        'loan_amount': r[4],
+                    })
+
+                return Response({'contracts': contracts}, status=status.HTTP_200_OK)
         
         except Exception as e:
             return Response(
@@ -1994,6 +2210,27 @@ class ContractCreateView(APIView):
                     data_map.pop('created_at', None)
                 if 'updated_at' in data_map:
                     data_map.pop('updated_at', None)
+
+                # Ensure certain optional string fields are stored with a visible
+                # placeholder when the frontend leaves them empty (requested behavior).
+                # Use twelve underscores as the placeholder so it's easy to spot.
+                placeholder = '______________'
+                try:
+                    vak = cols_lookup.get('virtual_account_number')
+                    if vak:
+                        val = data_map.get(vak)
+                        if val is None or (isinstance(val, str) and val.strip() == ''):
+                            data_map[vak] = placeholder
+                except Exception:
+                    pass
+                try:
+                    tpk = cols_lookup.get('topup_contract')
+                    if tpk:
+                        val2 = data_map.get(tpk)
+                        if val2 is None or (isinstance(val2, str) and val2.strip() == ''):
+                            data_map[tpk] = placeholder
+                except Exception:
+                    pass
 
                 # set audit fields if available
                 now = timezone.now()
@@ -2061,6 +2298,25 @@ class ContractCreateView(APIView):
 
                 if not data_map:
                     return Response({'error': 'No valid contract fields provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+                # Prevent duplicate contract_number entries: check existing contract_number (case-insensitive)
+                try:
+                    contract_col = cols_lookup.get('contract_number')
+                    if contract_col:
+                        # value may be in data_map under actual column name or in original payload
+                        contract_val = data_map.get(contract_col) or (data.get('contract_number') if isinstance(data, dict) else None)
+                        if contract_val:
+                            # store uppercase contract_number for consistency
+                            try:
+                                data_map[contract_col] = str(contract_val).upper()
+                            except Exception:
+                                data_map[contract_col] = contract_val
+                            cursor.execute("SELECT 1 FROM contract WHERE LOWER(contract_number)=LOWER(%s) LIMIT 1", [data_map[contract_col]])
+                            if cursor.fetchone():
+                                return Response({'error': 'Duplicate contract_number: contract already exists'}, status=status.HTTP_409_CONFLICT)
+                except Exception:
+                    # don't block insert if uniqueness check fails for any reason; fallback to DB constraint handling
+                    pass
 
                 cols = []
                 placeholders = []
@@ -2172,6 +2428,121 @@ class ContractLookupView(APIView):
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+class ContractsListView(APIView):
+    """
+    New read-only endpoint that returns richer contract objects aggregated from
+    `contract`, `bl_agreement`, and `bl_collateral` without changing existing
+    behavior of `/api/contracts/` which is used for create/lookup.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            with connection.cursor() as cursor:
+                # detect primary/id-like column in contract table to avoid "Unknown column 'id'" errors
+                cursor.execute("SHOW COLUMNS FROM contract")
+                contract_cols_meta = cursor.fetchall()
+                contract_cols = [r[0] for r in contract_cols_meta]
+                id_col = None
+                for candidate in ('id', 'contract_id', 'id_contract'):
+                    if candidate in contract_cols:
+                        id_col = candidate
+                        break
+
+                if id_col:
+                    contract_id_select = f"{id_col} AS contract_id"
+                else:
+                    contract_id_select = "NULL AS contract_id"
+
+                sql = f"""
+                    SELECT DISTINCT contract_id, contract_number, name_of_debtor, nik_number_of_debtor, loan_amount
+                    FROM (
+                        SELECT {contract_id_select}, contract_number, COALESCE(name_of_debtor, '') AS name_of_debtor,
+                               COALESCE(nik_number_of_debtor, '') AS nik_number_of_debtor,
+                               COALESCE(loan_amount, '') AS loan_amount
+                        FROM contract
+                        UNION
+                        SELECT NULL AS contract_id, contract_number, COALESCE(name_of_debtor, '') AS name_of_debtor,
+                               COALESCE(nik_number_of_debtor, '') AS nik_number_of_debtor,
+                               COALESCE(loan_amount, '') AS loan_amount
+                        FROM bl_agreement
+                        UNION
+                        SELECT NULL AS contract_id, contract_number, '' AS name_of_debtor, '' AS nik_number_of_debtor, '' AS loan_amount
+                        FROM bl_collateral
+                    ) t
+                    ORDER BY contract_number
+                """
+
+                cursor.execute(sql)
+                rows = cursor.fetchall()
+                contracts = []
+                for r in rows:
+                    contracts.append({
+                        'contract_id': r[0],
+                        'contract_number': r[1],
+                        'name_of_debtor': r[2],
+                        'nik_number_of_debtor': r[3],
+                        'loan_amount': r[4],
+                    })
+
+                return Response({'contracts': contracts}, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.exception('Contracts list failed')
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class ContractsTableView(APIView):
+    """Return rows directly from the `contract` table (no UNION, no duplicates).
+    Fields returned: `contract_id` (or id), `contract_number`, `name_of_debtor`,
+    `nik_number_of_debtor`, `loan_amount` when available in the table.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            with connection.cursor() as cursor:
+                # discover columns and pick desired fields if present
+                cursor.execute("SHOW COLUMNS FROM contract")
+                cols_meta = cursor.fetchall()
+                cols = [r[0] for r in cols_meta]
+
+                # prefer contract_id, fallback to id, else NULL as contract_id
+                id_col = None
+                for candidate in ('contract_id', 'id', 'id_contract'):
+                    if candidate in cols:
+                        id_col = candidate
+                        break
+
+                select_cols = []
+                if id_col:
+                    select_cols.append(f"{id_col} AS contract_id")
+                else:
+                    select_cols.append("NULL AS contract_id")
+
+                for wanted in ('contract_number', 'name_of_debtor', 'nik_number_of_debtor', 'loan_amount'):
+                    if wanted in cols:
+                        select_cols.append(wanted)
+                    else:
+                        select_cols.append("'' AS %s" % wanted)
+
+                sql = f"SELECT DISTINCT {', '.join(select_cols)} FROM contract ORDER BY contract_number"
+                cursor.execute(sql)
+                rows = cursor.fetchall()
+                contracts = []
+                for r in rows:
+                    contracts.append({
+                        'contract_id': r[0],
+                        'contract_number': r[1],
+                        'name_of_debtor': r[2],
+                        'nik_number_of_debtor': r[3],
+                        'loan_amount': r[4],
+                    })
+                return Response({'contracts': contracts}, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.exception('Contracts table failed')
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 class BLCollateralCreateView(APIView):
     """
     Endpoint to insert a bl_collateral row. Frontend will POST contract_number and collateral fields.
@@ -2210,6 +2581,17 @@ class BLCollateralCreateView(APIView):
                 if not data_map:
                     return Response({'error': 'No valid collateral fields provided'}, status=status.HTTP_400_BAD_REQUEST)
 
+                # Prevent duplicate collateral rows for same contract_number
+                contract_number = data.get('contract_number') or data_map.get('contract_number')
+                try:
+                    if contract_number:
+                        cursor.execute("SELECT 1 FROM bl_collateral WHERE LOWER(contract_number)=LOWER(%s) LIMIT 1", [contract_number])
+                        if cursor.fetchone():
+                            return Response({'error': 'Duplicate contract_number: collateral already exists'}, status=status.HTTP_409_CONFLICT)
+                except Exception:
+                    # if uniqueness check fails for any reason, continue to attempt insert
+                    pass
+
                 cols = []
                 placeholders = []
                 params = []
@@ -2226,183 +2608,24 @@ class BLCollateralCreateView(APIView):
             logger.exception('Failed to save bl_collateral')
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
-class BLSP3View(APIView):
-    """Create/update and lookup BL SP3 rows.
-    POST: insert or update a bl_sp3 row keyed by contract_number.
-    GET: return latest bl_sp3 row for given contract_number.
-    """
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-        data = request.data or {}
-        contract_number = data.get('contract_number') or data.get('contractNumber')
-        if not contract_number:
-            return Response({'error': 'contract_number is required'}, status=status.HTTP_400_BAD_REQUEST)
-        try:
-            with connection.cursor() as cursor:
-                cursor.execute("SHOW COLUMNS FROM bl_sp3")
-                cols_meta = cursor.fetchall()
-                cols_info = [r[0] for r in cols_meta]
-                cols_lookup = {c.lower(): c for c in cols_info}
-
-                data_map = {'contract_number': contract_number}
-                # Accept nested payload pieces
-                for k, v in data.items():
-                    key = str(k).lower()
-                    if key in cols_lookup:
-                        data_map[cols_lookup[key]] = v
-
-                # also map header_fields, contract_data, debtor, collateral_data, bm_data, branch_data
-                for section in ('header_fields', 'contract_data', 'debtor', 'collateral_data', 'bm_data', 'branch_data'):
-                    sec = data.get(section) or {}
-                    if isinstance(sec, dict):
-                        for k, v in sec.items():
-                            lk = str(k).lower()
-                            if lk in cols_lookup:
-                                data_map[cols_lookup[lk]] = v
-
-                # Fill defaults for non-nullable columns
-                for col_row in cols_meta:
-                    field_name = col_row[0]
-                    field_type = (col_row[1] or '').lower()
-                    is_nullable = col_row[2]
-                    default_val = col_row[4]
-                    if field_name in data_map:
-                        continue
-                    if field_name in ('id', 'created_by', 'created_at', 'update_at'):
-                        continue
-                    if is_nullable == 'NO' and default_val is None:
-                        if any(t in field_type for t in ('int', 'decimal', 'float', 'double')):
-                            data_map[field_name] = 0
-                        elif any(t in field_type for t in ('date', 'timestamp', 'datetime')):
-                            data_map[field_name] = timezone.now()
-                        else:
-                            data_map[field_name] = ''
-
-                # Always insert a new row for BL SP3 (allow duplicate contract_number)
-                # server-side audit fields for BL SP3 inserts
-                now = timezone.now()
-                username = _resolve_username(request)
-                if 'created_by' in cols_info and 'created_by' not in data_map:
-                    data_map['created_by'] = username or ''
-                if 'created_at' in cols_info and 'created_at' not in data_map:
-                    data_map['created_at'] = now
-                if 'update_at' in cols_info and 'update_at' not in data_map:
-                    data_map['update_at'] = now
-
-                cols = []
-                placeholders = []
-                params = []
-                for col, val in data_map.items():
-                    cols.append(col)
-                    placeholders.append('%s')
-                    params.append(val)
-                sql = f"INSERT INTO bl_sp3 ({', '.join(cols)}) VALUES ({', '.join(placeholders)})"
-                cursor.execute(sql, params)
-
-            return Response({'message': 'BL SP3 saved'}, status=status.HTTP_200_OK)
-        except Exception as e:
-            logger.exception('Failed to save bl_sp3')
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
     def get(self, request):
+        """Return list or columns for BL collateral. If contract_number provided, return matching rows."""
         contract_number = request.query_params.get('contract_number') or request.GET.get('contract_number')
         try:
             with connection.cursor() as cursor:
-                cursor.execute("SHOW COLUMNS FROM bl_sp3")
+                cursor.execute("SHOW COLUMNS FROM bl_collateral")
                 cols_meta = cursor.fetchall()
-                cols_info = [row[0] for row in cols_meta]
-
-                if contract_number:
-                    # return latest row for this contract
-                    sql = f"SELECT {', '.join(cols_info)} FROM bl_sp3 WHERE LOWER(contract_number)=LOWER(%s) ORDER BY COALESCE(sp3_date, created_at) DESC LIMIT 1"
-                    cursor.execute(sql, [contract_number])
-                    row = cursor.fetchone()
-                    if not row:
-                        return Response({'error': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
-                    row_dict = {cols_info[i]: row[i] for i in range(len(cols_info))}
-                    return Response({'sp3': row_dict}, status=status.HTTP_200_OK)
-                else:
-                    # return list of recent sp3 rows
-                    sql = f"SELECT {', '.join(cols_info)} FROM bl_sp3 ORDER BY COALESCE(sp3_date, created_at) DESC"
-                    cursor.execute(sql)
-                    rows = cursor.fetchall()
-                    results = []
-                    for r in rows:
-                        results.append({cols_info[i]: r[i] for i in range(len(cols_info))})
-                    return Response({'sp3s': results}, status=status.HTTP_200_OK)
+                cols_info = [r[0] for r in cols_meta]
+                if not contract_number:
+                    return Response({'collateral': [], 'columns': cols_info}, status=status.HTTP_200_OK)
+                sql = f"SELECT {', '.join(cols_info)} FROM bl_collateral WHERE LOWER(contract_number)=LOWER(%s)"
+                cursor.execute(sql, [contract_number])
+                rows = cursor.fetchall()
+                result = [dict(zip(cols_info, row)) for row in rows]
+                return Response({'collateral': result, 'columns': cols_info}, status=status.HTTP_200_OK)
         except Exception as e:
-            logger.exception('BLSP3 lookup failed')
+            logger.exception('BLCollateral lookup failed')
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-@csrf_exempt
-def bl_sp3_public_create(request):
-    """Public endpoint to create BL SP3 rows without auth (always INSERT).
-    Expects JSON body similar to BLSP3View POST.
-    """
-    if request.method != 'POST':
-        return JsonResponse({'error': 'Method not allowed'}, status=405)
-    try:
-        import json
-        body = request.body.decode('utf-8') or '{}'
-        data = json.loads(body)
-    except Exception:
-        data = {}
-    contract_number = data.get('contract_number') or data.get('contractNumber')
-    if not contract_number:
-        return JsonResponse({'error': 'contract_number is required'}, status=400)
-    try:
-        with connection.cursor() as cursor:
-            cursor.execute("SHOW COLUMNS FROM bl_sp3")
-            cols_meta = cursor.fetchall()
-            cols_info = [r[0] for r in cols_meta]
-            cols_lookup = {c.lower(): c for c in cols_info}
-
-            data_map = {'contract_number': contract_number}
-            for k, v in data.items():
-                key = str(k).lower()
-                if key in cols_lookup:
-                    data_map[cols_lookup[key]] = v
-
-            for section in ('header_fields', 'contract_data', 'debtor', 'collateral_data', 'bm_data', 'branch_data'):
-                sec = data.get(section) or {}
-                if isinstance(sec, dict):
-                    for k, v in sec.items():
-                        lk = str(k).lower()
-                        if lk in cols_lookup:
-                            data_map[cols_lookup[lk]] = v
-
-            # Fill minimal defaults for some non-nullable fields if absent
-            for col_row in cols_meta:
-                field_name = col_row[0]
-                is_nullable = col_row[2]
-                default_val = col_row[4]
-                extra = (col_row[5] or '')
-                if field_name in data_map:
-                    continue
-                # Skip known auto-increment PKs and internal timestamp/creator fields
-                if field_name in ('id', 'created_by', 'created_at', 'update_at') or 'auto_increment' in extra.lower():
-                    continue
-                if is_nullable == 'NO' and default_val is None:
-                    data_map[field_name] = ''
-
-            cols = []
-            placeholders = []
-            params = []
-            for col, val in data_map.items():
-                cols.append(col)
-                placeholders.append('%s')
-                params.append(val)
-            sql = f"INSERT INTO bl_sp3 ({', '.join(cols)}) VALUES ({', '.join(placeholders)})"
-            cursor.execute(sql, params)
-
-        return JsonResponse({'message': 'BL SP3 created'}, status=200)
-    except Exception as e:
-        import logging
-        logging.exception('Public BL SP3 insert failed')
-        return JsonResponse({'error': str(e)}, status=500)
 
 
 class WhoAmIView(APIView):
@@ -2461,8 +2684,43 @@ class WhoAmIView(APIView):
             helper_uname = _resolve_username(request) or ''
         except Exception:
             helper_uname = 'error'
+
+        # Fetch role, branch_id, area_id, region_id for the current user
+        user_role = None
+        user_branch_id = None
+        user_area_id = None
+        user_region_id = None
+        try:
+            uid = None
+            if getattr(request, 'user', None) and getattr(request.user, 'is_authenticated', False):
+                uid = getattr(request.user, 'id', None)
+            if not uid:
+                auth_header = request.META.get('HTTP_AUTHORIZATION', '')
+                if auth_header and auth_header.startswith('Bearer '):
+                    try:
+                        payload = AccessToken(auth_header.split(' ', 1)[1].strip())
+                        uid = payload.get('user_id') or payload.get('uid') or payload.get('id')
+                    except Exception:
+                        pass
+            if uid:
+                with connection.cursor() as cursor:
+                    cursor.execute('SELECT role, branch_id, area_id, region_id FROM auth_user WHERE id=%s', [uid])
+                    row = cursor.fetchone()
+                    if row:
+                        user_role, user_branch_id, user_area_id, user_region_id = row
+        except Exception:
+            pass
+
         # Return single response including helper result for inspection
-        return Response({'full_name': full_name or 'anonymous', 'username': username or 'anonymous', 'helper_resolved': helper_uname}, status=status.HTTP_200_OK)
+        return Response({
+            'full_name': full_name or 'anonymous',
+            'username': username or 'anonymous',
+            'helper_resolved': helper_uname,
+            'role': user_role,
+            'branch_id': user_branch_id,
+            'area_id': user_area_id,
+            'region_id': user_region_id,
+        }, status=status.HTTP_200_OK)
 
 
 class BranchListView(APIView):
@@ -2486,8 +2744,9 @@ class RegionListView(APIView):
     def get(self, request):
         try:
             with connection.cursor() as cursor:
-                cursor.execute("SELECT id, region_name FROM regions WHERE is_active=1 ORDER BY region_name")
-                cols = ['id', 'name']
+                # include code column so frontend can show region code
+                cursor.execute("SELECT id, region_name, code FROM regions WHERE is_active=1 ORDER BY region_name")
+                cols = ['id', 'name', 'code']
                 rows = [dict(zip(cols, row)) for row in cursor.fetchall()]
                 return Response({'regions': rows}, status=status.HTTP_200_OK)
         except Exception as e:
@@ -2503,10 +2762,10 @@ class AreaListView(APIView):
         try:
             with connection.cursor() as cursor:
                 if region_id:
-                    cursor.execute("SELECT id, name, region_id FROM areas WHERE region_id=%s AND is_active=1 ORDER BY name", [region_id])
+                    cursor.execute("SELECT id, name, region_id, code FROM areas WHERE region_id=%s AND is_active=1 ORDER BY name", [region_id])
                 else:
-                    cursor.execute("SELECT id, name, region_id FROM areas WHERE is_active=1 ORDER BY name")
-                cols = ['id', 'name', 'region_id']
+                    cursor.execute("SELECT id, name, region_id, code FROM areas WHERE is_active=1 ORDER BY name")
+                cols = ['id', 'name', 'region_id', 'code']
                 rows = [dict(zip(cols, row)) for row in cursor.fetchall()]
                 return Response({'areas': rows}, status=status.HTTP_200_OK)
         except Exception as e:
@@ -2554,8 +2813,18 @@ class BranchManagerByCityView(APIView):
     def get(self, request):
         bm_id = request.query_params.get('bm_id')
         city = request.query_params.get('city', '').strip()
+        # If no parameters provided, return full list of branch managers
         if not bm_id and not city:
-            return Response({'error': 'bm_id or city parameter required'}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                with connection.cursor() as cursor:
+                    # branch_manager table does not have is_active column in some schemas
+                    # avoid filtering by is_active to prevent SQL error
+                    cursor.execute("SELECT * FROM branch_manager ORDER BY name_of_bm")
+                    cols = [c[0] for c in cursor.description] if cursor.description else []
+                    rows = [dict(zip(cols, row)) for row in cursor.fetchall()]
+                    return Response({'bm': rows}, status=status.HTTP_200_OK)
+            except Exception as e:
+                return Response({'error': f'Error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         try:
             with connection.cursor() as cursor:
                 if bm_id:
@@ -2591,8 +2860,11 @@ class DirectorListView(APIView):
                     data = dict(zip(cols, row))
                     return Response({'director': data}, status=status.HTTP_200_OK)
                 else:
-                    cursor.execute("SELECT DISTINCT name_of_director FROM director ORDER BY name_of_director")
-                    rows = [row[0] for row in cursor.fetchall()]
+                    # Return full director objects so frontend can show id/name/phone
+                    cursor.execute("SELECT director_id, name_of_director, phone_number_of_lolc FROM director ORDER BY name_of_director")
+                    cols = [c[0] for c in cursor.description] if cursor.description else []
+                    raw_rows = cursor.fetchall()
+                    rows = [dict(zip(cols, r)) for r in raw_rows]
                     return Response({'directors': rows}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'error': f'Error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -2692,6 +2964,24 @@ class BLAgreementDocxDownloadView(APIView):
                     ctx[dk + '_display'] = f"({format_indonesian_date(v)})" if v else ''
                 except Exception:
                     ctx[dk + '_in_word'] = ''
+
+            # Ensure sentence-case for any helper fields generated for words
+            try:
+                for key in list(ctx.keys()):
+                    if isinstance(key, str) and (key.endswith('_in_word') or key.endswith('_by_word')):
+                        val = ctx.get(key)
+                        if val is None:
+                            continue
+                        s = str(val).strip()
+                        if not s:
+                            continue
+                        # Sentence case: first char uppercase, rest lowercase
+                        try:
+                            ctx[key] = s[0].upper() + s[1:].lower() if len(s) > 1 else s.upper()
+                        except Exception:
+                            ctx[key] = s
+            except Exception:
+                pass
 
             # Uppercase names as requested
             try:
@@ -2996,6 +3286,10 @@ class BLAgreementDocxDownloadView(APIView):
                         except Exception as e2:
                             logger.error('Failed to return PDF for %s: %s', contract_number, str(e2))
                             return Response({'error': 'Failed to return PDF.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+                # contracts list class was moved to top-level to avoid nesting inside
+                # the BL agreement document generation handler.
                     else:
                         logger.error('PDF conversion failed for %s: %s', contract_number, str(err))
                         return Response({'error': 'PDF conversion failed', 'detail': str(err)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -3273,7 +3567,8 @@ class UVAgreementDocxDownloadView(APIView):
                         safe_cn = timezone.now().strftime('no_contract_%Y%m%d%H%M%S')
                 except Exception:
                     safe_cn = str(contract_number or 'contract')
-                docx_path = os.path.join(tmpdir, f'uv_agreement_{safe_cn}.docx')
+                base_prefix = 'uv_agreement'
+                docx_path = os.path.join(tmpdir, f'{base_prefix}_{safe_cn}.docx')
                 if tpl is not None:
                     tpl.save(docx_path)
                 else:
@@ -3288,7 +3583,7 @@ class UVAgreementDocxDownloadView(APIView):
                 # Support optional PDF conversion when requested via ?download=pdf
                 download = request.query_params.get('download', '').strip().lower()
                 if download == 'pdf':
-                    pdf_path = os.path.join(tmpdir, f'uv_agreement_{safe_cn}.pdf')
+                    pdf_path = os.path.join(tmpdir, f'{base_prefix}_{safe_cn}.pdf')
                     ok, err = _convert_docx_to_pdf(docx_path, pdf_path)
                     if ok:
                         try:
@@ -3308,7 +3603,32 @@ class UVAgreementDocxDownloadView(APIView):
                             except Exception:
                                 logger.exception('Failed to write centralized document log (UV PDF) %s', contract_number)
                             response = HttpResponse(pdf_bytes, content_type='application/pdf')
-                            response['Content-Disposition'] = f'attachment; filename="uv_agreement_{safe_cn}.pdf"'
+                            download_filename = f'{base_prefix}_{safe_cn}.pdf'.upper()
+                            response['Content-Disposition'] = f'attachment; filename="{download_filename}"'
+                            try:
+                                ip = request.META.get('HTTP_X_FORWARDED_FOR') or request.META.get('REMOTE_ADDR') or ''
+                                if ip and ',' in ip:
+                                    ip = ip.split(',')[0].strip()
+                                ua = request.META.get('HTTP_USER_AGENT', '')
+                                user = getattr(request, 'user', None)
+                                uid = getattr(user, 'id', None) if user and getattr(user, 'is_authenticated', False) else None
+                                uname = getattr(user, 'username', None) if user and getattr(user, 'is_authenticated', False) else _resolve_username(request) or ''
+                                email = getattr(user, 'email', None) if user and getattr(user, 'is_authenticated', False) else ''
+                                DownloadLog.objects.create(
+                                    user_id=uid,
+                                    username=uname,
+                                    email=email,
+                                    file_type='uv',
+                                    file_identifier=str(contract_number),
+                                    filename=download_filename,
+                                    ip_address=ip,
+                                    user_agent=ua,
+                                    success=True,
+                                    file_size=len(pdf_bytes),
+                                    method='stream',
+                                )
+                            except Exception:
+                                logger.exception('Failed to write DownloadLog for UV PDF %s', contract_number)
                             return response
                         except Exception as e2:
                             logger.error('Failed to return UV PDF for %s: %s', contract_number, str(e2))
@@ -3334,7 +3654,32 @@ class UVAgreementDocxDownloadView(APIView):
                         except Exception:
                             logger.exception('Failed to write centralized document log (UV DOCX) %s', contract_number)
                         response = HttpResponse(docx_bytes, content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
-                        response['Content-Disposition'] = f'attachment; filename="uv_agreement_{safe_cn}.docx"'
+                        download_filename = f'{base_prefix}_{safe_cn}.docx'.upper()
+                        response['Content-Disposition'] = f'attachment; filename="{download_filename}"'
+                        try:
+                            ip = request.META.get('HTTP_X_FORWARDED_FOR') or request.META.get('REMOTE_ADDR') or ''
+                            if ip and ',' in ip:
+                                ip = ip.split(',')[0].strip()
+                            ua = request.META.get('HTTP_USER_AGENT', '')
+                            user = getattr(request, 'user', None)
+                            uid = getattr(user, 'id', None) if user and getattr(user, 'is_authenticated', False) else None
+                            uname = getattr(user, 'username', None) if user and getattr(user, 'is_authenticated', False) else _resolve_username(request) or ''
+                            email = getattr(user, 'email', None) if user and getattr(user, 'is_authenticated', False) else ''
+                            DownloadLog.objects.create(
+                                user_id=uid,
+                                username=uname,
+                                email=email,
+                                file_type='uv',
+                                file_identifier=str(contract_number),
+                                filename=download_filename,
+                                ip_address=ip,
+                                user_agent=ua,
+                                success=True,
+                                file_size=len(docx_bytes),
+                                method='stream',
+                            )
+                        except Exception:
+                            logger.exception('Failed to write DownloadLog for UV DOCX %s', contract_number)
                         return response
                     except Exception as e2:
                         logger.error('Failed to return UV DOCX for %s: %s', contract_number, str(e2))
@@ -3658,7 +4003,32 @@ class UVSP3DocxDownloadView(APIView):
                             except Exception as cleanup_e:
                                 logger.warning('Failed to cleanup pdf temp dir %s: %s', pdf_path, str(cleanup_e))
                             response = HttpResponse(pdf_bytes, content_type='application/pdf')
-                            response['Content-Disposition'] = f'attachment; filename="uv_sp3_{contract_number}.pdf"'
+                            download_filename = f'uv_sp3_{contract_number}.pdf'.upper()
+                            response['Content-Disposition'] = f'attachment; filename="{download_filename}"'
+                            try:
+                                ip = request.META.get('HTTP_X_FORWARDED_FOR') or request.META.get('REMOTE_ADDR') or ''
+                                if ip and ',' in ip:
+                                    ip = ip.split(',')[0].strip()
+                                ua = request.META.get('HTTP_USER_AGENT', '')
+                                user = getattr(request, 'user', None)
+                                uid = getattr(user, 'id', None) if user and getattr(user, 'is_authenticated', False) else None
+                                uname = getattr(user, 'username', None) if user and getattr(user, 'is_authenticated', False) else _resolve_username(request) or ''
+                                email = getattr(user, 'email', None) if user and getattr(user, 'is_authenticated', False) else ''
+                                DownloadLog.objects.create(
+                                    user_id=uid,
+                                    username=uname,
+                                    email=email,
+                                    file_type='uv',
+                                    file_identifier=str(contract_number),
+                                    filename=download_filename,
+                                    ip_address=ip,
+                                    user_agent=ua,
+                                    success=True,
+                                    file_size=len(pdf_bytes),
+                                    method='stream',
+                                )
+                            except Exception:
+                                logger.exception('Failed to write DownloadLog for UV SP3 PDF %s', contract_number)
                             return response
                         except Exception as e2:
                             logger.error('Failed to return UV SP3 PDF for %s: %s', contract_number, str(e2))
@@ -3690,7 +4060,32 @@ class UVSP3DocxDownloadView(APIView):
                         except Exception:
                             logger.exception('Failed to write DOCX generation log for UV SP3 %s', contract_number)
                         response = HttpResponse(docx_bytes, content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
-                        response['Content-Disposition'] = f'attachment; filename="uv_sp3_{contract_number}.docx"'
+                        download_filename = f'uv_sp3_{contract_number}.docx'.upper()
+                        response['Content-Disposition'] = f'attachment; filename="{download_filename}"'
+                        try:
+                            ip = request.META.get('HTTP_X_FORWARDED_FOR') or request.META.get('REMOTE_ADDR') or ''
+                            if ip and ',' in ip:
+                                ip = ip.split(',')[0].strip()
+                            ua = request.META.get('HTTP_USER_AGENT', '')
+                            user = getattr(request, 'user', None)
+                            uid = getattr(user, 'id', None) if user and getattr(user, 'is_authenticated', False) else None
+                            uname = getattr(user, 'username', None) if user and getattr(user, 'is_authenticated', False) else _resolve_username(request) or ''
+                            email = getattr(user, 'email', None) if user and getattr(user, 'is_authenticated', False) else ''
+                            DownloadLog.objects.create(
+                                user_id=uid,
+                                username=uname,
+                                email=email,
+                                file_type='uv',
+                                file_identifier=str(contract_number),
+                                filename=download_filename,
+                                ip_address=ip,
+                                user_agent=ua,
+                                success=True,
+                                file_size=len(docx_bytes),
+                                method='stream',
+                            )
+                        except Exception:
+                            logger.exception('Failed to write DownloadLog for UV SP3 DOCX %s', contract_number)
                         return response
                     except Exception as e2:
                         logger.error('Failed to return UV SP3 DOCX for %s: %s', contract_number, str(e2))

@@ -89,6 +89,9 @@ export function titleCasePayload(obj, numericFields = []) {
     try {
       const v = obj[k];
       const lk = String(k).toLowerCase();
+      // Explicitly exclude certain fields from any title-casing
+      const _excludedKeys = ['location_of_land', 'street_of_debtor'];
+      if (_excludedKeys.includes(lk)) { out[k] = v; return; }
       // Skip numeric fields
       if (Array.isArray(numericFields) && numericFields.includes(k)) { out[k] = v; return; }
       // Skip obvious identifiers/contact fields
@@ -96,7 +99,32 @@ export function titleCasePayload(obj, numericFields = []) {
       // Skip date/display/word fields (they are handled separately)
       if (/_in_word$|_by_word$|_date$|_display$/.test(k)) { out[k] = v; return; }
 
-      if (typeof v === 'string') out[k] = toTitleCase(v);
+      if (typeof v === 'string') {
+        // Default title-case
+        let transformed = toTitleCase(v);
+        try {
+          const lkKey = String(k).toLowerCase();
+          // Preserve RT/RW uppercase for address-like fields
+          const rtRwFields = ['street_name_of_debtor', 'location_of_land', 'street_of_debtor', 'street_name'];
+          const preserveAcronym = (text, acronym) => {
+            const ac = String(acronym).toLowerCase();
+            const re = new RegExp('(^|[^A-Za-z])(' + ac + ')([^A-Za-z]|$)', 'gi');
+            return text.replace(re, (m, p1, p2, p3) => p1 + acronym.toUpperCase() + p3);
+          };
+
+          if (rtRwFields.includes(lkKey)) {
+            transformed = preserveAcronym(transformed, 'rt');
+            transformed = preserveAcronym(transformed, 'rw');
+          }
+
+          // Preserve collateral acronyms (AJB, SHM)
+          if (lkKey === 'collateral_type') {
+            transformed = preserveAcronym(transformed, 'ajb');
+            transformed = preserveAcronym(transformed, 'shm');
+          }
+        } catch (e) { /* non-fatal */ }
+        out[k] = transformed;
+      }
       else if (Array.isArray(v)) out[k] = v.map(item => titleCasePayload(item, numericFields));
       else if (v && typeof v === 'object') out[k] = titleCasePayload(v, numericFields);
       else out[k] = v;
@@ -226,7 +254,13 @@ export function formatFieldName(name) {
     const isWord = /(_in_word|_by_word)$/.test(name);
     const base = name.replace(/(_in_word|_by_word)$/, '');
     if (base === 'notaris_fee') return isWord ? 'Handling Fee In Word' : 'Handling Fee';
-    if (base === 'flat_rate') return isWord ? 'Effective Rate In Word' : 'Effective Rate';
+    // UX: show more user-friendly labels for previous topup and topup contract
+    if (base === 'previous_topup_amount') return isWord ? 'Outstanding Previous Contract In Word' : 'Outstanding Previous Contract';
+    if (base === 'topup_contract') return isWord ? 'Previous Contract In Word' : 'Previous Contract';
+    // Note: `flat_rate` label intentionally not overridden here so BL can
+    // display the original "Flat Rate" while UV applies its own local
+    // override to show "Effective Rate". Keeping this mapping only for
+    // notaris_fee ensures the change is frontend-local and scoped.
 
     return name
       .split('_')

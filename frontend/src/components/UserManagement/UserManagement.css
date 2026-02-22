@@ -6,6 +6,20 @@
   min-height: 100vh;
 }
 
+/* Content Section headings spacing (match BL Agreement / Dashboard) */
+.content-section h2 {
+  margin: 0 0 20px 0;
+  font-size: 22px;
+  color: #333;
+  font-weight: 700;
+}
+
+.content-section p {
+  color: #666;
+  font-size: 15px;
+  margin: 10px 0;
+}
+
 .user-management-header {
   margin-bottom: 30px;
   background-color: white;
@@ -148,6 +162,19 @@
 
 .btn-edit:hover {
   background-color: #1565c0;
+}
+
+.action-btn {
+  padding: 6px 10px;
+  font-size: 13px;
+  border: 1px solid #d0d7df;
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.action-btn:hover:not(:disabled) {
+  background: linear-gradient(180deg, #f8fafc, #ffffff);
+  transform: translateY(-1px);
 }
 
 .error-message {
@@ -327,4 +354,87 @@
 .btn-save:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* Pagination button styles */
+.pagination-btn {
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0a1e3d;
+  background: white;
+  border: 1px solid #d0d7df;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.15s ease;
+}
+.pagination-btn:hover:not(:disabled) {
+  background: linear-gradient(180deg, #f8fafc, #ffffff);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(10, 30, 61, 0.06);
+}
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.pagination-indicator {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #eee;
+  background: #fafafa;
+  color: #333;
+  font-weight: 600;
+}
+
+/* Compact branch action buttons used in MasterData Branches tab */
+.branch-action-btn {
+  padding: 4px;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: transparent;
+}
+
+/* Compact table cells for Branches tab to avoid tall rows caused by action buttons */
+.branches-table td,
+.branches-table th {
+  padding: 6px 8px;
+  vertical-align: middle;
+}
+
+.branches-table td .branch-action-btn {
+  width: 28px;
+  height: 28px;
+  padding: 4px;
+}
+
+/* Compact action buttons for agreement tables (BL / UV) */
+.compact-action-btn {
+  padding: 4px;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: transparent;
+}
+
+/* Keep agreement table rows compact */
+.agreements-table td,
+.agreements-table th {
+  padding: 6px 8px !important;
+  vertical-align: middle;
+}
+
+.agreements-table td .compact-action-btn {
+  width: 28px;
+  height: 28px;
+  padding: 4px;
 }

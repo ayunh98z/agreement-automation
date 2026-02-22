@@ -1,0 +1,88 @@
+<head><script defer src="/static/js/bundle.js"></script></head>Html Webpack Plugin:
+<pre>
+Error: Child compilation failed:
+Module build failed (from ./node_modules/html-webpack-plugin/lib/loader.js):
+Error: Cannot find module 'lodash/template'
+Require stack:
+- C:\laragon\www\lolc\operasional\frontend\node_modules\html-webpack-plugin\lib\loader.js
+- C:\laragon\www\lolc\operasional\frontend\node_modules\loader-runner\lib\loadLoader.js
+- C:\laragon\www\lolc\operasional\frontend\node_modules\loader-runner\lib\LoaderRunner.js
+- C:\laragon\www\lolc\operasional\frontend\node_modules\webpack\lib\NormalModule.js
+- C:\laragon\www\lolc\operasional\frontend\node_modules\webpack-manifest-plugin\dist\index.js
+- C:\laragon\www\lolc\operasional\frontend\node_modules\react-scripts\config\webpack.config.js
+- C:\laragon\www\lolc\operasional\frontend\node_modules\react-scripts\scripts\start.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1207:15)
+    at Module._load (node:internal/modules/cjs/loader:1038:27)
+    at Module.require (node:internal/modules/cjs/loader:1289:19)
+    at require (node:internal/modules/helpers:182:18)
+    at Object.<anonymous> (C:\laragon\www\lolc\operasional\frontend\node_modules\html-webpack-plugin\lib\loader.js:4:19)
+    at Module._compile (node:internal/modules/cjs/loader:1521:14)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+    at Module.load (node:internal/modules/cjs/loader:1266:32)
+    at Module._load (node:internal/modules/cjs/loader:1091:12)
+    at Module.require (node:internal/modules/cjs/loader:1289:19)
+    at require (node:internal/modules/helpers:182:18)
+    at loadLoader (C:\laragon\www\lolc\operasional\frontend\node_modules\loader-runner\lib\loadLoader.js:59:19)
+    at iteratePitchingLoaders (C:\laragon\www\lolc\operasional\frontend\node_modules\loader-runner\lib\LoaderRunner.js:305:2)
+    at runLoaders (C:\laragon\www\lolc\operasional\frontend\node_modules\loader-runner\lib\LoaderRunner.js:497:2)
+    at NormalModule._doBuild (C:\laragon\www\lolc\operasional\frontend\node_modules\webpack\lib\NormalModule.js:1038:3)
+    at NormalModule.build (C:\laragon\www\lolc\operasional\frontend\node_modules\webpack\lib\NormalModule.js:1276:15)
+    at C:\laragon\www\lolc\operasional\frontend\node_modules\webpack\lib\Compilation.js:1575:12
+    at NormalModule.needBuild (C:\laragon\www\lolc\operasional\frontend\node_modules\webpack\lib\NormalModule.js:1614:32)
+    at Compilation._buildModule (C:\laragon\www\lolc\operasional\frontend\node_modules\webpack\lib\Compilation.js:1556:10)
+    at C:\laragon\www\lolc\operasional\frontend\node_modules\webpack\lib\util\AsyncQueue.js:341:10
+    at Hook.eval [as callAsync] (eval at create (C:\laragon\www\lolc\operasional\frontend\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:6:1)
+    at AsyncQueue._startProcessing (C:\laragon\www\lolc\operasional\frontend\node_modules\webpack\lib\util\AsyncQueue.js:331:26)
+    at AsyncQueue._ensureProcessing (C:\laragon\www\lolc\operasional\frontend\node_modules\webpack\lib\util\AsyncQueue.js:318:12)
+    at process.processImmediate (node:internal/timers:483:21)
+ModuleBuildError: Module build failed (from ./node_modules/html-webpack-plugin/lib/loader.js):
+Error: Cannot find module 'lodash/template'
+Require stack:
+- C:\laragon\www\lolc\operasional\frontend\node_modules\html-webpack-plugin\lib\loader.js
+- C:\laragon\www\lolc\operasional\frontend\node_modules\loader-runner\lib\loadLoader.js
+- C:\laragon\www\lolc\operasional\frontend\node_modules\loader-runner\lib\LoaderRunner.js
+- C:\laragon\www\lolc\operasional\frontend\node_modules\webpack\lib\NormalModule.js
+- C:\laragon\www\lolc\operasional\frontend\node_modules\webpack-manifest-plugin\dist\index.js
+- C:\laragon\www\lolc\operasional\frontend\node_modules\react-scripts\config\webpack.config.js
+- C:\laragon\www\lolc\operasional\frontend\node_modules\react-scripts\scripts\start.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1207:15)
+    at Module._load (node:internal/modules/cjs/loader:1038:27)
+    at Module.require (node:internal/modules/cjs/loader:1289:19)
+    at require (node:internal/modules/helpers:182:18)
+    at Object.<anonymous> (C:\laragon\www\lolc\operasional\frontend\node_modules\html-webpack-plugin\lib\loader.js:4:19)
+    at Module._compile (node:internal/modules/cjs/loader:1521:14)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+    at Module.load (node:internal/modules/cjs/loader:1266:32)
+    at Module._load (node:internal/modules/cjs/loader:1091:12)
+    at Module.require (node:internal/modules/cjs/loader:1289:19)
+    at require (node:internal/modules/helpers:182:18)
+    at loadLoader (C:\laragon\www\lolc\operasional\frontend\node_modules\loader-runner\lib\loadLoader.js:59:19)
+    at iteratePitchingLoaders (C:\laragon\www\lolc\operasional\frontend\node_modules\loader-runner\lib\LoaderRunner.js:305:2)
+    at runLoaders (C:\laragon\www\lolc\operasional\frontend\node_modules\loader-runner\lib\LoaderRunner.js:497:2)
+    at NormalModule._doBuild (C:\laragon\www\lolc\operasional\frontend\node_modules\webpack\lib\NormalModule.js:1038:3)
+    at NormalModule.build (C:\laragon\www\lolc\operasional\frontend\node_modules\webpack\lib\NormalModule.js:1276:15)
+    at C:\laragon\www\lolc\operasional\frontend\node_modules\webpack\lib\Compilation.js:1575:12
+    at NormalModule.needBuild (C:\laragon\www\lolc\operasional\frontend\node_modules\webpack\lib\NormalModule.js:1614:32)
+    at Compilation._buildModule (C:\laragon\www\lolc\operasional\frontend\node_modules\webpack\lib\Compilation.js:1556:10)
+    at C:\laragon\www\lolc\operasional\frontend\node_modules\webpack\lib\util\AsyncQueue.js:341:10
+    at Hook.eval [as callAsync] (eval at create (C:\laragon\www\lolc\operasional\frontend\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:6:1)
+    at AsyncQueue._startProcessing (C:\laragon\www\lolc\operasional\frontend\node_modules\webpack\lib\util\AsyncQueue.js:331:26)
+    at AsyncQueue._ensureProcessing (C:\laragon\www\lolc\operasional\frontend\node_modules\webpack\lib\util\AsyncQueue.js:318:12)
+    at process.processImmediate (node:internal/timers:483:21)
+    at processResult (C:\laragon\www\lolc\operasional\frontend\node_modules\webpack\lib\NormalModule.js:959:19)
+    at C:\laragon\www\lolc\operasional\frontend\node_modules\webpack\lib\NormalModule.js:1161:5
+    at C:\laragon\www\lolc\operasional\frontend\node_modules\loader-runner\lib\LoaderRunner.js:499:11
+    at C:\laragon\www\lolc\operasional\frontend\node_modules\loader-runner\lib\LoaderRunner.js:308:11
+    at loadLoader (C:\laragon\www\lolc\operasional\frontend\node_modules\loader-runner\lib\loadLoader.js:75:11)
+    at iteratePitchingLoaders (C:\laragon\www\lolc\operasional\frontend\node_modules\loader-runner\lib\LoaderRunner.js:305:2)
+    at runLoaders (C:\laragon\www\lolc\operasional\frontend\node_modules\loader-runner\lib\LoaderRunner.js:497:2)
+    at NormalModule._doBuild (C:\laragon\www\lolc\operasional\frontend\node_modules\webpack\lib\NormalModule.js:1038:3)
+    at NormalModule.build (C:\laragon\www\lolc\operasional\frontend\node_modules\webpack\lib\NormalModule.js:1276:15)
+    at C:\laragon\www\lolc\operasional\frontend\node_modules\webpack\lib\Compilation.js:1575:12
+    at NormalModule.needBuild (C:\laragon\www\lolc\operasional\frontend\node_modules\webpack\lib\NormalModule.js:1614:32)
+    at Compilation._buildModule (C:\laragon\www\lolc\operasional\frontend\node_modules\webpack\lib\Compilation.js:1556:10)
+    at C:\laragon\www\lolc\operasional\frontend\node_modules\webpack\lib\util\AsyncQueue.js:341:10
+    at Hook.eval [as callAsync] (eval at create (C:\laragon\www\lolc\operasional\frontend\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:6:1)
+    at AsyncQueue._startProcessing (C:\laragon\www\lolc\operasional\frontend\node_modules\webpack\lib\util\AsyncQueue.js:331:26)
+    at AsyncQueue._ensureProcessing (C:\laragon\www\lolc\operasional\frontend\node_modules\webpack\lib\util\AsyncQueue.js:318:12)
+    at process.processImmediate (node:internal/timers:483:21)</pre>

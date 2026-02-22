@@ -17,8 +17,9 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from myproject import views  # Mengimpor views dari aplikasi myapp
-from .views import RegisterView, CustomTokenObtainPairView, CustomTokenRefreshView, ProtectedView, DashboardSummaryView, SimpleLoginView
-from .views import UserListCreateView, UserDetailView, BLAgreementView, BLAgreementContractListView, BranchListView, BranchManagerByCityView, DirectorListView, RegionListView, AreaListView
+from .views import CustomTokenObtainPairView, CustomTokenRefreshView, ProtectedView, DashboardSummaryView, BranchListView, BranchManagerByCityView, DirectorListView, RegionListView, AreaListView
+from myproject.user_management import views as user_views
+from myproject.uv_agreement.views import UVCollateralCreateView
 
 
 
@@ -26,33 +27,30 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('accounts/', include('allauth.urls')),
     path('', views.home, name='home'),  # Menambahkan root URL (/) yang menuju ke view home
-    path('login/', SimpleLoginView.as_view(), name='simple-login'),  # Simple login endpoint (dari auth_user table)
-    path('register/', RegisterView.as_view(), name='register'),  # Register endpoint
+        path('login/', user_views.SimpleLoginView.as_view(), name='simple-login'),  # Simple login endpoint (moved to user_management)
+        path('register/', user_views.RegisterView.as_view(), name='register'),  # Register endpoint (moved to user_management)
     path('api/token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),  # Login (JWT)
     path('api/token/refresh/', CustomTokenRefreshView.as_view(), name='token_refresh'),  # Refresh token
     path('protected/', ProtectedView.as_view(), name='protected'),  # Contoh endpoint yang dilindungi
     path('api/dashboard/summary/', DashboardSummaryView.as_view(), name='dashboard-summary'),
-    path('api/users/', UserListCreateView.as_view(), name='user-list-create'),
-    path('api/users/<str:username>/', UserDetailView.as_view(), name='user-detail'),
-    path('api/bl-agreement/', BLAgreementView.as_view(), name='bl-agreement'),  # BL Agreement endpoint
-    path('api/bl-agreement/contracts/', BLAgreementContractListView.as_view(), name='bl-agreement-contracts'),  # BL Agreement contract list
-    path('api/bl-agreement/download-docx/', views.BLAgreementDocxDownloadView.as_view(), name='bl-agreement-download-docx'),
-    # UV agreement endpoints (kept separate from BL)
-    path('api/uv-agreement/', views.UVAgreementView.as_view(), name='uv-agreement'),
-    path('api/uv-agreement/contracts/', views.UVAgreementView.as_view(), name='uv-agreement-contracts'),
-    path('api/uv-agreement/download-docx/', views.UVAgreementDocxDownloadView.as_view(), name='uv-agreement-download-docx'),
-    path('api/uv-sp3/download-docx/', views.UVSP3DocxDownloadView.as_view(), name='uv-sp3-download-docx'),
-    path('api/uv-sp3/', views.UVSP3ListView.as_view(), name='uv-sp3'),
-    path('api/uv-collateral/', views.UVCollateralCreateView.as_view(), name='uv-collateral-create'),
+        path('api/users/', user_views.UserListCreateView.as_view(), name='user-list-create'),
+        path('api/users/<str:username>/', user_views.UserDetailView.as_view(), name='user-detail'),
+    path('api/bl-agreement/', include('myproject.bl_agreement.urls')),
+    # UV agreement endpoints
+    path('api/uv-agreement/', include('myproject.uv_agreement.urls')),
     path('api/contracts/', views.ContractCreateView.as_view(), name='contract-create'),
+    path('api/contracts/list/', views.ContractsListView.as_view(), name='contracts-list'),
+    path('api/contracts/table/', views.ContractsTableView.as_view(), name='contracts-table'),
     path('api/contracts/lookup/', views.ContractLookupView.as_view(), name='contract-lookup'),
     path('api/bl-collateral/', views.BLCollateralCreateView.as_view(), name='bl-collateral-create'),
-    path('api/bl-sp3/', views.BLSP3View.as_view(), name='bl-sp3'),
-    path('api/bl-sp3/create-public/', views.bl_sp3_public_create, name='bl-sp3-create-public'),
+    path('api/uv-collateral/', UVCollateralCreateView.as_view(), name='uv-collateral-create'),
+    # All BL/UV endpoints are served from their app packages below.
+    # Keep monolith routes only for unrelated legacy views.
     path('api/regions/', RegionListView.as_view(), name='region-list'),
     path('api/areas/', AreaListView.as_view(), name='area-list'),
     path('api/branches/', BranchListView.as_view(), name='branch-list'),
     path('api/branch-manager/', BranchManagerByCityView.as_view(), name='branch-manager-by-city'),
     path('api/directors/', DirectorListView.as_view(), name='director-list'),
     path('api/whoami/', views.WhoAmIView.as_view(), name='whoami'),
+    path('api/downloads/logs/', views.DownloadLogListView.as_view(), name='download-log-list'),
 ]

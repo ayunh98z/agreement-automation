@@ -47,7 +47,7 @@ if isinstance(collateral, dict):
             ctx[k] = v
 ctx['contract_number'] = contract_number
 
-numeric_keys = ['loan_amount', 'admin_fee', 'net_amount', 'notaris_fee', 'mortgage_amount']
+numeric_keys = ['loan_amount', 'admin_fee', 'net_amount', 'notaris_fee', 'mortgage_amount', 'total_amount']
 for nk in numeric_keys:
     val = ctx.get(nk)
     try:

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import Dashboard from './Dashboard';
+import Dashboard from './components/DashboardHome';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import './App.css';
 
 function App() {
@@ -38,14 +40,24 @@ function App() {
       // Menyimpan token akses di localStorage
       localStorage.setItem('access_token', response.data.access);
       localStorage.setItem('refresh_token', response.data.refresh);
-      localStorage.setItem('user_data', JSON.stringify(response.data.user));
+      // initial user object from login response
+      let userObj = response.data.user || {};
+      // try to fetch extended user info (role, branch/area/region) from whoami
+      try {
+        const who = await axios.get(`${BACKEND_URL}/api/whoami/`, { headers: { Authorization: `Bearer ${response.data.access}` } });
+        userObj = { ...userObj, ...who.data };
+      } catch (e) {
+        // ignore whoami failure; we'll fallback to login user data
+        console.warn('whoami fetch after login failed', e);
+      }
+      localStorage.setItem('user_data', JSON.stringify(userObj));
 
       setMessage('Login berhasil!');
       setMessageType('success');
       setUsername('');
       setPassword('');
       setIsLoggedIn(true);
-      setUserData(response.data.user);
+      setUserData(userObj);
     } catch (error) {
       console.error('Login error:', error);
       
@@ -57,6 +69,9 @@ function App() {
         errorMsg = 'Tidak bisa terhubung ke backend. Pastikan backend sudah dijalankan.';
       } else if (error.response?.status === 401) {
         errorMsg = error.response.data.error || 'Username atau password salah';
+      } else if (error.response?.status === 403) {
+        // Show inactive account message from server when present
+        errorMsg = error.response.data.error || 'Akun tidak aktif. Hubungi administrator.';
       } else if (error.response?.status === 400) {
         errorMsg = error.response.data.error || 'Username dan password harus diisi';
       } else if (error.message === 'Network Error') {
@@ -88,8 +103,20 @@ function App() {
     const savedUserData = localStorage.getItem('user_data');
     
     if (token && savedUserData) {
-      setIsLoggedIn(true);
-      setUserData(JSON.parse(savedUserData));
+      // try refresh user info from whoami to get latest role/context
+      (async () => {
+        try {
+          const res = await axios.get(`${BACKEND_URL}/api/whoami/`, { headers: { Authorization: `Bearer ${token}` } });
+          const merged = { ...(JSON.parse(savedUserData) || {}), ...res.data };
+          localStorage.setItem('user_data', JSON.stringify(merged));
+          setUserData(merged);
+          setIsLoggedIn(true);
+        } catch (e) {
+          // fallback to saved data if whoami fails
+          setIsLoggedIn(true);
+          setUserData(JSON.parse(savedUserData));
+        }
+      })();
     }
   }, []);
 
@@ -101,6 +128,17 @@ function App() {
   // Tampilkan Login Page
   return (
     <div className="App">
+      <ToastContainer 
+        position="top-right" 
+        autoClose={3000} 
+        hideProgressBar={false} 
+        newestOnTop={false} 
+        closeOnClick 
+        rtl={false} 
+        pauseOnFocusLoss 
+        draggable 
+        pauseOnHover 
+      />
       <div className="login-container">
         <div className="login-card">
           <div className="card-header">
@@ -184,9 +222,19 @@ function App() {
             <div className="card-footer">
               <p>© 2026 LOLC Ventura Indonesia. All rights reserved.</p>
             </div>
+
           </form>
         </div>
       </div>
+
+      <footer className="site-footer">
+        <div className="footer-inner">
+          <span className="made-with">Developed by <button type="button" className="dev-link" onClick={() => { /* non-navigable label */ }}>Ayu Nurhasanah</button></span>
+          <span className="dot-sep">•</span>
+          <span className="copyright">© 2026</span>
+        </div>
+      </footer>
+
     </div>
   );
 }

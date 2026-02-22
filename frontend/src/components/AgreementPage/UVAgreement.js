@@ -4,12 +4,41 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 import '../UserManagement/UserManagement.css';
 import { buildCollateralPayload } from './collateralUtils';
-import docxIcon from '../../assets/icons/docx-icon.svg';
 import pdfIcon from '../../assets/icons/pdf-icon.svg';
 import { getIndonesianNumberWord, getIndonesianDateInWords, getIndonesianDateDisplay, parseDateFromDisplay, getIndonesianDayName, formatNumberWithDots, formatDateDisplay, isDateFieldName, formatFieldName, titleCasePayload } from '../../utils/formatting';
 import { t } from '../../utils/messages';
 import { stripIdKeys, normalizeSection } from '../../utils/payloadUtils';
 import { requestWithAuth } from '../../utils/api';
+
+// Helper: lookup contract row directly from `contract` table (used by Add-Contract modal)
+async function fetchContractLookup(cn) {
+  if (!cn || !String(cn).trim()) return {};
+  try {
+    const url = `http://localhost:8000/api/contracts/lookup/?contract_number=${encodeURIComponent(String(cn).trim())}`;
+    const res = await requestWithAuth({ method: 'get', url });
+    return res.data || {};
+  } catch (err) {
+    console.error('uv fetchContractLookup failed for', cn, err);
+    return {};
+  }
+}
+
+// Generic helper: find a likely matching key value inside objects with inconsistent keys
+function findValueInObj(obj, targetKey) {
+  if (!obj || !targetKey) return undefined;
+  const normalize = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const nt = normalize(targetKey);
+  if (Object.prototype.hasOwnProperty.call(obj, targetKey)) return obj[targetKey];
+  if (Object.prototype.hasOwnProperty.call(obj, targetKey.toLowerCase())) return obj[targetKey.toLowerCase()];
+  for (const k of Object.keys(obj)) { if (normalize(k) === nt) return obj[k]; }
+  const parts = targetKey.split('_').map(p => p.toLowerCase()).filter(Boolean);
+  for (const k of Object.keys(obj)) {
+    const lk = k.toLowerCase(); let score = 0;
+    for (const p of parts) if (p.length > 2 && lk.includes(p)) score++;
+    if (score >= Math.max(1, Math.floor(parts.length / 2))) return obj[k];
+  }
+  return undefined;
+}
 
 // Payload id/pk stripping and normalization moved to shared util `payloadUtils`.
 
@@ -21,6 +50,17 @@ const rateFields = ['flat_rate', 'admin_rate'];
 function UVAgreementForm({ initialContractNumber = '', initialContractData = null, initialFilterNumber = '', initialFilterTrigger = 0, onSaved, onContractSaved, contractOnly = false, editOnly = false, createOnly = false, hideFilter = false, hideHeader = false, initialUvCollateralFields = null, inModal = false } = {}) {
   const [saving, setSaving] = React.useState(false);
   const [usernameDisplay, setUsernameDisplay] = React.useState('');
+
+  // Determine if current user is Admin (used to control Delete button visibility)
+  let isAdmin = false;
+  try {
+    const raw = localStorage.getItem('user_data');
+    if (raw) {
+      const ud = JSON.parse(raw);
+      const role = (ud.role || ud.role_name || '').toString().toLowerCase();
+      if (role.includes('admin')) isAdmin = true;
+    }
+  } catch (e) { /* ignore */ }
 
   // Download both Agreement and SP3 documents (DOCX or PDF when asPdf=true)
   const triggerDocxDownload = async (contractNum, accessToken, asPdf = false) => {
@@ -70,6 +110,7 @@ function UVAgreementForm({ initialContractNumber = '', initialContractData = nul
       console.error('DOCX/SP3 download failed', e);
     }
   };
+  
 
   
 
@@ -106,6 +147,12 @@ function UVAgreementForm({ initialContractNumber = '', initialContractData = nul
       });
 
       const headerFieldsToSave = { ...headerFields };
+      // Ensure admin_rate is numeric and default to 0 when empty
+      if (typeof contractDataToSave.admin_rate === 'undefined' || contractDataToSave.admin_rate === '' || contractDataToSave.admin_rate === null) {
+        contractDataToSave.admin_rate = 0;
+      } else {
+        contractDataToSave.admin_rate = Number(contractDataToSave.admin_rate) || 0;
+      }
       // (no _display fields added — visual formatting handled in inputs)
       if (headerFieldsToSave.agreement_date) {
         headerFieldsToSave.agreement_day_in_word = getIndonesianDayName(headerFieldsToSave.agreement_date) || headerFieldsToSave.agreement_day_in_word || '';
@@ -185,8 +232,9 @@ function UVAgreementForm({ initialContractNumber = '', initialContractData = nul
         ['contract_data','debtor','collateral_data','bm_data','branch_data','header_fields','extra_fields'].forEach(sec => {
           if (payload[sec]) normalizedPayload[sec] = normalizeSection(payload[sec], numericFields);
         });
-        // If saving from modal (create or edit), convert text fields to Title Case before sending
-        if (inModal) {
+        // For modal flows we preserve database-provided text as-is;
+        // apply title-casing only for non-modal full-form saves.
+        if (!inModal) {
           try { normalizedPayload = titleCasePayload(normalizedPayload, numericFields); } catch (e) { /* non-fatal */ }
         }
         if (!normalizedPayload.branch_id) {
@@ -230,13 +278,25 @@ function UVAgreementForm({ initialContractNumber = '', initialContractData = nul
         }
       } else {
         const resp = err?.response;
+        const respData = resp?.data;
+        let respText = '';
+        try { respText = typeof respData === 'string' ? respData : JSON.stringify(respData || ''); } catch (e) { respText = String(respData || ''); }
+        const bodyErr = resp?.data?.error || resp?.data?.message || '';
+        const respLower = (String(bodyErr) + ' ' + respText).toLowerCase();
         if (resp) {
-          const status = resp.status; const url = resp.request?.responseURL || resp.config?.url || 'unknown'; let body = '';
-          try { body = typeof resp.data === 'string' ? resp.data : JSON.stringify(resp.data); } catch (e) { body = String(resp.data); }
-          const errMsg = `Failed to save (${status}) ${url}: ${body && body.substring(0,200)}`;
-          setError(errMsg);
-          try { toast.error(errMsg); } catch (e) {}
-          console.error('Save error response:', resp, err);
+          const status = resp.status;
+          if (status === 409 || respLower.includes('duplicate') || respLower.includes('already registered') || respLower.includes('already exists') || respLower.includes('unique')) {
+            const dupMsg = 'Failed to save. The contract number you entered is already registered in the system.';
+            setError(dupMsg);
+            try { toast.error(dupMsg); } catch (e) {}
+          } else {
+            const url = resp.request?.responseURL || resp.config?.url || 'unknown'; let body = '';
+            try { body = typeof resp.data === 'string' ? resp.data : JSON.stringify(resp.data); } catch (e) { body = String(resp.data); }
+            const errMsg = `Failed to save (${status}) ${url}: ${body && body.substring(0,200)}`;
+            setError(errMsg);
+            try { toast.error(errMsg); } catch (e) {}
+            console.error('Save error response:', resp, err);
+          }
         } else { setError('Failed to save data: ' + (err.message || 'unknown error')); console.error('Save error:', err); }
       }
     } finally { setSaving(false); }
@@ -260,7 +320,28 @@ function UVAgreementForm({ initialContractNumber = '', initialContractData = nul
       if (typeof onContractSaved === 'function') { try { onContractSaved(res.data || payload); } catch (e) { console.warn('onContractSaved failed', e); } }
     } catch (err) {
       console.error('Failed saving contract-only', err);
-      const resp = err?.response; if (resp) { const status = resp.status; const url = resp.request?.responseURL || resp.config?.url || 'unknown'; let body = ''; try { body = typeof resp.data === 'string' ? resp.data : JSON.stringify(resp.data); } catch (e) { body = String(resp.data); } setContractOnlyError(`Failed saving contract (${status}) ${url}: ${body && body.substring(0,200)}`); console.error('Contract-only save response:', resp); } else { setContractOnlyError('Failed saving contract: ' + (err.message || 'unknown error')); }
+      const resp = err?.response;
+      if (resp) {
+        const status = resp.status;
+        // If server returned duplicate contract error, show user-friendly toast
+        const bodyErr = resp.data?.error || resp.data?.message || '';
+        if (status === 409 || (bodyErr && String(bodyErr).toLowerCase().includes('duplicate'))) {
+          const msg = 'Failed to save. The contract number you entered is already registered in the system.';
+          try { toast.error(msg); } catch (e) {}
+          setContractOnlyError(msg);
+        } else {
+          const url = resp.request?.responseURL || resp.config?.url || 'unknown';
+          let body = '';
+          try { body = typeof resp.data === 'string' ? resp.data : JSON.stringify(resp.data); } catch (e) { body = String(resp.data); }
+          const errMsg = `Failed saving contract (${status}) ${url}: ${body && body.substring(0,200)}`;
+          setContractOnlyError(errMsg);
+          try { toast.error(errMsg); } catch (e) {}
+          console.error('Contract-only save response:', resp);
+        }
+      } else {
+        const msg = 'Failed saving contract: ' + (err.message || 'unknown error');
+        setContractOnlyError(msg);
+      }
     } finally { setContractOnlySaving(false); }
   };
 
@@ -313,71 +394,18 @@ function UVAgreementForm({ initialContractNumber = '', initialContractData = nul
         const data = resp && resp.data ? resp.data : {};
         if (Array.isArray(data.columns) && data.columns.length) {
           setUvCollateralFields(data.columns);
-          return;
         }
-        const coll = data.collateral;
-        const collObj = Array.isArray(coll) ? (coll[0] || null) : (coll || null);
-        if (collObj) {
-          const derived = deriveUvCollateralFieldsFromObj(collObj);
-          if (derived && derived.length) setUvCollateralFields(derived);
-        }
-      } catch (e) {
-        // ignore
+      } catch (err) {
+        console.warn('Failed to load uv-collateral columns', err);
+      } finally {
+        try { setLoadingContracts(false); } catch (e) {}
       }
     })();
     return () => { cancelled = true; };
   }, [inModal, initialUvCollateralFields]);
-  const [extraFields, setExtraFields] = React.useState({});
-
-  const findValueInObj = (obj, targetKey) => { if (!obj || !targetKey) return undefined; const normalize = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); const nt = normalize(targetKey); if (obj.hasOwnProperty(targetKey)) return obj[targetKey]; if (obj.hasOwnProperty(targetKey.toLowerCase())) return obj[targetKey.toLowerCase()]; for (const k of Object.keys(obj)) { if (normalize(k) === nt) return obj[k]; } const parts = targetKey.split('_').map(p => p.toLowerCase()).filter(Boolean); for (const k of Object.keys(obj)) { const lk = k.toLowerCase(); let score = 0; for (const p of parts) if (p.length > 2 && lk.includes(p)) score++; if (score >= Math.max(1, Math.floor(parts.length / 2))) return obj[k]; } return undefined; };
-
-  const findKeyInObj = (obj, targetKey) => {
-    if (!obj || !targetKey) return null;
-    const normalize = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-    const nt = normalize(targetKey);
-    if (obj.hasOwnProperty(targetKey)) return targetKey;
-    if (obj.hasOwnProperty(targetKey.toLowerCase())) return targetKey.toLowerCase();
-    // exact normalized match
-    for (const k of Object.keys(obj)) { if (normalize(k) === nt) return k; }
-    // try common alternates (plat <-> plate, chassis <-> chassis, vehicle <-> vehicle)
-    const alternates = [targetKey.replace(/plat_/i, 'plate_'), targetKey.replace(/plate_/i, 'plat_'), targetKey.replace(/chassis_/i, 'chassis_'), targetKey.replace(/chassis_/i, 'chassis_'), targetKey.replace(/vehicle_/i, 'vehicle_'), targetKey.replace(/vehicle_/i, 'vehicle_')];
-    for (const alt of alternates) {
-      if (obj.hasOwnProperty(alt)) return alt;
-      if (obj.hasOwnProperty(alt.toLowerCase())) return alt.toLowerCase();
-    }
-    // fuzzy match by token overlap
-    const parts = targetKey.split('_').map(p => p.toLowerCase()).filter(Boolean);
-    for (const k of Object.keys(obj)) {
-      const lk = k.toLowerCase(); let score = 0; for (const p of parts) if (p.length > 2 && lk.includes(p)) score++; if (score >= Math.max(1, Math.floor(parts.length / 2))) return k;
-    }
-    return null;
-  };
-
-  // Defensive: ensure we always operate on a plain object for collateral
-  const firstCollateralObject = (coll) => {
-    if (!coll) return null;
-    if (Array.isArray(coll)) return coll.length ? coll[0] : null;
-    if (typeof coll === 'object') return coll;
-    return null;
-  };
-
-  const deriveUvCollateralFieldsFromObj = (collObj) => {
-    if (!collObj || typeof collObj !== 'object') return [];
-    const exclude = new Set(['id', 'uv_collateral_id', 'contract_number', 'created_by', 'created_at', 'updated_at', 'update_at']);
-    const keys = Object.keys(collObj || {}).filter(k => !exclude.has(k));
-    // prefer a sane ordering based on known fallback list
-    const order = ['wheeled_vehicle','vehicle_types','vehicle_type','vehicle_types','vehicle_brand','vehicle_brand','vehicle_model','vehicle_model','plat_number','plate_number','chassis_number','chassis_number','engine_number','manufactured_year','colour','bpkb_number','name_bpkb_owner'];
-    const ordered = [];
-    for (const k of order) {
-      const actual = findKeyInObj(collObj, k);
-      if (actual && keys.includes(actual) && !ordered.includes(actual)) ordered.push(actual);
-    }
-    // append any remaining keys (excluding metadata)
-    for (const k of keys) if (!ordered.includes(k)) ordered.push(k);
-    return ordered;
-  };
 
   const [headerFields, setHeaderFields] = React.useState({ agreement_date: new Date().toISOString().split('T')[0], place_of_agreement: '', agreement_day_in_word: '', agreement_date_in_word: '', Name_of_director: '', date_of_delegated: new Date().toISOString().split('T')[0], sp3_number: '', sp3_date: new Date().toISOString().split('T')[0], phone_number_of_lolc: '' });
+  const [extraFields, setExtraFields] = React.useState({});
   // Modal-level validator: require filter (contract, branch, director) and dates when inside modal
   const isModalSaveAllowed = () => {
     if (!inModal) return true;
@@ -409,10 +437,15 @@ function UVAgreementForm({ initialContractNumber = '', initialContractData = nul
   const branchFields = ['street_name','subdistrict','district','city','province'];
   const numericFields = ['loan_amount','notaris_fee','admin_fee','net_amount','previous_topup_amount','mortgage_amount','tlo','life_insurance','stamp_amount','financing_agreement_amount','security_agreement_amount','upgrading_land_rights_amount','total_amount'];
   // rateFields is declared at file top-level to be accessible throughout
-  const contractFields = [ 'contract_number','nik_number_of_debtor','name_of_debtor','place_birth_of_debtor','date_birth_of_debtor','date_birth_of_debtor_in_word','street_of_debtor','subdistrict_of_debtor','district_of_debtor','city_of_debtor','province_of_debtor','phone_number_of_debtor','business_partners_relationship','business_type','bank_account_number','name_of_bank','name_of_account_holder','virtual_account_number','topup_contract','previous_topup_amount','loan_amount','loan_amount_in_word','term','term_by_word','flat_rate','flat_rate_by_word','notaris_fee','notaris_fee_in_word','admin_rate','admin_rate_in_word','admin_fee','admin_fee_in_word','mortgage_amount','mortgage_amount_in_word','tlo','tlo_in_word','life_insurance','life_insurance_in_word','stamp_amount','financing_agreement_amount','security_agreement_amount','upgrading_land_rights_amount','total_amount','net_amount','net_amount_in_word' ];
+  const contractFields = [ 'contract_number','nik_number_of_debtor','name_of_debtor','place_birth_of_debtor','date_birth_of_debtor','date_birth_of_debtor_in_word','street_of_debtor','subdistrict_of_debtor','district_of_debtor','city_of_debtor','province_of_debtor','phone_number_of_debtor','business_partners_relationship','business_type','bank_account_number','name_of_bank','name_of_account_holder','virtual_account_number','topup_contract','previous_topup_amount','loan_amount','loan_amount_in_word','net_amount','net_amount_in_word','term','term_by_word','flat_rate','flat_rate_by_word','admin_rate','admin_rate_in_word','admin_fee','admin_fee_in_word','notaris_fee','notaris_fee_in_word','mortgage_amount','mortgage_amount_in_word','tlo','tlo_in_word','life_insurance','life_insurance_in_word','stamp_amount','financing_agreement_amount','security_agreement_amount','upgrading_land_rights_amount','total_amount' ];
   const hiddenForUV = new Set(['mortgage_amount', 'mortgage_amount_in_word', 'stamp_amount', 'financing_agreement_amount', 'security_agreement_amount', 'upgrading_land_rights_amount']);
   const hiddenForBLCreate = new Set(['tlo', 'tlo_in_word', 'admin_rate', 'admin_rate_in_word', 'life_insurance', 'life_insurance_in_word']);
   const getVisibleContractFields = (forContractOnly = false) => { const shouldHide = forContractOnly || !!createOnly; if (!shouldHide) return contractFields; return contractFields.filter(f => !hiddenForUV.has(f)); };
+
+  // Modal contract table/order used by Add Contract and contract-only modal views
+  const getModalContractTableFields = () => {
+    return ['contract_number','nik_number_of_debtor','name_of_debtor','place_birth_of_debtor','date_birth_of_debtor','date_birth_of_debtor_in_word','street_of_debtor','subdistrict_of_debtor','district_of_debtor','city_of_debtor','province_of_debtor','phone_number_of_debtor','business_partners_relationship','business_type','bank_account_number','name_of_bank','name_of_account_holder','virtual_account_number','topup_contract','previous_topup_amount','loan_amount','loan_amount_in_word','net_amount','net_amount_in_word','term','term_by_word','flat_rate','flat_rate_by_word','admin_rate','admin_rate_in_word','admin_fee','admin_fee_in_word','notaris_fee','notaris_fee_in_word','tlo','tlo_in_word','life_insurance','life_insurance_in_word','stamp_amount','financing_agreement_amount','security_agreement_amount','upgrading_land_rights_amount','total_amount'];
+  };
 
   React.useEffect(() => { if (selectedDirector) (async () => { try { const token = localStorage.getItem('access_token'); const res = await axios.get('http://localhost:8000/api/directors/', { params: { name: selectedDirector }, headers: token ? { Authorization: `Bearer ${token}` } : {} }); const director = res.data.director || null; if (director) setHeaderFields(prev => ({ ...prev, phone_number_of_lolc: director.phone_number_of_lolc || '', Name_of_director: selectedDirector })); } catch (err) { console.warn('Failed to load director details', err); } })(); }, [selectedDirector]);
 
@@ -443,6 +476,49 @@ const styles = {
   input: { padding: '10px 12px', fontSize: '14px', border: '1px solid #ddd', borderRadius: '6px', outline: 'none', backgroundColor: '#f9f9f9', fontFamily: 'inherit' },
   btnPrimary: { padding: '10px 20px', fontSize: '14px', fontWeight: '600', background: 'linear-gradient(135deg, #0a1e3d 0%, #051626 100%)', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' },
   btnSecondary: { padding: '10px 20px', fontSize: '14px', fontWeight: '600', backgroundColor: 'white', color: '#0a1e3d', border: '2px solid #0a1e3d', borderRadius: '6px', cursor: 'pointer' }
+};
+
+// Helper utilities for uv-collateral field resolution
+const findKeyInObj = (obj, targetKey) => {
+  if (!obj || !targetKey) return null;
+  const normalize = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const nt = normalize(targetKey);
+  if (obj.hasOwnProperty(targetKey)) return targetKey;
+  if (obj.hasOwnProperty(targetKey.toLowerCase())) return targetKey.toLowerCase();
+  for (const k of Object.keys(obj)) { if (normalize(k) === nt) return k; }
+  const alternates = [targetKey.replace(/plat_/i, 'plate_'), targetKey.replace(/plate_/i, 'plat_'), targetKey.replace(/chassis_/i, 'chassis_'), targetKey.replace(/vehicle_/i, 'vehicle_')];
+  for (const alt of alternates) {
+    if (obj.hasOwnProperty(alt)) return alt;
+    if (obj.hasOwnProperty(alt.toLowerCase())) return alt.toLowerCase();
+  }
+  const parts = targetKey.split('_').map(p => p.toLowerCase()).filter(Boolean);
+  for (const k of Object.keys(obj)) {
+    const lk = k.toLowerCase(); let score = 0;
+    for (const p of parts) if (p.length > 2 && lk.includes(p)) score++;
+    if (score >= Math.max(1, Math.floor(parts.length / 2))) return k;
+  }
+  return null;
+};
+
+const firstCollateralObject = (coll) => {
+  if (!coll) return null;
+  if (Array.isArray(coll)) return coll.length ? coll[0] : null;
+  if (typeof coll === 'object') return coll;
+  return null;
+};
+
+const deriveUvCollateralFieldsFromObj = (collObj) => {
+  if (!collObj || typeof collObj !== 'object') return [];
+  const exclude = new Set(['id', 'uv_collateral_id', 'contract_number', 'created_by', 'created_at', 'updated_at', 'update_at']);
+  const keys = Object.keys(collObj || {}).filter(k => !exclude.has(k));
+  const order = ['wheeled_vehicle','vehicle_type','vehicle_types','vehicle_brand','vehicle_model','plat_number','plate_number','chassis_number','engine_number','manufactured_year','colour','bpkb_number','name_bpkb_owner'];
+  const ordered = [];
+  for (const k of order) {
+    const actual = findKeyInObj(collObj, k);
+    if (actual && keys.includes(actual) && !ordered.includes(actual)) ordered.push(actual);
+  }
+  for (const k of keys) if (!ordered.includes(k)) ordered.push(k);
+  return ordered;
 };
 
 // --- End helpers ---
@@ -780,7 +856,10 @@ const styles = {
     }
   };
 
+  
+
   const handleInputChange = (section, field, value) => {
+    try { console.debug('handleInputChange', section, field, value, 'len', (value || '').toString().length); } catch (e) { /* ignore logging errors */ }
     if (section === 'bm') {
       if (String(field).toLowerCase().includes('nik')) {
         const raw = String(value || '').replace(/\D/g, '').slice(0,16);
@@ -792,6 +871,60 @@ const styles = {
       if (String(field).toLowerCase().includes('nik')) {
         const raw = String(value || '').replace(/\D/g, '').slice(0,16);
         setContractData(prev => ({ ...prev, [field]: raw }));
+        // If in Add-Contract modal and user typed full 16-digit NIK, attempt autofill
+        if (inModal && contractOnly && raw && raw.length === 16) {
+          (async () => {
+            try {
+              // try cached contracts first
+              let found = (contracts || []).find(c => {
+                const cand = ((c.debtor && (c.debtor.nik_number_of_debtor || c.debtor.nik)) || c.nik_number_of_debtor || c.debtor_nik || '').toString().replace(/\D/g, '');
+                return cand && cand === raw;
+              });
+              if (found && (found.contract_number || found.contract)) {
+                const cn = found.contract_number || (found.contract && (found.contract.contract_number || found.contract_number)) || '';
+                if (cn) {
+                  const data = await fetchContractLookup(cn);
+                  const c = data.contract || data || {};
+                  const mapped = {};
+                  const nikFields = ['name_of_debtor','place_birth_of_debtor','date_birth_of_debtor','date_birth_of_debtor_in_word','street_of_debtor','subdistrict_of_debtor','district_of_debtor','city_of_debtor','province_of_debtor','phone_number_of_debtor','business_partners_relationship','business_type'];
+                  nikFields.forEach((f) => {
+                    const v = findValueInObj(c, f);
+                    if (v !== undefined && v !== null && String(v).trim() !== '') mapped[f] = v;
+                  });
+                  if (Object.keys(mapped).length) setContractData(prev => ({ ...prev, ...mapped }));
+                }
+                return;
+              }
+              // fallback: fetch contracts table and try to match by NIK
+              try {
+                const token = localStorage.getItem('access_token');
+                const headers = token ? { Authorization: `Bearer ${token}` } : {};
+                const resp = await axios.get('http://localhost:8000/api/contracts/table/', { headers });
+                const items = resp.data?.contracts || resp.data || [];
+                const matched = (items || []).find(it => {
+                  const cand = ((it.debtor && (it.debtor.nik_number_of_debtor || it.debtor.nik)) || it.nik_number_of_debtor || it.debtor_nik || '').toString().replace(/\D/g, '');
+                  return cand && cand === raw;
+                });
+                if (matched && (matched.contract_number || matched.contract)) {
+                  const cn2 = matched.contract_number || (matched.contract && (matched.contract.contract_number || matched.contract_number)) || '';
+                  if (cn2) {
+                    const data2 = await fetchContractLookup(cn2);
+                    const c2 = data2.contract || data2 || {};
+                    const mapped2 = {};
+                    const nikFields2 = ['name_of_debtor','place_birth_of_debtor','date_birth_of_debtor','date_birth_of_debtor_in_word','street_of_debtor','subdistrict_of_debtor','district_of_debtor','city_of_debtor','province_of_debtor','phone_number_of_debtor','business_partners_relationship','business_type'];
+                    nikFields2.forEach((f) => {
+                      const v = findValueInObj(c2, f);
+                      if (v !== undefined && v !== null && String(v).trim() !== '') mapped2[f] = v;
+                    });
+                    if (Object.keys(mapped2).length) setContractData(prev => ({ ...prev, ...mapped2 }));
+                  }
+                }
+              } catch (e) { /* ignore table fetch errors */ }
+            } catch (e) {
+              console.error('NIK-based contract lookup failed', e);
+            }
+          })();
+        }
         return;
       }
       // handle rate fields (show comma on UI, store with dot)
@@ -828,7 +961,7 @@ const styles = {
   // Contract fields and renderer (keeps JSX concise)
   // Updated: include date_birth_of_debtor_in_word; remove mortgage_amount; add admin_rate, tlo, life_insurance and their _in_word counterparts
   const contractFieldList = [
-    'name_of_debtor','place_birth_of_debtor','date_birth_of_debtor','date_birth_of_debtor_in_word','street_of_debtor','subdistrict_of_debtor','district_of_debtor','city_of_debtor','province_of_debtor','nik_number_of_debtor','phone_number_of_debtor','business_partners_relationship','business_type','bank_account_number','name_of_bank','name_of_account_holder','virtual_account_number','topup_contract','previous_topup_amount','loan_amount','loan_amount_in_word','term','term_by_word','flat_rate','flat_rate_by_word','notaris_fee','notaris_fee_in_word','admin_fee','admin_fee_in_word','admin_rate','admin_rate_in_word','tlo','tlo_in_word','life_insurance','life_insurance_in_word','stamp_amount','financing_agreement_amount','security_agreement_amount','upgrading_land_rights_amount','total_amount','net_amount','net_amount_in_word'
+    'name_of_debtor','place_birth_of_debtor','date_birth_of_debtor','date_birth_of_debtor_in_word','street_of_debtor','subdistrict_of_debtor','district_of_debtor','city_of_debtor','province_of_debtor','nik_number_of_debtor','phone_number_of_debtor','business_partners_relationship','business_type','bank_account_number','name_of_bank','name_of_account_holder','virtual_account_number','topup_contract','previous_topup_amount','loan_amount','loan_amount_in_word','net_amount','net_amount_in_word','term','term_by_word','flat_rate','flat_rate_by_word','admin_fee','admin_fee_in_word','notaris_fee','notaris_fee_in_word','admin_rate','admin_rate_in_word','tlo','tlo_in_word','life_insurance','life_insurance_in_word','stamp_amount','financing_agreement_amount','security_agreement_amount','upgrading_land_rights_amount','total_amount'
   ];
   // handling_fee removed from UV forms per request
   const renderContractField = (f) => {
@@ -877,7 +1010,11 @@ const styles = {
         <input
           type={inputType}
           value={isDate ? (contractData[f] || '') : (isNumericInput ? (rateFields && rateFields.includes(f) ? String(contractData[f] || '').replace('.', ',') : formatNumberWithDots(contractData[f])) : (contractData[f] ?? ''))}
-          onChange={(e) => handleInputChange('contract', f, e.target.value)}
+          onChange={(e) => {
+            let v = e.target.value;
+            if (rateFields && rateFields.includes(f)) v = String(v || '').replace('.', ',');
+            handleInputChange('contract', f, v);
+          }}
           style={inputStyle}
         />
       </div>
@@ -922,7 +1059,7 @@ const styles = {
                 <div key={f} style={{ display: 'flex', flexDirection: 'column' }}>
                 <label style={labelStyle}>{formatLabel(f)}</label>
                 {(!isWordField && String(f).toLowerCase().includes('date')) ? (
-                  <input type="date" style={inputStyle} value={disabled ? value : (contractData[f] || '')} disabled={disabled} onChange={(e) => { if (!disabled) handleInputChange('contract', f, e.target.value); }} />
+                  <input type="date" style={inputStyle} value={disabled ? value : (contractData[f] || '')} disabled={disabled} onChange={(e) => { if (!disabled) { let v = e.target.value; if (rateFields && rateFields.includes(f)) v = String(v || '').replace('.', ','); handleInputChange('contract', f, v); } }} />
                 ) : (
                   (numericFields.includes(f) && !isWordField) ? (
                     <input
@@ -930,10 +1067,10 @@ const styles = {
                       style={inputStyle}
                       value={disabled ? value : (rateFields && rateFields.includes(f) ? String(contractData[f] || '').replace('.', ',') : formatNumberWithDots(contractData[f]))}
                       disabled={disabled}
-                      onChange={(e) => { if (!disabled) handleInputChange('contract', f, e.target.value); }}
+                      onChange={(e) => { if (!disabled) { let v = e.target.value; if (rateFields && rateFields.includes(f)) v = String(v || '').replace('.', ','); handleInputChange('contract', f, v); } }}
                     />
                   ) : (
-                    <input type="text" placeholder={String(f).toLowerCase().includes('date') ? 'DD/MM/YYYY' : ''} style={inputStyle} value={disabled ? value : value} disabled={disabled} onChange={(e) => { if (!disabled) handleInputChange('contract', f, e.target.value); }} />
+                    <input type="text" placeholder={String(f).toLowerCase().includes('date') ? 'DD/MM/YYYY' : ''} style={inputStyle} value={disabled ? value : value} disabled={disabled} onChange={(e) => { if (!disabled) { let v = e.target.value; if (rateFields && rateFields.includes(f)) v = String(v || '').replace('.', ','); handleInputChange('contract', f, v); } }} />
                   )
                 )}
               </div>
@@ -1045,7 +1182,12 @@ const styles = {
             <div style={inModal ? {} : { border: '1px solid #e6e6e6', padding: sectionPadding, borderRadius: 6 }}>
               <h4 style={h4Style}>Contract</h4>
               <div style={{ display: 'grid', gridTemplateColumns: inModal ? '1fr 1fr' : '1fr 1fr 1fr', gap: 8 }}>
-                {(inModal ? getVisibleContractFields(true) : contractFieldList).map(renderContractField)}
+                {(() => {
+                  const fieldsToRender = inModal
+                    ? ((createOnly || editOnly || contractOnly) ? getModalContractTableFields().filter(f => !hiddenForUV.has(f)) : getVisibleContractFields(true))
+                    : contractFieldList;
+                  return fieldsToRender.map(renderContractField);
+                })()}
               </div>
             </div>
 
@@ -1053,11 +1195,11 @@ const styles = {
               <div style={inModal ? {} : { border: '1px solid #e6e6e6', padding: sectionPadding, borderRadius: 6 }}>
               <h4 style={h4Style}>Collateral</h4>
               <div style={{ display: 'grid', gridTemplateColumns: inModal ? '1fr 1fr' : '1fr 1fr 1fr', gap: 8 }}>
-                {(Array.isArray(uvCollateralFields) && uvCollateralFields.length > 0 ? uvCollateralFields : ['vehicle_types','vehicle_brand','vehicle_model','plate_number','chassis_number','engine_number','manufactured_year','colour','bpkb_number','name_bpkb_owner']).map(f => {
-                  // resolve actual key present in collateralData (handles plat/plate, chassis/chassis, vehicle/vehicle variants)
+                {(Array.isArray(uvCollateralFields) && uvCollateralFields.length > 0 ? uvCollateralFields : ['vehicle_type','vehicle_brand','vehicle_model','plate_number','chassis_number','engine_number','manufactured_year','colour','bpkb_number','name_bpkb_owner']).map(f => {
+                  // resolve actual key present in collateralData (handles vehicle_type/vehicle_types, plat/plate, chassis/chassis, vehicle/vehicle variants)
                   const actualKey = findKeyInObj(collateralData || {}, f) || f;
                   const keyForState = actualKey;
-                  const labelName = (keyForState === 'vehicle_types') ? 'Vehicle Types' : formatLabel(keyForState);
+                  const labelName = (keyForState === 'vehicle_type' || keyForState === 'vehicle_types') ? 'Vehicle Types' : formatLabel(keyForState);
                   // Treat only explicit numeric collateral fields as numbers; avoid treating plate_number or bpkb owner/name as numeric.
                   const inputType = /(?:surface_area|capacity_of_building|^number_of_|_amount$|^manufactured_year$)/i.test(keyForState) ? 'number' : (isDateFieldName(keyForState) ? 'date' : 'text');
                   // Render dropdown for wheeled_vehicle
@@ -1146,6 +1288,9 @@ export function UVAgreementEdit({ initialContractNumber = '', onSaved, ...rest }
 
 export default function UVAgreement() {
   const [agreements, setAgreements] = useState([]);
+  const [pageSize, setPageSize] = useState(10);
+  const [page, setPage] = useState(1);
+  const [contracts, setContracts] = useState([]);
   const [columns, setColumns] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -1163,22 +1308,74 @@ export default function UVAgreement() {
   const [collateralMode, setCollateralMode] = useState(false);
   const [lastSavedContract, setLastSavedContract] = useState(null);
   const [contractFormData, setContractFormData] = useState({
-    contract_number: '', nik_number_of_debtor: '', name_of_debtor: '', place_birth_of_debtor: '', date_birth_of_debtor: '', street_of_debtor: '', subdistrict_of_debtor: '', district_of_debtor: '', city_of_debtor: '', province_of_debtor: '', phone_number_of_debtor: '', business_partners_relationship: '', business_type: '', loan_amount: '', loan_amount_in_word: '', term: '', term_by_word: '', flat_rate: '', flat_rate_by_word: '', bank_account_number: '', name_of_bank: '', name_of_account_holder: '', virtual_account_number: '', notaris_fee: '', notaris_fee_in_word: '', admin_fee: '', admin_fee_in_word: '', topup_contract: '', previous_topup_amount: '', net_amount: '', net_amount_in_word: '', admin_rate: '', admin_rate_in_word: '', tlo: '', tlo_in_word: '', life_insurance: '', life_insurance_in_word: ''
+    contract_number: '', nik_number_of_debtor: '', name_of_debtor: '', place_birth_of_debtor: '', date_birth_of_debtor: '', street_of_debtor: '', subdistrict_of_debtor: '', district_of_debtor: '', city_of_debtor: '', province_of_debtor: '', phone_number_of_debtor: '', business_partners_relationship: '', business_type: '', loan_amount: '', loan_amount_in_word: '', net_amount: '', net_amount_in_word: '', term: '', term_by_word: '', flat_rate: '', flat_rate_by_word: '', bank_account_number: '', name_of_bank: '', name_of_account_holder: '', virtual_account_number: '', notaris_fee: '', notaris_fee_in_word: '', admin_fee: '', admin_fee_in_word: '', topup_contract: '', previous_topup_amount: '', admin_rate: '', admin_rate_in_word: '', tlo: '', tlo_in_word: '', life_insurance: '', life_insurance_in_word: ''
   });
+
+  // Determine if current user is Admin (used to control Delete button visibility)
+  let isAdmin = false;
+  try {
+    const rawUser = localStorage.getItem('user_data');
+    if (rawUser) {
+      const ud = JSON.parse(rawUser);
+      const role = (ud.role || ud.role_name || '').toString().toLowerCase();
+      if (role.includes('admin')) isAdmin = true;
+    }
+  } catch (e) { /* ignore */ }
+
+  // load cached contracts for faster NIK/contract lookups used by modal autofill
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const token = localStorage.getItem('access_token');
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const resp = await axios.get('http://localhost:8000/api/bl-agreement/contracts/', { headers });
+        if (cancelled) return;
+        setContracts(resp.data?.contracts || []);
+      } catch (err) {
+        console.error('Error loading contracts cache:', err);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+  
+
+  // handler for contract number changes inside the UV Add-Contract modal
+  const handleUvContractNumberModalChange = async (value) => {
+    try {
+      setContractFormData(prev => ({ ...prev, contract_number: value }));
+      const trimmed = String(value || '').trim();
+      if (!trimmed) return;
+      if (!contractOnlyMode) return;
+      if (trimmed.length < 3) return;
+      const data = await fetchContractLookup(trimmed);
+      const c = data.contract || data || {};
+      const mapped = {};
+      // map only non-empty fields into contractFormData to avoid overwriting typed fields
+      Object.keys(contractFormData).forEach((f) => {
+        const v = c[f] ?? c[Object.keys(c).find(k => k.toLowerCase().replace(/[^a-z0-9]/g,'') === f.toLowerCase().replace(/[^a-z0-9]/g,''))];
+        if (v !== undefined && v !== null && String(v).trim() !== '') mapped[f] = v;
+      });
+      if (Object.keys(mapped).length) setContractFormData(prev => ({ ...prev, ...mapped }));
+    } catch (e) {
+      console.error('handleUvContractNumberModalChange failed', e);
+    }
+  };
   const contractFieldRefs = useRef({});
   const [contractFormErrors, setContractFormErrors] = useState({});
   // Return true when all visible, non-readonly contract fields (except
   // virtual_account_number and topup_contract) are non-empty.
   const getRequiredContractFields = () => {
-    const contractTableFields = ['contract_number','nik_number_of_debtor','name_of_debtor','place_birth_of_debtor','date_birth_of_debtor','date_birth_of_debtor_in_word','street_of_debtor','subdistrict_of_debtor','district_of_debtor','city_of_debtor','province_of_debtor','phone_number_of_debtor','business_partners_relationship','business_type','bank_account_number','name_of_bank','name_of_account_holder','virtual_account_number','topup_contract','previous_topup_amount','loan_amount','loan_amount_in_word','term','term_by_word','flat_rate','flat_rate_by_word','notaris_fee','notaris_fee_in_word','admin_rate','admin_rate_in_word','admin_fee','admin_fee_in_word','handling_fee','handling_fee_in_word','tlo','tlo_in_word','life_insurance','life_insurance_in_word','stamp_amount','financing_agreement_amount','security_agreement_amount','upgrading_land_rights_amount','total_amount','net_amount','net_amount_in_word'];
+    const contractTableFields = ['contract_number','nik_number_of_debtor','name_of_debtor','place_birth_of_debtor','date_birth_of_debtor','date_birth_of_debtor_in_word','street_of_debtor','subdistrict_of_debtor','district_of_debtor','city_of_debtor','province_of_debtor','phone_number_of_debtor','business_partners_relationship','business_type','bank_account_number','name_of_bank','name_of_account_holder','virtual_account_number','topup_contract','previous_topup_amount','loan_amount','loan_amount_in_word','net_amount','net_amount_in_word','term','term_by_word','flat_rate','flat_rate_by_word','admin_rate','admin_rate_in_word','admin_fee','admin_fee_in_word','notaris_fee','notaris_fee_in_word','tlo','tlo_in_word','life_insurance','life_insurance_in_word','stamp_amount','financing_agreement_amount','security_agreement_amount','upgrading_land_rights_amount','total_amount'];
     const hiddenForUVLocal = new Set(['mortgage_amount', 'mortgage_amount_in_word', 'stamp_amount', 'financing_agreement_amount', 'security_agreement_amount', 'upgrading_land_rights_amount']);
     let fields = contractTableFields.filter(f => !hiddenForUVLocal.has(f));
     // exclude the two optional fields
     fields = fields.filter(f => f !== 'virtual_account_number' && f !== 'topup_contract');
-    // exclude Handling Fee from being considered required in Add Contract modal
-    fields = fields.filter(f => f !== 'handling_fee' && f !== 'handling_fee_in_word');
+    // handling_fee removed from forms; nothing to exclude here
     // exclude read-only word fields
     fields = fields.filter(f => !(/(_in_word|_by_word)$/.test(f)));
+    // Do not treat previous_topup_amount as required (no asterisk)
+    fields = fields.filter(f => f !== 'previous_topup_amount');
     return fields;
   };
 
@@ -1194,7 +1391,7 @@ export default function UVAgreement() {
   const [collateralForm, setCollateralForm] = useState({
     contract_number: '',
     name_of_debtor: '',
-    vehicle_types: '',
+    vehicle_type: '',
     vehicle_brand: '',
     vehicle_model: '',
     plate_number: '',
@@ -1209,7 +1406,7 @@ export default function UVAgreement() {
   const [collateralError, setCollateralError] = useState('');
   const collateralFetchTimer = useRef(null);
   // Required fields for UV collateral modal (all visible fields)
-  const requiredUvCollateralFields = ['contract_number','name_of_debtor','wheeled_vehicle','vehicle_types','vehicle_brand','vehicle_model','plate_number','chassis_number','engine_number','manufactured_year','colour','bpkb_number','name_bpkb_owner'];
+  const requiredUvCollateralFields = ['contract_number','name_of_debtor','wheeled_vehicle','vehicle_type','vehicle_brand','vehicle_model','plate_number','chassis_number','engine_number','manufactured_year','colour','bpkb_number','name_bpkb_owner'];
   const isUvCollateralFormValid = () => {
     for (const f of requiredUvCollateralFields) {
       const v = collateralForm[f];
@@ -1224,7 +1421,7 @@ export default function UVAgreement() {
   
   // Default UV collateral fields (local to this wrapper component)
   const blCollateralFields = [ 'collateral_type','number_of_certificate','number_of_ajb','surface_area','name_of_collateral_owner','capacity_of_building','location_of_land' ];
-  const uvDefaultCollateralFields = [ 'vehicle_types','vehicle_brand','vehicle_model','plate_number','chassis_number','engine_number','manufactured_year','colour','bpkb_number','name_bpkb_owner' ];
+  const uvDefaultCollateralFields = [ 'vehicle_type','vehicle_brand','vehicle_model','plate_number','chassis_number','engine_number','manufactured_year','colour','bpkb_number','name_bpkb_owner' ];
   const collateralFields = uvDefaultCollateralFields;
   const [uvCollateralFields, setUvCollateralFields] = useState(collateralFields);
 
@@ -1286,6 +1483,24 @@ export default function UVAgreement() {
         const debtor = res.data?.debtor || res.data || {};
         const name = debtor.name_of_debtor || debtor.name || debtor.debtor_name || '';
         if (name) setCollateralForm(prev => ({ ...prev, name_of_debtor: name }));
+        // attempt to load uv_collateral rows for this contract and populate collateral fields
+        try {
+          const respColl = await axios.get('http://localhost:8000/api/uv-collateral/', { params: { contract_number: cn }, headers: localStorage.getItem('access_token') ? { Authorization: `Bearer ${localStorage.getItem('access_token')}` } : {} });
+          const collData = respColl.data?.collateral || respColl.data || [];
+          const collRow = Array.isArray(collData) ? (collData[0] || null) : (collData || null);
+          if (collRow) {
+            const mapped = {};
+            const keys = ['vehicle_type','vehicle_brand','vehicle_model','plate_number','chassis_number','engine_number','manufactured_year','colour','bpkb_number','name_bpkb_owner','wheeled_vehicle'];
+            keys.forEach(k => {
+              const v = findValueInObj(collRow, k);
+              if (v !== undefined && v !== null && String(v).trim() !== '') mapped[k] = v;
+            });
+            if (Object.keys(mapped).length) setCollateralForm(prev => ({ ...prev, ...mapped }));
+          }
+        } catch (e) {
+          // ignore collateral fetch errors
+          console.warn('uv_collateral fetch failed for', cn, e?.response?.data || e.message || e);
+        }
       } catch (err) {
         // silently ignore not-found / errors; keep existing value
         console.warn('Failed to fetch contract for collateral modal:', err?.response?.data || err.message || err);
@@ -1307,14 +1522,14 @@ export default function UVAgreement() {
       const rows = items.map(item => {
         // Prefer vehicle type fields from the TOP-LEVEL uv_agreement row (item)
         // so the table reflects columns from `uv_agreement` rather than nested collateral.
-        const vehicleVal = item.vehicle_type || item.vehicle_type || item.collateral_type || item.uv_collateral_type || ((item.collateral && (item.collateral.vehicle_types || item.collateral.vehicle_types || item.collateral.collateral_type)) || '') ;
+        const vehicleVal = item.vehicle_type || item.vehicle_type || item.collateral_type || item.uv_collateral_type || ((item.collateral && (item.collateral.vehicle_type || item.collateral.vehicle_types || item.collateral.collateral_type)) || '') ;
         const normalized = {
           agreement_date: item.agreement_date || item.header?.agreement_date || item.created_at || item.created || item.date_created || '',
           contract_number: item.contract_number || (item.contract && item.contract.contract_number) || '',
           name_of_debtor: (item.debtor || item.contract || {}).name_of_debtor || item.name_of_debtor || item.debtor_name || '',
           nik_number_of_debtor: (item.debtor || item.contract || {}).nik_number_of_debtor || item.nik_number_of_debtor || item.debtor_nik || '',
-          vehicle_types: vehicleVal,
           vehicle_type: vehicleVal,
+          vehicle_types: vehicleVal,
           created_by: item.created_by || item.created_by_name || item.created_by_user || item.created_by_user_name || ''
         };
         return { raw: item, ...normalized };
@@ -1327,18 +1542,18 @@ export default function UVAgreement() {
         if (it && typeof it === 'object') Object.keys(it).forEach(k => colsSet.add(k));
       });
       // prefer a few known columns first
-      const preferred = ['agreement_date', 'contract_number', 'name_of_debtor', 'nik_number_of_debtor', 'vehicle_types', 'vehicle_types', 'created_by'];
+      const preferred = ['agreement_date', 'contract_number', 'name_of_debtor', 'nik_number_of_debtor', 'vehicle_type', 'vehicle_types', 'created_by'];
       const dynamic = Array.from(colsSet).filter(c => !preferred.includes(c));
       let ordered = [...preferred.filter(p => colsSet.has(p)), ...dynamic];
-      // Ensure `vehicle_types` column appears after `nik_number_of_debtor` even if
+      // Ensure `vehicle_type` (or `vehicle_types`) column appears after `nik_number_of_debtor` even if
       // the physical column isn't present in uv_agreement (we derive it from nested collateral).
-      if (!ordered.includes('vehicle_types')) {
+      if (!ordered.includes('vehicle_type') && !ordered.includes('vehicle_types')) {
         const insertAfter = ordered.indexOf('nik_number_of_debtor');
         if (insertAfter >= 0) {
-          ordered = [...ordered.slice(0, insertAfter + 1), 'vehicle_types', ...ordered.slice(insertAfter + 1)];
+          ordered = [...ordered.slice(0, insertAfter + 1), 'vehicle_type', ...ordered.slice(insertAfter + 1)];
         } else {
           // fallback: append near start
-          ordered.splice(1, 0, 'vehicle_types');
+          ordered.splice(1, 0, 'vehicle_type');
         }
       }
       setColumns(ordered);
@@ -1389,6 +1604,24 @@ export default function UVAgreement() {
     } catch (err) {
       console.error('Failed fetch contract', err);
       return {};
+    }
+  };
+
+  // Delete handler for UV agreement rows (component-scoped so it can access state)
+  const handleDeleteRow = async (row) => {
+    if (!row || !row.contract_number) return;
+    const ok = window.confirm(`Delete agreement ${row.contract_number}? This cannot be undone.`);
+    if (!ok) return;
+    try {
+      setError('');
+      await requestWithAuth({ method: 'delete', url: `http://localhost:8000/api/uv-agreement/?contract_number=${encodeURIComponent(row.contract_number)}` });
+      toast.success('Record deleted');
+      await loadAgreements();
+    } catch (err) {
+      console.error('Delete failed', err);
+      const msg = err?.response?.data?.error || 'Failed to delete record';
+      setError(msg);
+      toast.error(msg);
     }
   };
 
@@ -1513,11 +1746,18 @@ export default function UVAgreement() {
       setShowCreateModal(false);
       setContractOnlyMode(false);
       await loadAgreements();
-      setSuccessMessage('Contract data saved successfully');
-      setTimeout(() => setSuccessMessage(''), 4000);
+      try { toast.success('Contract data saved successfully'); } catch (e) {}
     } catch (err) {
       console.error('Save contract-only failed', err);
-      setError('Failed to save contract');
+      const resp = err?.response;
+      const bodyErr = resp?.data?.error || resp?.data?.message || '';
+      if (resp && (resp.status === 409 || (bodyErr && String(bodyErr).toLowerCase().includes('duplicate')))) {
+        const msg = 'Failed to save. The contract number you entered is already registered in the system.';
+        try { toast.error(msg); } catch (e) {}
+        // only show toast for duplicate; do not set container error
+      } else {
+        setError('Failed to save contract');
+      }
     } finally { setSavingModal(false); }
   };
 
@@ -1567,6 +1807,7 @@ export default function UVAgreement() {
       await requestWithAuth({ method: 'post', url: 'http://localhost:8000/api/uv-agreement/', data: payload });
       setShowCreateModal(false);
       await loadAgreements();
+      try { toast.success('Contract data saved successfully'); } catch (e) {}
     } catch (err) {
       console.error('Save failed', err);
       setError('Failed to save');
@@ -1580,9 +1821,13 @@ export default function UVAgreement() {
     try { const d = new Date(iso); if (isNaN(d.getTime())) return iso; const dd = String(d.getDate()).padStart(2, '0'); const mm = String(d.getMonth() + 1).padStart(2, '0'); const yyyy = d.getFullYear(); return `${dd}-${mm}-${yyyy}`; } catch (e) { return iso; }
   };
 
+  const totalCount = (agreements || []).length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const paged = (agreements || []).slice((page - 1) * pageSize, (page - 1) * pageSize + pageSize);
+
   return (
     <div>
-      <div>
+      <div className="content-section">
         <h2>UV Agreement</h2>
         <p>Before creating the document, make sure to fill in the contract and collateral data first.</p>
       </div>
@@ -1615,7 +1860,7 @@ export default function UVAgreement() {
             <div className="error-message">{error}</div>
           ) : (
             <div style={{ overflowX: 'auto' }}>
-              <table className="user-table">
+              <table className="user-table agreements-table">
                 <thead>
                   <tr>
                     <th>Agreement Date</th>
@@ -1628,10 +1873,10 @@ export default function UVAgreement() {
                   </tr>
                 </thead>
                 <tbody>
-                  {agreements.length === 0 ? (
+                  {paged.length === 0 ? (
                     <tr><td className="no-data" colSpan={7}>No agreements found.</td></tr>
                   ) : (
-                    agreements.map((row, idx) => (
+                    paged.map((row, idx) => (
                       <tr key={row.contract_number || idx}>
                         <td>{formatDateShort(row.agreement_date)}</td>
                         <td>{row.contract_number ?? ''}</td>
@@ -1645,18 +1890,7 @@ export default function UVAgreement() {
                               onClick={() => handleEdit(row)}
                               title="Edit"
                               aria-label={`Edit ${row.contract_number || ''}`}
-                              style={{
-                                border: '1px solid #0a1e3d',
-                                background: 'transparent',
-                                borderRadius: 6,
-                                padding: 8,
-                                width: 36,
-                                height: 36,
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                cursor: 'pointer'
-                              }}
+                              className="action-btn compact-action-btn"
                             >
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z" fill="#0a1e3d"/>
@@ -1664,44 +1898,31 @@ export default function UVAgreement() {
                               </svg>
                             </button>
 
-                            <button
-                              onClick={() => handleDownloadRow(row)}
-                              title="Download DOCX"
-                              aria-label={`Download ${row.contract_number || ''}`}
-                              style={{
-                                border: '1px solid #0a1e3d',
-                                background: 'transparent',
-                                borderRadius: 6,
-                                padding: 6,
-                                width: 36,
-                                height: 36,
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              <img src={docxIcon} alt="DOCX" style={{ width: 20, height: 20 }} />
-                            </button>
+                            {/* DOCX download removed per request (hidden for all roles) */}
                             <button
                               onClick={() => handleDownloadPdf(row)}
                               title="Download PDF"
                               aria-label={`Download PDF ${row.contract_number || ''}`}
-                              style={{
-                                border: '1px solid #0a1e3d',
-                                background: 'transparent',
-                                borderRadius: 6,
-                                padding: 6,
-                                width: 36,
-                                height: 36,
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                cursor: 'pointer'
-                              }}
+                              className="action-btn compact-action-btn"
                             >
-                              <img src={pdfIcon} alt="PDF" style={{ width: 24, height: 24 }} />
+                              <img src={pdfIcon} alt="PDF" style={{ width: 18, height: 18 }} />
                             </button>
+                            {isAdmin && (
+                              <button
+                                onClick={() => handleDeleteRow(row)}
+                                title="Delete"
+                                aria-label={`Delete ${row.contract_number || ''}`}
+                                className="action-btn compact-action-btn"
+                                style={{ color: '#000', borderColor: '#000' }}
+                              >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                  <path d="M3 6h18" stroke="#000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="#000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                  <path d="M10 11v6M14 11v6" stroke="#000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                  <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" stroke="#000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -1709,6 +1930,29 @@ export default function UVAgreement() {
                   )}
                 </tbody>
               </table>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+                <div>Showing {agreements.length === 0 ? 0 : (page - 1) * pageSize + 1}-{Math.min((page - 1) * pageSize + ((agreements || []).slice((page - 1) * pageSize, (page - 1) * pageSize + pageSize)).length, (agreements || []).length)} of {(agreements || []).length}</div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }} style={{ padding: '6px 8px', border: '1px solid #ddd', borderRadius: 6 }}>
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                  </select>
+                  <button className="pagination-btn" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1} aria-label="Previous page">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                      <path d="M15 18L9 12L15 6" stroke="#0a1e3d" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    Prev
+                  </button>
+                  <div className="pagination-indicator">{page} / {Math.max(1, Math.ceil(((agreements || []).length || 0) / pageSize))}</div>
+                  <button className="pagination-btn" onClick={() => setPage(p => Math.min(Math.max(1, Math.ceil(((agreements || []).length || 0) / pageSize)), p + 1))} disabled={page >= Math.max(1, Math.ceil(((agreements || []).length || 0) / pageSize))} aria-label="Next page">
+                    Next
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                      <path d="M9 6L15 12L9 18" stroke="#0a1e3d" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -1758,8 +2002,8 @@ export default function UVAgreement() {
                     </div>
 
                     <div style={fieldGroupStyle}>
-                      <label style={fieldLabelStyle}>Vehicle Types{requiredUvCollateralFields.includes('vehicle_types') && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
-                      <input type="text" value={collateralForm.vehicle_types} onChange={(e) => setCollateralForm(prev => ({ ...prev, vehicle_types: e.target.value }))} style={fieldInputStyle} />
+                      <label style={fieldLabelStyle}>Vehicle Types{requiredUvCollateralFields.includes('vehicle_type') && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
+                      <input type="text" value={collateralForm.vehicle_type} onChange={(e) => setCollateralForm(prev => ({ ...prev, vehicle_type: e.target.value }))} style={fieldInputStyle} />
                     </div>
 
                     <div style={fieldGroupStyle}>
@@ -1829,12 +2073,20 @@ export default function UVAgreement() {
                           setShowCreateModal(false);
                           setCollateralMode(false);
                           loadAgreements();
-                          setSuccessMessage('Collateral data saved successfully');
-                          setTimeout(() => setSuccessMessage(''), 4000);
+                          try { toast.success('Collateral data saved successfully'); } catch (e) {}
                         } catch (err) {
                           console.error('Save collateral failed', err);
-                          const msg = err?.response?.data?.error || 'Failed to save collateral';
-                          setCollateralError(msg);
+                          const resp = err?.response;
+                          const bodyErr = resp?.data?.error || resp?.data?.message || '';
+                          if (resp && (resp.status === 409 || (bodyErr && String(bodyErr).toLowerCase().includes('duplicate')))) {
+                            const msg = 'Failed to save. The contract number you entered is already registered in the system.';
+                            try { toast.error(msg); } catch (e) {}
+                            // only show toast for duplicate; do not set container error
+                          } else {
+                            const msg = err?.response?.data?.error || 'Failed to save collateral';
+                            setCollateralError(msg);
+                            try { toast.error(msg); } catch (e) {}
+                          }
                         } finally {
                           setCollateralSaving(false);
                         }
@@ -1847,12 +2099,12 @@ export default function UVAgreement() {
 
                     {/** Define contract table fields (exclude mortgage_amount, created_by, created_at, updated_at) */}
                     {(() => {
-                      let contractTableFields = ['contract_number','nik_number_of_debtor','name_of_debtor','place_birth_of_debtor','date_birth_of_debtor','date_birth_of_debtor_in_word','street_of_debtor','subdistrict_of_debtor','district_of_debtor','city_of_debtor','province_of_debtor','phone_number_of_debtor','business_partners_relationship','business_type','bank_account_number','name_of_bank','name_of_account_holder','virtual_account_number','topup_contract','previous_topup_amount','loan_amount','loan_amount_in_word','term','term_by_word','flat_rate','flat_rate_by_word','notaris_fee','notaris_fee_in_word','admin_rate','admin_rate_in_word','admin_fee','admin_fee_in_word','handling_fee','handling_fee_in_word','tlo','tlo_in_word','life_insurance','life_insurance_in_word','stamp_amount','financing_agreement_amount','security_agreement_amount','upgrading_land_rights_amount','total_amount','net_amount','net_amount_in_word'];
+                      let contractTableFields = ['contract_number','nik_number_of_debtor','name_of_debtor','place_birth_of_debtor','date_birth_of_debtor','date_birth_of_debtor_in_word','street_of_debtor','subdistrict_of_debtor','district_of_debtor','city_of_debtor','province_of_debtor','phone_number_of_debtor','business_partners_relationship','business_type','bank_account_number','name_of_bank','name_of_account_holder','virtual_account_number','topup_contract','previous_topup_amount','loan_amount','loan_amount_in_word','net_amount','net_amount_in_word','term','term_by_word','flat_rate','flat_rate_by_word','admin_rate','admin_rate_in_word','admin_fee','admin_fee_in_word','notaris_fee','notaris_fee_in_word','tlo','tlo_in_word','life_insurance','life_insurance_in_word','stamp_amount','financing_agreement_amount','security_agreement_amount','upgrading_land_rights_amount','total_amount'];
                       const hiddenForUVLocal = new Set(['mortgage_amount', 'mortgage_amount_in_word', 'stamp_amount', 'financing_agreement_amount', 'security_agreement_amount', 'upgrading_land_rights_amount']);
                       if (contractOnlyMode) {
                         contractTableFields = contractTableFields.filter(f => !hiddenForUVLocal.has(f));
                       }
-                      const numericToWord = { loan_amount: 'loan_amount_in_word', term: 'term_by_word', flat_rate: 'flat_rate_by_word', notaris_fee: 'notaris_fee_in_word', admin_fee: 'admin_fee_in_word', handling_fee: 'handling_fee_in_word', net_amount: 'net_amount_in_word', admin_rate: 'admin_rate_in_word', tlo: 'tlo_in_word', life_insurance: 'life_insurance_in_word' };
+                      const numericToWord = { loan_amount: 'loan_amount_in_word', term: 'term_by_word', flat_rate: 'flat_rate_by_word', notaris_fee: 'notaris_fee_in_word', admin_fee: 'admin_fee_in_word', net_amount: 'net_amount_in_word', admin_rate: 'admin_rate_in_word', tlo: 'tlo_in_word', life_insurance: 'life_insurance_in_word' };
                       const numericInputs = new Set(Object.keys(numericToWord).concat(['previous_topup_amount','stamp_amount','financing_agreement_amount','security_agreement_amount','upgrading_land_rights_amount','total_amount']));
                       return (
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -1862,7 +2114,7 @@ export default function UVAgreement() {
                             if (f === 'business_partners_relationship') {
                               return (
                                 <div style={fieldGroupStyle} key={f}>
-                                  <label style={fieldLabelStyle}>{f.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}{getRequiredContractFields().includes(f) && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
+                                  <label style={fieldLabelStyle}>{formatFieldName(f)}{getRequiredContractFields().includes(f) && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
                                   <select
                                     ref={(el) => { contractFieldRefs.current[f] = el; }}
                                     id={`contract_field_${f}`}
@@ -1897,7 +2149,7 @@ export default function UVAgreement() {
 
                             return (
                               <div style={fieldGroupStyle} key={f}>
-                                <label style={fieldLabelStyle}>{f.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}{getRequiredContractFields().includes(f) && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
+                                <label style={fieldLabelStyle}>{formatFieldName(f)}{getRequiredContractFields().includes(f) && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
                                 <input
                                   ref={(el) => { contractFieldRefs.current[f] = el; }}
                                   id={`contract_field_${f}`}
@@ -1914,39 +2166,126 @@ export default function UVAgreement() {
                                     return contractFormData[f] || '';
                                   })()}
                                   onChange={(e) => {
-                                    const raw = e.target.value;
+                                    const inputVal = e.target.value;
+                                    // For numeric inputs, strip thousand separators so state stores raw digits
+                                    const isNumeric = numericInputs.has(f);
+                                    const cleaned = (function(v) {
+                                      if (v === undefined || v === null) return '';
+                                      const s = String(v);
+                                      if (isNumeric) {
+                                        if (rateFields && rateFields.includes(f)) return String(s || '').replace(',', '.');
+                                        return s.replace(/\./g, '').replace(/,/g, '').trim();
+                                      }
+                                      return s;
+                                    })(inputVal);
+
                                     setContractFormData(prev => {
                                       const next = { ...prev };
                                       if (f === 'date_birth_of_debtor') {
-                                        const iso = (/^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : (parseDateFromDisplay(raw) || ''));
+                                        const iso = (/^\d{4}-\d{2}-\d{2}$/.test(inputVal) ? inputVal : (parseDateFromDisplay(inputVal) || ''));
                                         next[f] = iso || '';
-                                        try { next['date_birth_of_debtor_in_word'] = getIndonesianDateInWords(iso || raw); } catch (er) { next['date_birth_of_debtor_in_word'] = ''; }
+                                        try { next['date_birth_of_debtor_in_word'] = getIndonesianDateInWords(iso || inputVal); } catch (er) { next['date_birth_of_debtor_in_word'] = ''; }
                                       } else {
-                                          // normalize rate inputs: display uses comma, but store with dot
-                                          if (rateFields && rateFields.includes(f)) {
-                                            next[f] = String(raw || '').replace(',', '.');
-                                          } else {
-                                            next[f] = raw;
-                                          }
-                                          if (numericToWord[f]) {
-                                            try {
-                                              const valForWords = (rateFields && rateFields.includes(f)) ? next[f] : next[f];
-                                              const s = (valForWords === undefined || valForWords === null || valForWords === '') ? '' : String(valForWords);
-                                              const parsed = Number(s.replace(/\./g, '').replace(/,/g, '.'));
-                                              const n = Number.isNaN(parsed) ? 0 : parsed;
-                                              next[numericToWord[f]] = (n === 0) ? '' : getIndonesianNumberWord(n);
-                                            } catch (er) { next[numericToWord[f]] = ''; }
-                                          }
+                                        next[f] = cleaned;
+                                        if (numericToWord[f]) {
                                           try {
-                                            const parseNum = (v) => { if (v === undefined || v === null || v === '') return 0; const s = String(v).replace(/\./g, '').replace(/,/g, '').trim(); const n = Number(s); return Number.isNaN(n) ? 0 : n; };
-                                            const a = parseNum(next.admin_fee);
-                                            const b = parseNum(next.handling_fee);
-                                            const c = parseNum(next.tlo);
-                                            const d = parseNum(next.life_insurance);
-                                            const total = a + b + c + d;
-                                            next.total_amount = total === 0 ? '' : String(total);
-                                          } catch (er) { /* ignore */ }
+                                            const s = (next[f] === undefined || next[f] === null || next[f] === '') ? '' : String(next[f]);
+                                            let parsed;
+                                            if (rateFields && rateFields.includes(f)) {
+                                              // preserve decimal separator for rates (store as '1.1')
+                                              parsed = Number(String(s).replace(/,/g, '.'));
+                                            } else {
+                                              // remove thousand separators, normalize comma to dot
+                                              parsed = Number(s.replace(/\./g, '').replace(/,/g, '.'));
+                                            }
+                                            const n = Number.isNaN(parsed) ? 0 : parsed;
+                                            next[numericToWord[f]] = (n === 0) ? '' : getIndonesianNumberWord(n);
+                                          } catch (er) { next[numericToWord[f]] = ''; }
                                         }
+                                        try {
+                                          const parseNum = (v) => { if (v === undefined || v === null || v === '') return 0; const s = String(v).replace(/\./g, '').replace(/,/g, '').trim(); const n = Number(s); return Number.isNaN(n) ? 0 : n; };
+                                          const a = parseNum(next.admin_fee);
+                                          const b = parseNum(next.notaris_fee);
+                                          const c = parseNum(next.tlo);
+                                          const d = parseNum(next.life_insurance);
+                                          const total = a + b + c + d;
+                                          next.total_amount = total === 0 ? '' : String(total);
+                                        } catch (er) { /* ignore */ }
+                                      }
+                                      return next;
+                                    });
+
+                                    if (f === 'contract_number' && contractOnlyMode) {
+                                      handleUvContractNumberModalChange(cleaned);
+                                      setContractFormErrors(prev => { if (!prev[f]) return prev; const np = { ...prev }; delete np[f]; return np; });
+                                      return;
+                                    }
+                                    // If user typed NIK in modal contract-only mode, attempt autofill when 16 digits
+                                    if (f === 'nik_number_of_debtor' && contractOnlyMode) {
+                                      try {
+                                        const rawNik = String(cleaned || '').replace(/\D/g, '').slice(0,16);
+                                        if (rawNik && rawNik.length === 16) {
+                                          (async () => {
+                                            try {
+                                              // check cached contracts first
+                                              let found = (contracts || []).find(c => {
+                                                const cand = ((c.debtor && (c.debtor.nik_number_of_debtor || c.debtor.nik)) || c.nik_number_of_debtor || c.debtor_nik || '').toString().replace(/\D/g, '');
+                                                return cand && cand === rawNik;
+                                              });
+                                              if (found && (found.contract_number || found.contract)) {
+                                                const cn = found.contract_number || (found.contract && (found.contract.contract_number || found.contract_number)) || '';
+                                                if (cn) {
+                                                  const data = await fetchContractLookup(cn);
+                                                  const c = data.contract || data || {};
+                                                  const mapped = {};
+                                                  const nikFields = ['name_of_debtor','place_birth_of_debtor','date_birth_of_debtor','date_birth_of_debtor_in_word','street_of_debtor','subdistrict_of_debtor','district_of_debtor','city_of_debtor','province_of_debtor','phone_number_of_debtor','business_partners_relationship','business_type'];
+                                                  nikFields.forEach((nf) => {
+                                                    const v = findValueInObj(c, nf);
+                                                    if (v !== undefined && v !== null && String(v).trim() !== '') mapped[nf] = v;
+                                                  });
+                                                  if (Object.keys(mapped).length) setContractFormData(prev => ({ ...prev, ...mapped }));
+                                                }
+                                                return;
+                                              }
+                                              // fallback to table scan
+                                              try {
+                                                const token = localStorage.getItem('access_token');
+                                                const headers = token ? { Authorization: `Bearer ${token}` } : {};
+                                                const resp = await axios.get('http://localhost:8000/api/contracts/table/', { headers });
+                                                const items = resp.data?.contracts || resp.data || [];
+                                                const matched = (items || []).find(it => {
+                                                  const cand = ((it.debtor && (it.debtor.nik_number_of_debtor || it.debtor.nik)) || it.nik_number_of_debtor || it.debtor_nik || '').toString().replace(/\D/g, '');
+                                                  return cand && cand === rawNik;
+                                                });
+                                                if (matched && (matched.contract_number || matched.contract)) {
+                                                  const cn2 = matched.contract_number || (matched.contract && (matched.contract.contract_number || matched.contract_number)) || '';
+                                                  if (cn2) {
+                                                    const data2 = await fetchContractLookup(cn2);
+                                                    const c2 = data2.contract || data2 || {};
+                                                    const mapped2 = {};
+                                                    const nikFields2 = ['name_of_debtor','place_birth_of_debtor','date_birth_of_debtor','date_birth_of_debtor_in_word','street_of_debtor','subdistrict_of_debtor','district_of_debtor','city_of_debtor','province_of_debtor','phone_number_of_debtor','business_partners_relationship','business_type'];
+                                                    nikFields2.forEach((nf) => {
+                                                      const v = findValueInObj(c2, nf);
+                                                      if (v !== undefined && v !== null && String(v).trim() !== '') mapped2[nf] = v;
+                                                    });
+                                                    if (Object.keys(mapped2).length) setContractFormData(prev => ({ ...prev, ...mapped2 }));
+                                                  }
+                                                }
+                                              } catch (er) { /* ignore */ }
+                                            } catch (er) { console.error('NIK-based modal lookup failed', er); }
+                                          })();
+                                        }
+                                      } catch (er) { /* ignore */ }
+                                    }
+
+                                    setContractFormData(prev => {
+                                      const next = { ...prev };
+                                      if (f === 'date_birth_of_debtor') {
+                                        const iso = (/^\d{4}-\d{2}-\d{2}$/.test(inputVal) ? inputVal : (parseDateFromDisplay(inputVal) || ''));
+                                        next[f] = iso;
+                                      } else {
+                                        next[f] = cleaned;
+                                      }
                                       return next;
                                     });
                                     setContractFormErrors(prev => { if (!prev[f]) return prev; const np = { ...prev }; delete np[f]; return np; });
@@ -1982,19 +2321,18 @@ export default function UVAgreement() {
                       initialUvCollateralFields={uvCollateralFields}
                       contractOnly={contractOnlyMode}
                       inModal={true}
-                      onContractSaved={(saved) => {
-                        if (!saved) {
-                          setShowCreateModal(false);
-                          setContractOnlyMode(false);
-                          return;
-                        }
-                        setLastSavedContract(saved || null);
-                        setShowCreateModal(false);
-                        setContractOnlyMode(false);
-                        loadAgreements();
-                        setSuccessMessage('Contract data saved successfully');
-                        setTimeout(() => setSuccessMessage(''), 4000);
-                      }}
+                                      onContractSaved={(saved) => {
+                                        if (!saved) {
+                                          setShowCreateModal(false);
+                                          setContractOnlyMode(false);
+                                          return;
+                                        }
+                                        setLastSavedContract(saved || null);
+                                        setShowCreateModal(false);
+                                        setContractOnlyMode(false);
+                                        loadAgreements();
+                                        try { toast.success('Contract data saved successfully'); } catch (e) {}
+                                      }}
                       onSaved={(cn) => { setShowCreateModal(false); setContractOnlyMode(false); loadAgreements(); if (cn) setContractNumber(cn); }}
                     />
                     

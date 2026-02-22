@@ -3,9 +3,7 @@ import React from 'react';
 function AgreementPage() {
   const agreements = [
     { id: 'bl-agreement', label: 'BL Agreement', category: 'BL' },
-    { id: 'bl-sp3', label: 'BL SP3', category: 'BL' },
     { id: 'uv-agreement', label: 'UV Agreement', category: 'UV' },
-    { id: 'uv-sp3', label: 'UV SP3', category: 'UV' },
   ];
 
   return (

@@ -1,0 +1,1 @@
+{'Content-Type': 'application/json', 'WWW-Authenticate': 'Bearer', 'Vary': 'Accept, Cookie, origin', 'Allow': 'GET, HEAD, OPTIONS', 'X-Frame-Options': 'DENY', 'Content-Length': '58', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'same-origin', 'Cross-Origin-Opener-Policy': 'same-origin'}

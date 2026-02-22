@@ -1,0 +1,20 @@
+{
+  "files": {
+    "main.css": "/static/css/main.a5e81fe1.css",
+    "main.js": "/static/js/main.3c6cefa4.js",
+    "static/js/453.20359781.chunk.js": "/static/js/453.20359781.chunk.js",
+    "index.html": "/index.html",
+    "static/media/docx-icon.svg": "/static/media/docx-icon.3f146c36dadd142820476df1c170bbbd.svg",
+    "static/media/pdf-icon.svg": "/static/media/pdf-icon.c8fba4d77c06da83f0e3d75c3ba04d2a.svg",
+    "static/media/sidebar-dashboard.svg": "/static/media/sidebar-dashboard.f49a96747f160e9459d832d612165452.svg",
+    "static/media/sidebar-agreement.svg": "/static/media/sidebar-agreement.5538df485e49686793ed92f88eba3d17.svg",
+    "static/media/sidebar-user.svg": "/static/media/sidebar-user.e8c0fde83f43e9dba7f0584912f62356.svg",
+    "main.a5e81fe1.css.map": "/static/css/main.a5e81fe1.css.map",
+    "main.3c6cefa4.js.map": "/static/js/main.3c6cefa4.js.map",
+    "453.20359781.chunk.js.map": "/static/js/453.20359781.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.a5e81fe1.css",
+    "static/js/main.3c6cefa4.js"
+  ]
+}

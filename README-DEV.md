@@ -36,3 +36,52 @@ Commit policy
 -------------
 - The helpers are intentionally developer-focused. If you include them in the
   repo, mark them in commit messages or documentation as "dev-only".
+
+Agreement access (CSA one-time flow)
+-----------------------------------
+- Feature: per-agreement, per-creator (`CSA`) access grants are tracked so a CSA
+  creator receives: 1 download -> 1 edit -> 1 download -> locked. Enforcement is
+  performed server-side and reflected in the frontend UI.
+- Key backend pieces:
+  - Model: `AgreementAccess` (tracks `download_grants`, `edit_grants`, consumed
+    counters and `locked` flag) and `AuditEvent` (persistent audit logs).
+  - Endpoint: GET `/api/bl-agreement/<contract_number>/access/` returns access
+    status for the caller (used by frontend to render buttons).
+  - Consumption: download and edit handlers consume grants atomically using
+    `select_for_update()` and record `AuditEvent` on success.
+- Frontend changes:
+  - Component: `frontend/src/components/AgreementPage/BLAgreement.js` now
+    requests access state and disables the Edit/Download buttons for the CSA
+    creator when grants are exhausted. A small badge shows remaining `DL` and
+    `ED` counts and `locked` state.
+
+Developer steps (tests & build)
+------------------------------
+- Build frontend (Windows PowerShell from workspace root):
+
+  cd frontend
+  npm run build
+
+- Run unit-only Python tests (avoid pytest-django test DB setup):
+
+  .\.venv\Scripts\python.exe -m pytest -p no:pytest_django -q
+
+  or use the project wrapper (unit tests by default):
+
+  .\run-tests.ps1
+
+- Run integration tests (requires a runnable test DB and proper credentials):
+  set the env var and run pytest. In PowerShell:
+
+  $env:RUN_INTEGRATION=1
+  .\.venv\Scripts\python.exe -m pytest -q
+
+Notes
+-----
+- Because the project uses a custom `CustomUser` mapped to an existing
+  `auth_user` table (`managed = False`), pytest-django will attempt to run
+  migrations against the test DB. If your local MySQL test instance does not
+  contain the expected legacy tables, integration tests will fail during test
+  DB creation. Use unit-only runs for quick local development or provide a
+  pre-configured test database for full integration runs.
+

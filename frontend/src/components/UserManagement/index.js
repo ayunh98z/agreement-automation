@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { requestWithAuth } from '../../utils/api';
 import './UserManagement.css';
 
 function UserManagement() {
@@ -25,15 +26,51 @@ function UserManagement() {
   const [regions, setRegions] = useState([]);
   const [areas, setAreas] = useState([]);
   const [branches, setBranches] = useState([]);
+  const [branchMap, setBranchMap] = useState({});
   const [submitLoading, setSubmitLoading] = useState(false);
+  const [isAdminUser, setIsAdminUser] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState('All');
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const API_BASE_URL = 'http://localhost:8000/api';
 
   // Muat daftar user dan data dropdown saat komponen dimount
+  const loadAllBranches = async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/branches/`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+        }
+      });
+      const all = response.data.branches || [];
+      const map = {};
+      all.forEach(b => { map[b.id] = b.name; });
+      setBranchMap(map);
+    } catch (err) {
+      console.error('Error loading all branches:', err);
+      setBranchMap({});
+    }
+  };
+
   useEffect(() => {
     loadUsers();
     loadRegions();
+    loadAllBranches();
     // Jangan muat semua area/branch di awal; akan dimuat berdasarkan pilihan atau saat mengedit
+
+    // Determine current user's role from localStorage so we can hide/disable actions
+    try {
+      const raw = localStorage.getItem('user_data');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const r = (parsed.role || parsed.role_name || parsed.role_name_display || '').toString().trim();
+        setIsAdminUser(r.toLowerCase().includes('admin'));
+      }
+    } catch (e) { /* ignore */ }
   }, []);
 
   const loadUsers = async () => {
@@ -50,7 +87,14 @@ function UserManagement() {
       });
       
       console.log('Users loaded successfully:', response.data);
-      setUsers(response.data.users || response.data || []);
+      const rawUsers = response.data.users || response.data || [];
+      // Sort users by full_name (case-insensitive) for display
+      rawUsers.sort((a, b) => {
+        const na = (a.full_name || '').toString().toLowerCase();
+        const nb = (b.full_name || '').toString().toLowerCase();
+        return na.localeCompare(nb);
+      });
+      setUsers(rawUsers);
       setError('');
     } catch (err) {
       console.error('Error loading users:', err);
@@ -131,6 +175,29 @@ function UserManagement() {
     }
   };
 
+  
+
+  const uniqueRoles = () => {
+    const setRoles = new Set();
+    users.forEach(u => { if (u.role) setRoles.add(u.role); });
+    return Array.from(setRoles).sort();
+  };
+
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+    setPage(1);
+  };
+
+  const handleRoleFilterChange = (e) => {
+    setRoleFilter(e.target.value);
+    setPage(1);
+  };
+
+  const handleStatusFilterChange = (e) => {
+    setStatusFilter(e.target.value);
+    setPage(1);
+  };
+
   // Filter area berdasarkan region yang dipilih (fungsi dihapus karena tidak digunakan)
 
   // Filter cabang berdasarkan area yang dipilih
@@ -157,9 +224,19 @@ function UserManagement() {
     setShowModal(true);
   };
 
-  const openEditUserModal = (user) => {
+  const openEditUserModal = async (user) => {
     setModalMode('edit');
     setEditingUserId(user.id);
+    // Normalize is_active so numeric/string/bool values are handled correctly
+    const normalizedIsActive = (() => {
+      try {
+        if (typeof user.is_active === 'undefined' || user.is_active === null) return true;
+        const s = String(user.is_active).toLowerCase();
+        if (s === '0' || s === 'false') return false;
+        return true;
+      } catch (e) { return true; }
+    })();
+
     setFormData({
       full_name: user.full_name || '',
       email: user.email || '',
@@ -171,15 +248,16 @@ function UserManagement() {
       region_id: user.region_id || '',
       area_id: user.area_id || '',
       branch_id: user.branch_id || '',
-      is_active: user.is_active !== false
+      is_active: normalizedIsActive
     });
     // Data sudah loaded pada component mount
     // Muat daftar tergantung untuk edit
     if (user.region_id) {
-      loadAreas(user.region_id);
+      // pastikan areas terisi sebelum mencoba load branches
+      await loadAreas(user.region_id);
     }
     if (user.area_id) {
-      loadBranches(user.area_id);
+      await loadBranches(user.area_id);
     }
     setShowModal(true);
   };
@@ -217,6 +295,8 @@ function UserManagement() {
     setSubmitLoading(true);
     try {
       const payload = { ...formData };
+      // Convert boolean is_active to 1/0 for backend auth_user.is_active
+      if (typeof payload.is_active !== 'undefined') payload.is_active = payload.is_active ? 1 : 0;
       
       // Sertakan password hanya jika disediakan (untuk user baru atau saat mengganti password)
       if (!payload.password) {
@@ -237,16 +317,36 @@ function UserManagement() {
             'Authorization': `Bearer ${localStorage.getItem('access_token')}`
           }
         });
-        setUsers([...users, response.data.user]);
+        const saved = response.data.user || response.data;
+        const newList = [...users, saved];
+        newList.sort((a, b) => ((a.full_name || '') + '').toLowerCase().localeCompare(((b.full_name || '') + '').toLowerCase()));
+        setUsers(newList);
         setError('');
       } else {
-        // Edit user - gunakan username
-        const response = await axios.put(`${API_BASE_URL}/users/${formData.username}/`, payload, {
+        // Edit user - kirim semua field agar di-update di backend
+        const editPayload = {
+          full_name: formData.full_name || '',
+          email: formData.email || '',
+          employee_id: formData.employee_id || '',
+          phone: formData.phone || '',
+          role: formData.role || 'User',
+          region_id: formData.region_id || '',
+          area_id: formData.area_id || '',
+          branch_id: formData.branch_id || '',
+          is_active: (typeof formData.is_active !== 'undefined') ? (formData.is_active ? 1 : 0) : 1
+        };
+        // Sertakan password hanya jika user mengisikan password baru
+        if (formData.password) editPayload.password = formData.password;
+
+        const response = await axios.put(`${API_BASE_URL}/users/${formData.username}/`, editPayload, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('access_token')}`
           }
         });
-        setUsers(users.map(u => u.id === editingUserId ? response.data.user : u));
+        const saved = response.data.user || response.data;
+        const replaced = users.map(u => u.id === editingUserId ? saved : u);
+        replaced.sort((a, b) => ((a.full_name || '') + '').toLowerCase().localeCompare(((b.full_name || '') + '').toLowerCase()));
+        setUsers(replaced);
         setError('');
       }
 
@@ -274,10 +374,13 @@ function UserManagement() {
 
   const getStatusBadge = (isActive) => {
     // Treat undefined/null as active by default (backend should provide is_active)
-    const active = (typeof isActive === 'boolean') ? isActive : true;
-    return active ? 
-      <span style={styles.statusActive}>Active</span> : 
-      <span style={styles.statusInactive}>Inactive</span>;
+    if (typeof isActive === 'undefined' || isActive === null) {
+      return <span style={styles.statusActive}>Active</span>;
+    }
+    // Normalize common representations: numeric 1/0, boolean, or string '1'/'0'/'true'/'false'
+    const s = String(isActive).toLowerCase();
+    const active = !(s === '0' || s === 'false');
+    return active ? <span style={styles.statusActive}>Active</span> : <span style={styles.statusInactive}>Inactive</span>;
   };
 
   if (loading) {
@@ -291,15 +394,58 @@ function UserManagement() {
     </div>;
   }
 
+  // Compute filtered users and pagination values
+  const q = searchQuery.trim().toLowerCase();
+  const filteredUsers = users.filter(user => {
+    if (q) {
+      const hay = `${user.full_name || ''} ${user.email || ''} ${user.username || ''} ${user.employee_id || ''}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    if (roleFilter && roleFilter !== 'All') {
+      if ((user.role || 'User') !== roleFilter) return false;
+    }
+    if (statusFilter && statusFilter !== 'All') {
+      const s = String(user.is_active).toLowerCase();
+      const active = !(s === '0' || s === 'false');
+      if (statusFilter === 'Active' && !active) return false;
+      if (statusFilter === 'Inactive' && active) return false;
+    }
+    return true;
+  });
+  const total = filteredUsers.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const current = Math.min(Math.max(1, page), totalPages);
+  const start = (current - 1) * pageSize;
+  const end = Math.min(start + pageSize, total);
+  const pageItems = filteredUsers.slice(start, end);
+
   return (
     <div>
       <div className="content-section">
         <h2>User Management</h2>
-        <p>Manage system users</p>
       </div>
 
       <div style={styles.actionSection}>
-        <button onClick={openNewUserModal} style={styles.btnPrimary}>
+        <div style={styles.filterRow}>
+          <input
+            type="text"
+            placeholder="Search name, email, username..."
+            value={searchQuery}
+            onChange={handleSearchChange}
+            style={styles.searchInput}
+            aria-label="Search users"
+          />
+          <select value={roleFilter} onChange={handleRoleFilterChange} style={styles.filterSelect} aria-label="Filter by role">
+            <option value="All">All Roles</option>
+            {uniqueRoles().map(r => <option key={r} value={r}>{r}</option>)}
+          </select>
+          <select value={statusFilter} onChange={handleStatusFilterChange} style={styles.filterSelect} aria-label="Filter by status">
+            <option value="All">All Status</option>
+            <option value="Active">Active</option>
+            <option value="Inactive">Inactive</option>
+          </select>
+        </div>
+        <button onClick={openNewUserModal} style={{ ...styles.btnPrimary, opacity: isAdminUser ? 1 : 0.5, cursor: isAdminUser ? 'pointer' : 'not-allowed' }} disabled={!isAdminUser}>
           + New User
         </button>
       </div>
@@ -307,7 +453,7 @@ function UserManagement() {
       {error && <div style={styles.errorMessage}>{error}</div>}
 
       <div style={styles.tableSection}>
-        <table style={styles.table}>
+        <table className="user-table agreements-table">
           <thead>
             <tr style={styles.headerRow}>
               <th style={styles.th}>Full Name</th>
@@ -316,39 +462,106 @@ function UserManagement() {
               <th style={styles.th}>Role</th>
               <th style={styles.th}>Branch</th>
               <th style={styles.th}>Status</th>
+        
               <th style={styles.th}>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {users.length > 0 ? (
-              users.map((user) => (
-                <tr key={user.id} style={styles.bodyRow}>
-                  <td style={styles.td}>{user.full_name || '-'}</td>
-                  <td style={styles.td}>{user.email || '-'}</td>
-                  <td style={styles.td}>{user.employee_id || '-'}</td>
-                  <td style={styles.td}>
-                    <span style={styles.roleBadge}>{user.role || 'User'}</span>
-                  </td>
-                  <td style={styles.td}>{user.branch_id || '-'}</td>
-                  <td style={styles.td}>{getStatusBadge(user.is_active)}</td>
-                  <td style={styles.td}>
-                    <button 
-                      onClick={() => openEditUserModal(user)}
-                      style={styles.btnEdit}
-                    >
-                      Edit
-                    </button>
-                  </td>
-                </tr>
-              ))
+              {users.length > 0 ? (
+                pageItems.map((user) => (
+                  <tr key={user.id} style={styles.bodyRow}>
+                    <td style={styles.td}>{user.full_name || '-'}</td>
+                    <td style={styles.td}>{user.email || '-'}</td>
+                    <td style={styles.td}>{user.employee_id || '-'}</td>
+                    <td style={styles.td}>
+                      <span style={styles.roleBadge}>{user.role || 'User'}</span>
+                    </td>
+                    <td style={styles.td}>{(user.branch_id && branchMap[user.branch_id]) || user.branch_id || '-'}</td>
+                    <td style={styles.td}>{getStatusBadge(user.is_active)}</td>
+                    <td style={styles.td}>
+                        {confirmDeleteId === user.id ? (
+                          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                            <span>Yakin akan menghapus?</span>
+                            <button className="action-btn compact-action-btn" onClick={() => setConfirmDeleteId(null)}>Cancel</button>
+                            <button className="btn-primary" onClick={async () => {
+                              try {
+                                await requestWithAuth({ method: 'delete', url: `http://localhost:8000/api/users/${encodeURIComponent(user.username)}/` });
+                                await loadUsers();
+                                setConfirmDeleteId(null);
+                              } catch (err) {
+                                console.error('Delete user failed', err);
+                                alert('Delete failed');
+                              }
+                            }}>Delete</button>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                            <button 
+                              onClick={() => openEditUserModal(user)}
+                              className="action-btn compact-action-btn"
+                              style={{ opacity: isAdminUser ? 1 : 0.5, cursor: isAdminUser ? 'pointer' : 'not-allowed' }}
+                              disabled={!isAdminUser}
+                              title="Edit user"
+                              aria-label={`Edit ${user.username || user.full_name || ''}`}
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z" fill="#0a1e3d"/>
+                                <path d="M20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z" fill="#0a1e3d"/>
+                              </svg>
+                            </button>
+                            <button
+                              onClick={() => setConfirmDeleteId(user.id)}
+                              title="Delete"
+                              aria-label={`Delete ${user.username || user.full_name || ''}`}
+                              className="action-btn compact-action-btn"
+                              style={{ border: '1px solid #000', background: 'transparent', color: '#000' }}
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M3 6h18" stroke="#000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="#000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                <path d="M10 11v6M14 11v6" stroke="#000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" stroke="#000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                            </button>
+                          </div>
+                        )}
+                    </td>
+                  </tr>
+                ))
             ) : (
               <tr>
-                <td colSpan="7" style={styles.noDataCell}>Tidak ada data user</td>
+                <td colSpan="7" className="no-data">Tidak ada data user</td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
+
+        {/* Pagination controls (match Branches layout) */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+          <div>Showing {start + 1}-{end} of {total}</div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }} style={{ padding: '6px 8px', border: '1px solid #ddd', borderRadius: 6 }}>
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+            </select>
+            <button className="pagination-btn" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={current <= 1} aria-label="Previous page">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                <path d="M15 18L9 12L15 6" stroke="#0a1e3d" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Prev
+            </button>
+            <div className="pagination-indicator">{current} / {totalPages}</div>
+            <button className="pagination-btn" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={current >= totalPages} aria-label="Next page">
+              Next
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                <path d="M9 6L15 12L9 18" stroke="#0a1e3d" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          </div>
+        </div>
 
       {/* Modal */}
       {showModal && (
@@ -449,9 +662,14 @@ function UserManagement() {
                     style={styles.select}
                     required
                   >
+                    <option value="Admin">Admin</option>
+                    <option value="CSA">CSA</option>
+                    <option value="SLIK">SLIK</option>
+                    <option value="BM">BM</option>
+                    <option value="AM">AM</option>
+                    <option value="RM">RM</option>
+                    <option value="BOD">BOD</option>
                     <option value="User">User</option>
-                    <option value="Manager">Manager</option>
-                    <option value="Administrator">Administrator</option>
                   </select>
                 </div>
 
@@ -530,7 +748,7 @@ function UserManagement() {
                   style={styles.btnSave}
                   disabled={submitLoading}
                 >
-                  {submitLoading ? 'Saving...' : 'Save'}
+                  {submitLoading ? (modalMode === 'new' ? 'Saving...' : 'Updating...') : (modalMode === 'new' ? 'Save' : 'Update')}
                 </button>
               </div>
             </form>
@@ -577,7 +795,26 @@ const styles = {
     marginBottom: '20px',
     display: 'flex',
     gap: '10px',
-    justifyContent: 'flex-end'
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  filterRow: {
+    display: 'flex',
+    gap: '8px',
+    alignItems: 'center'
+  },
+  searchInput: {
+    padding: '8px 10px',
+    border: '1px solid #ddd',
+    borderRadius: '6px',
+    fontSize: '14px',
+    width: '260px'
+  },
+  filterSelect: {
+    padding: '8px 10px',
+    border: '1px solid #ddd',
+    borderRadius: '6px',
+    fontSize: '14px'
   },
   btnPrimary: {
     padding: '10px 20px',
@@ -656,13 +893,15 @@ const styles = {
     fontWeight: '600'
   },
   btnEdit: {
-    padding: '6px 12px',
-    fontSize: '12px',
-    fontWeight: '600',
-    backgroundColor: '#1976d2',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
+    border: '1px solid #0a1e3d',
+    background: 'transparent',
+    borderRadius: 6,
+    padding: 8,
+    width: 36,
+    height: 36,
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
     cursor: 'pointer',
     transition: 'all 0.2s'
   },
@@ -808,6 +1047,18 @@ const styles = {
     borderRadius: '6px',
     cursor: 'pointer',
     transition: 'all 0.3s ease'
+  }
+  ,
+  paginationBtn: {
+    padding: '6px 10px',
+    border: '1px solid #ddd',
+    background: 'white',
+    borderRadius: '6px',
+    cursor: 'pointer'
+  },
+  paginationIndicator: {
+    fontSize: '13px',
+    color: '#333'
   }
 };
 

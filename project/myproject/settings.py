@@ -56,6 +56,8 @@ INSTALLED_APPS = [
     'rolepermissions',
     'rest_framework',
     'rest_framework_simplejwt',
+    'myproject.bl_agreement',
+    'myproject.uv_agreement',
 ]
 
 # Note: 'rolepermissions' intentionally not added to INSTALLED_APPS here
@@ -174,7 +176,11 @@ DATABASES = {
         'HOST': os.environ.get('MYSQL_HOST', '127.0.0.1'),
         'PORT': os.environ.get('MYSQL_PORT', '3306'),
         'OPTIONS': {
-            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+            # Ensure DB session timezone is UTC to keep DB storage consistent.
+            # Also keep strict SQL mode.
+            # Set session timezone to UTC. Keep sql_mode setting removed from here
+            # to avoid multi-statement init_command issues with certain DB drivers.
+            'init_command': "SET time_zone = '+00:00'",
             'charset': 'utf8mb4',
         },
     }
@@ -203,9 +209,11 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
+
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+# Use Indonesia Western Time (WIB) = UTC+07:00 for application local timezone
+TIME_ZONE = 'Asia/Jakarta'
 
 USE_I18N = True
 

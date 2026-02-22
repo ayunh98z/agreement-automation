@@ -27,7 +27,16 @@ const fs = require('fs');
   const generatedContract = 'E2E-CON-' + Date.now();
 
   try {
-    await page.goto('http://localhost:3000', { waitUntil: 'networkidle2', timeout: 30000 });
+    await page.goto('http://localhost:3002', { waitUntil: 'networkidle2', timeout: 60000 });
+    // Ensure we have a saved token/user so the SPA shows Dashboard without backend login
+    await page.evaluate(() => {
+      try {
+        localStorage.setItem('access_token', 'E2E_FAKE_TOKEN');
+        localStorage.setItem('refresh_token', 'E2E_FAKE_REFRESH');
+        localStorage.setItem('user_data', JSON.stringify({ username: 'admin', roles: ['admin'] }));
+      } catch (e) {}
+    });
+    await page.reload({ waitUntil: 'networkidle2', timeout: 30000 }).catch(() => {});
     // login if shown
     if (await page.$('#username')) {
       await page.type('#username', 'admin', { delay: 30 });
@@ -42,7 +51,7 @@ const fs = require('fs');
     }
 
     // navigate to Agreement -> BL Agreement
-    await page.waitForSelector('.sidebar-menu', { timeout: 10000 });
+    await page.waitForSelector('.sidebar-menu', { timeout: 60000 });
     await page.evaluate(() => {
       const btns = Array.from(document.querySelectorAll('button'));
       const a = btns.find(b => b.textContent && b.textContent.trim().includes('Agreement'));

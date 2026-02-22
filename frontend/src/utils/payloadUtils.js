@@ -30,7 +30,17 @@ export function normalizeSection(obj, numericFields = []) {
         out[k] = Number.isNaN(n) ? 0 : n;
       }
     } else {
-      out[k] = v;
+      // Uppercase specific fields commonly used for vehicle/collateral identifiers
+      try {
+        const upperFields = new Set(['vehicle_model', 'plate_number', 'plat_number', 'chassis_number', 'engine_number']);
+        if (typeof v === 'string' && upperFields.has(k)) {
+          out[k] = v.toUpperCase();
+        } else {
+          out[k] = v;
+        }
+      } catch (e) {
+        out[k] = v;
+      }
     }
   });
   return out;

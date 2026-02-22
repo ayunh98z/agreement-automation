@@ -3,6 +3,14 @@
 import os
 import sys
 
+# Allow using PyMySQL as a drop-in replacement for MySQLdb when mysqlclient
+# is unavailable or incompatible in the local dev environment.
+try:
+    import pymysql
+    pymysql.install_as_MySQLdb()
+except Exception:
+    pass
+
 
 def main():
     """Run administrative tasks."""

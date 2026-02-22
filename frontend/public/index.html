@@ -2,7 +2,9 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    <!--
     <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    -->
     <link rel="icon" href="" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#000000" />
@@ -14,8 +16,12 @@
     <!--
       manifest.json provides metadata used when your web app is installed on a
       user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
-    -->
+    --> 
+    
+    <!--Logo Tab Browser
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+    -->
+    
     <!--
       Notice the use of %PUBLIC_URL% in the tags above.
       It will be replaced with the URL of the `public` folder during the build.
@@ -30,6 +36,18 @@
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
+    <script>
+      // Auto-inject test token from /admin_token.json into localStorage for local dev only
+      (async function(){
+        try{
+          const res = await fetch('/admin_token.json');
+          if(!res.ok) return;
+          const j = await res.json();
+          if(j.access_token) localStorage.setItem('access_token', j.access_token);
+          if(j.refresh_token) localStorage.setItem('refresh_token', j.refresh_token);
+        }catch(e){}
+      })();
+    </script>
     <!--
       This HTML file is a template.
       If you open it directly in the browser, you will see an empty page.

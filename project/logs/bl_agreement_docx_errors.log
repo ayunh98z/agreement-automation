@@ -516,3 +516,48 @@ Traceback (most recent call last):
     with open(docx_path, 'rb') as fh:
 FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\LTP-IT~1\\AppData\\Local\\Temp\\docx_out_f4hj0l8s\\bl_agreement_CON123.docx'
 
+[2026-02-15T08:48:21.683948+00:00] Error generating docx for CON002
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\django\db\backends\utils.py", line 89, in _execute
+    return self.cursor.execute(sql, params)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\django\db\backends\mysql\base.py", line 75, in execute
+    return self.cursor.execute(query, args)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\pymysql\cursors.py", line 148, in execute
+    while self.nextset():
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\pymysql\cursors.py", line 98, in nextset
+    return self._nextset(False)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\pymysql\cursors.py", line 85, in _nextset
+    conn = self._get_db()
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\pymysql\cursors.py", line 67, in _get_db
+    raise err.ProgrammingError("Cursor closed")
+pymysql.err.ProgrammingError: Cursor closed
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\laragon\www\operasional5\operasional\project\myproject\views.py", line 2929, in get
+    cursor.execute('SELECT * FROM bl_collateral WHERE contract_number=%s LIMIT 1', [contract_number])
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\django\db\backends\utils.py", line 102, in execute
+    return super().execute(sql, params)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\django\db\backends\utils.py", line 67, in execute
+    return self._execute_with_wrappers(
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\django\db\backends\utils.py", line 80, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\django\db\backends\utils.py", line 84, in _execute
+    with self.db.wrap_database_errors:
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\django\db\backends\utils.py", line 89, in _execute
+    return self.cursor.execute(sql, params)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\django\db\backends\mysql\base.py", line 75, in execute
+    return self.cursor.execute(query, args)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\pymysql\cursors.py", line 148, in execute
+    while self.nextset():
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\pymysql\cursors.py", line 98, in nextset
+    return self._nextset(False)
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\pymysql\cursors.py", line 85, in _nextset
+    conn = self._get_db()
+  File "C:\laragon\www\operasional5\operasional\project\.venv\lib\site-packages\pymysql\cursors.py", line 67, in _get_db
+    raise err.ProgrammingError("Cursor closed")
+django.db.utils.ProgrammingError: Cursor closed
+

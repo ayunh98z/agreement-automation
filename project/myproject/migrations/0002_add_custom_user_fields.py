@@ -1,6 +1,6 @@
-# Generated migration - adds custom fields to existing auth_user table
+# Generated migration - no-op since CustomUser is managed=False
 
-from django.db import migrations, models
+from django.db import migrations
 
 
 class Migration(migrations.Migration):
@@ -10,39 +10,9 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
-            model_name='customuser',
-            name='phone',
-            field=models.CharField(blank=True, max_length=20, null=True),
-        ),
-        migrations.AddField(
-            model_name='customuser',
-            name='employee_id',
-            field=models.CharField(blank=True, max_length=100, null=True),
-        ),
-        migrations.AddField(
-            model_name='customuser',
-            name='role',
-            field=models.CharField(blank=True, max_length=100, null=True),
-        ),
-        migrations.AddField(
-            model_name='customuser',
-            name='region_id',
-            field=models.IntegerField(blank=True, null=True),
-        ),
-        migrations.AddField(
-            model_name='customuser',
-            name='area_id',
-            field=models.IntegerField(blank=True, null=True),
-        ),
-        migrations.AddField(
-            model_name='customuser',
-            name='branch_id',
-            field=models.IntegerField(blank=True, null=True),
-        ),
-        migrations.AddField(
-            model_name='customuser',
-            name='full_name',
-            field=models.CharField(blank=True, max_length=255, null=True),
+        # No operations - CustomUser fields are in auth_user table which is unmanaged
+        migrations.RunSQL(
+            sql=migrations.RunSQL.noop,
+            reverse_sql=migrations.RunSQL.noop,
         ),
     ]

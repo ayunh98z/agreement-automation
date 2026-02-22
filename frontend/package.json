@@ -13,10 +13,13 @@
     "@testing-library/user-event": "^13.5.0",
     "ajv": "^8.12.0",
     "axios": "^1.13.4",
+    "css-loader": "^7.1.4",
+    "lodash.template": "^4.5.0",
     "puppeteer": "^24.37.2",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-scripts": "^5.0.1",
+    "react-toastify": "^11.0.5",
     "web-vitals": "^2.1.4"
   },
   "scripts": {

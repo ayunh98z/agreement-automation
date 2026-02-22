@@ -201,3 +201,267 @@
 [2026-02-14T14:52:27.437821+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpvvcvez7k.docx contract=CON001
 [2026-02-14T14:53:10.455269+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpka3pwhep.docx contract=CON401 files=['word/document.xml']
 [2026-02-14T14:53:10.473225+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpka3pwhep.docx contract=CON401
+[2026-02-14T16:00:13.387925+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpnlgvhxz8.docx contract=CON001 files=['word/document.xml']
+[2026-02-14T16:00:13.407670+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpnlgvhxz8.docx contract=CON001
+[2026-02-14T16:02:44.854181+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpd12wvz9l.docx contract=CON005 files=['word/document.xml']
+[2026-02-14T16:02:44.874642+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpd12wvz9l.docx contract=CON005
+[2026-02-14T16:03:33.845213+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp1k173wy9.docx contract=CON005 files=['word/document.xml']
+[2026-02-14T16:03:33.867813+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp1k173wy9.docx contract=CON005
+[2026-02-14T16:07:20.612342+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpf7ca5bfx.docx contract=CON001 files=['word/document.xml']
+[2026-02-14T16:07:20.644110+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpf7ca5bfx.docx contract=CON001
+[2026-02-15T08:55:31.115368+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpwjvtjggs.docx contract=CON003 files=['word/document.xml']
+[2026-02-15T08:55:31.131067+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpwjvtjggs.docx contract=CON003
+[2026-02-15T14:10:46.417650+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpop16kcts.docx contract=CON002 files=['word/document.xml']
+[2026-02-15T14:10:46.433372+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpop16kcts.docx contract=CON002
+[2026-02-15T14:17:56.631076+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp0qn1eocj.docx contract=CON002 files=['word/document.xml']
+[2026-02-15T14:17:56.646896+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp0qn1eocj.docx contract=CON002
+[2026-02-15T14:20:51.667666+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp9rbkrfwp.docx contract=CON002 files=['word/document.xml']
+[2026-02-15T14:20:51.694175+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp9rbkrfwp.docx contract=CON002
+[2026-02-15T14:22:04.381032+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpgbaqdozd.docx contract=CON002 files=['word/document.xml']
+[2026-02-15T14:22:04.403460+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpgbaqdozd.docx contract=CON002
+[2026-02-15T14:27:51.186924+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmphlcrx3ze.docx contract=CON002 files=['word/document.xml']
+[2026-02-15T14:27:51.204536+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmphlcrx3ze.docx contract=CON002
+[2026-02-15T14:34:32.880711+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpg75eqahv.docx contract=CON002 files=['word/document.xml']
+[2026-02-15T14:34:32.911521+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpg75eqahv.docx contract=CON002
+[2026-02-15T15:03:23.042298+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpa5zn9fqw.docx contract=CON002 files=['word/document.xml']
+[2026-02-15T15:03:23.059212+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpa5zn9fqw.docx contract=CON002
+[2026-02-15T15:07:43.163367+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp8_stwqxg.docx contract=CON002 files=['word/document.xml']
+[2026-02-15T15:07:43.173317+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp8_stwqxg.docx contract=CON002
+[2026-02-15T15:10:10.874901+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpsahqomvt.docx contract=CON002 files=['word/document.xml']
+[2026-02-15T15:10:10.887686+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpsahqomvt.docx contract=CON002
+[2026-02-15T15:12:05.151283+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpelm6pvic.docx contract=CON002 files=['word/document.xml']
+[2026-02-15T15:12:05.166801+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpelm6pvic.docx contract=CON002
+[2026-02-15T15:13:24.333715+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpy1zxhi1b.docx contract=CON002 files=['word/document.xml']
+[2026-02-15T15:13:24.349027+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpy1zxhi1b.docx contract=CON002
+[2026-02-15T15:23:17.180703+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp8zsugori.docx contract=CON002 files=['word/document.xml']
+[2026-02-15T15:23:17.197034+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp8zsugori.docx contract=CON002
+[2026-02-15T15:26:54.223750+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp3a090t_c.docx contract=CON002 files=['word/document.xml']
+[2026-02-15T15:26:54.239667+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp3a090t_c.docx contract=CON002
+[2026-02-15T15:30:21.404901+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp1vkdpkjo.docx contract=CON002 files=['word/document.xml']
+[2026-02-15T15:30:21.420649+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp1vkdpkjo.docx contract=CON002
+[2026-02-15T16:58:07.681145+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpnkxq_1ft.docx contract=CON003 files=['word/document.xml']
+[2026-02-15T16:58:07.698944+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpnkxq_1ft.docx contract=CON003
+[2026-02-15T17:07:47.459114+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmphct71erl.docx contract=CON003 files=['word/document.xml']
+[2026-02-15T17:07:47.484478+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmphct71erl.docx contract=CON003
+[2026-02-15T17:19:01.768416+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpcemvqktk.docx contract=CON003 files=['word/document.xml']
+[2026-02-15T17:19:01.792654+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpcemvqktk.docx contract=CON003
+[2026-02-15T17:28:09.878624+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpine91ci6.docx contract=CON003 files=['word/document.xml']
+[2026-02-15T17:28:09.906025+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpine91ci6.docx contract=CON003
+[2026-02-16T02:02:11.121483+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp7kpoeh01.docx contract=CON003 files=['word/document.xml']
+[2026-02-16T02:02:11.137519+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp7kpoeh01.docx contract=CON003
+[2026-02-16T02:07:40.917773+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpw3bioyok.docx contract=CON003 files=['word/document.xml']
+[2026-02-16T02:07:40.925921+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpw3bioyok.docx contract=CON003
+[2026-02-16T02:14:00.880070+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmps8ojgz9c.docx contract=CON003 files=['word/document.xml']
+[2026-02-16T02:14:00.887057+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmps8ojgz9c.docx contract=CON003
+[2026-02-16T02:17:08.507210+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpc9sdndvo.docx contract=CON003 files=['word/document.xml']
+[2026-02-16T02:17:08.526592+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpc9sdndvo.docx contract=CON003
+[2026-02-16T02:26:02.808317+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpzdf9msb9.docx contract=CON003 files=['word/document.xml']
+[2026-02-16T02:26:02.831962+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpzdf9msb9.docx contract=CON003
+[2026-02-16T02:28:36.118064+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmplbmzi7_v.docx contract=CON003 files=['word/document.xml']
+[2026-02-16T02:28:36.134559+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmplbmzi7_v.docx contract=CON003
+[2026-02-16T02:29:26.947272+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpn7g03s6i.docx contract=CON003 files=['word/document.xml']
+[2026-02-16T02:29:26.971907+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpn7g03s6i.docx contract=CON003
+[2026-02-16T02:59:22.122193+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpn45ypzeb.docx contract=CON003 files=['word/document.xml']
+[2026-02-16T02:59:22.137198+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpn45ypzeb.docx contract=CON003
+[2026-02-16T03:07:13.797282+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpb7erkwkl.docx contract=CON003 files=['word/document.xml']
+[2026-02-16T03:07:13.813442+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpb7erkwkl.docx contract=CON003
+[2026-02-16T03:18:31.483864+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmppwbzc_1t.docx contract=CON003 files=['word/document.xml']
+[2026-02-16T03:18:31.499553+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmppwbzc_1t.docx contract=CON003
+[2026-02-16T06:02:39.713580+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpim7h2748.docx contract=CON100 files=['word/document.xml']
+[2026-02-16T06:02:39.729478+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpim7h2748.docx contract=CON100
+[2026-02-16T06:03:42.924824+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpcs9tl09i.docx contract=CON100 files=['word/document.xml']
+[2026-02-16T06:03:42.947262+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpcs9tl09i.docx contract=CON100
+[2026-02-16T06:06:05.298152+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpcexa3m2q.docx contract=CON401 files=['word/document.xml']
+[2026-02-16T06:06:05.315426+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpcexa3m2q.docx contract=CON401
+[2026-02-16T07:26:39.039584+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp5c23_0ou.docx contract=CON900 files=['word/document.xml']
+[2026-02-16T07:26:39.052844+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp5c23_0ou.docx contract=CON900
+[2026-02-16T07:31:01.875641+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp54x3aqpv.docx contract=CON900 files=['word/document.xml']
+[2026-02-16T07:31:01.892962+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp54x3aqpv.docx contract=CON900
+[2026-02-16T11:14:34.166904+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpzzw51tff.docx contract=CON800 files=['word/document.xml']
+[2026-02-16T11:14:34.182983+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpzzw51tff.docx contract=CON800
+[2026-02-16T11:18:44.460350+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpz4f1x576.docx contract=CON800 files=['word/document.xml']
+[2026-02-16T11:18:44.474156+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpz4f1x576.docx contract=CON800
+[2026-02-16T11:29:28.780816+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpx5umwgyb.docx contract=CON800 files=['word/document.xml']
+[2026-02-16T11:29:28.798699+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpx5umwgyb.docx contract=CON800
+[2026-02-16T11:31:26.877041+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp65ljton8.docx contract=CON800 files=['word/document.xml']
+[2026-02-16T11:31:26.888576+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp65ljton8.docx contract=CON800
+[2026-02-16T12:53:04.451659+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpsllyh6i4.docx contract=CON900 files=['word/document.xml']
+[2026-02-16T12:53:04.467782+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpsllyh6i4.docx contract=CON900
+[2026-02-16T12:56:03.713647+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmplj2r6tec.docx contract=CON900 files=['word/document.xml']
+[2026-02-16T12:56:03.731541+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmplj2r6tec.docx contract=CON900
+[2026-02-16T12:59:16.794371+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpqdwrvd0e.docx contract=CON900 files=['word/document.xml']
+[2026-02-16T12:59:16.810719+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpqdwrvd0e.docx contract=CON900
+[2026-02-16T13:06:17.918631+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpjgpwgzab.docx contract=CON900 files=['word/document.xml']
+[2026-02-16T13:06:17.935267+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpjgpwgzab.docx contract=CON900
+[2026-02-16T13:58:39.722329+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpl9h0vcsp.docx contract=CON800 files=['word/document.xml']
+[2026-02-16T13:58:39.722329+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpl9h0vcsp.docx contract=CON800
+[2026-02-16T23:18:50.784627+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpk5dkv0em.docx contract=CON900 files=['word/document.xml']
+[2026-02-16T23:18:50.800637+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpk5dkv0em.docx contract=CON900
+[2026-02-16T23:26:19.574758+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmppnsquo46.docx contract=CON100 files=['word/document.xml']
+[2026-02-16T23:26:19.599430+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmppnsquo46.docx contract=CON100
+[2026-02-16T23:27:03.089686+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp6poj82l_.docx contract=CON900 files=['word/document.xml']
+[2026-02-16T23:27:03.105610+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp6poj82l_.docx contract=CON900
+[2026-02-16T23:27:12.179510+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp8v2u733p.docx contract=CON800 files=['word/document.xml']
+[2026-02-16T23:27:12.189109+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp8v2u733p.docx contract=CON800
+[2026-02-16T23:29:32.193318+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpff9n3n8t.docx contract=CON001 files=['word/document.xml']
+[2026-02-16T23:29:32.201489+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpff9n3n8t.docx contract=CON001
+[2026-02-16T23:33:51.214571+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpe7b8b97a.docx contract=CON001 files=['word/document.xml']
+[2026-02-16T23:33:51.228490+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpe7b8b97a.docx contract=CON001
+[2026-02-16T23:35:50.129553+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpgvzuv_t0.docx contract=CON001 files=['word/document.xml']
+[2026-02-16T23:35:50.145640+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpgvzuv_t0.docx contract=CON001
+[2026-02-17T01:52:21.553004+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpeksm6l7z.docx contract=qq12345 files=['word/document.xml']
+[2026-02-17T01:52:21.584910+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpeksm6l7z.docx contract=qq12345
+[2026-02-17T01:52:31.491269+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpi0pcjm4v.docx contract=qq12345 files=['word/document.xml']
+[2026-02-17T01:52:31.507369+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpi0pcjm4v.docx contract=qq12345
+[2026-02-17T01:53:40.533866+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpv57_j0x9.docx contract=CON002 files=['word/document.xml']
+[2026-02-17T01:53:40.560134+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpv57_j0x9.docx contract=CON002
+[2026-02-17T05:32:29.753929+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpsdp5m0p6.docx contract=CON001 files=['word/document.xml']
+[2026-02-17T05:32:29.759231+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpsdp5m0p6.docx contract=CON001
+[2026-02-17T05:32:31.942089+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp02h69b74.docx contract=CON001 files=['word/document.xml']
+[2026-02-17T05:32:31.954217+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp02h69b74.docx contract=CON001
+[2026-02-17T05:32:39.177630+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpdsnrfugt.docx contract=CON001 files=['word/document.xml']
+[2026-02-17T05:32:39.186905+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpdsnrfugt.docx contract=CON001
+[2026-02-17T05:32:48.308360+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp0fzp_co4.docx contract=CON001 files=['word/document.xml']
+[2026-02-17T05:32:48.314140+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp0fzp_co4.docx contract=CON001
+[2026-02-17T05:33:00.257592+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpmb4l9lno.docx contract=CON001 files=['word/document.xml']
+[2026-02-17T05:33:00.271574+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpmb4l9lno.docx contract=CON001
+[2026-02-17T05:34:04.797867+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmplomyfmm3.docx contract=CON001 files=['word/document.xml']
+[2026-02-17T05:34:04.806595+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmplomyfmm3.docx contract=CON001
+[2026-02-17T05:34:06.931177+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp2wn2y5v9.docx contract=CON001 files=['word/document.xml']
+[2026-02-17T05:34:06.941359+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp2wn2y5v9.docx contract=CON001
+[2026-02-17T05:34:08.332047+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp25kpibb6.docx contract=CON001 files=['word/document.xml']
+[2026-02-17T05:34:08.332047+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp25kpibb6.docx contract=CON001
+[2026-02-17T05:34:16.630015+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpq6ifo6o6.docx contract=CON001 files=['word/document.xml']
+[2026-02-17T05:34:16.646662+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpq6ifo6o6.docx contract=CON001
+[2026-02-17T05:34:25.067895+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpiitc4xwq.docx contract=CON001 files=['word/document.xml']
+[2026-02-17T05:34:25.081524+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpiitc4xwq.docx contract=CON001
+[2026-02-17T05:45:58.536384+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp96fhk57n.docx contract=CON900 files=['word/document.xml']
+[2026-02-17T05:45:58.552649+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp96fhk57n.docx contract=CON900
+[2026-02-17T05:46:07.162513+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpw7zdl6h1.docx contract=CON900 files=['word/document.xml']
+[2026-02-17T05:46:07.178514+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpw7zdl6h1.docx contract=CON900
+[2026-02-17T06:19:48.119221+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp0ujugb4z.docx contract=CON900 files=['word/document.xml']
+[2026-02-17T06:19:48.119221+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp0ujugb4z.docx contract=CON900
+[2026-02-17T06:19:55.478541+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpdvejpv79.docx contract=CON900 files=['word/document.xml']
+[2026-02-17T06:19:55.495208+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpdvejpv79.docx contract=CON900
+[2026-02-17T12:23:40.884615+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp37267urk.docx contract=CON900 files=['word/document.xml']
+[2026-02-17T12:23:40.900542+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp37267urk.docx contract=CON900
+[2026-02-17T12:23:57.672877+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp5x4tcqhn.docx contract=CON900 files=['word/document.xml']
+[2026-02-17T12:23:57.694734+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp5x4tcqhn.docx contract=CON900
+[2026-02-18T01:33:52.340171+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpn6awql4p.docx contract=CON900 files=['word/document.xml']
+[2026-02-18T01:33:52.355905+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpn6awql4p.docx contract=CON900
+[2026-02-18T01:34:01.009099+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpd6qx0v4b.docx contract=CON900 files=['word/document.xml']
+[2026-02-18T01:34:01.023307+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpd6qx0v4b.docx contract=CON900
+[2026-02-18T01:57:57.154491+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpegty8jib.docx contract=CON800 files=['word/document.xml']
+[2026-02-18T01:57:57.170424+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpegty8jib.docx contract=CON800
+[2026-02-18T01:58:02.956833+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp44e9t4lx.docx contract=CON800 files=['word/document.xml']
+[2026-02-18T01:58:02.972860+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp44e9t4lx.docx contract=CON800
+[2026-02-18T11:02:47.276416+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpdnatvdu4.docx contract=CON002 files=['word/document.xml']
+[2026-02-18T11:02:47.296475+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpdnatvdu4.docx contract=CON002
+[2026-02-18T11:02:56.225291+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpebgtfvfq.docx contract=CON002 files=['word/document.xml']
+[2026-02-18T11:02:56.252600+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpebgtfvfq.docx contract=CON002
+[2026-02-19T01:43:40.414329+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmps2iu1fan.docx contract=CON002 files=['word/document.xml']
+[2026-02-19T01:43:40.436797+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmps2iu1fan.docx contract=CON002
+[2026-02-19T01:43:48.899981+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmprikbj8wa.docx contract=CON002 files=['word/document.xml']
+[2026-02-19T01:43:48.969707+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmprikbj8wa.docx contract=CON002
+[2026-02-19T03:34:58.293662+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp4scuc8bn.docx contract=CON800 files=['word/document.xml']
+[2026-02-19T03:34:58.313717+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp4scuc8bn.docx contract=CON800
+[2026-02-19T03:35:05.155736+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmppzixcyld.docx contract=CON800 files=['word/document.xml']
+[2026-02-19T03:35:05.171284+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmppzixcyld.docx contract=CON800
+[2026-02-19T03:46:44.988158+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpf9p8puaf.docx contract=CON900 files=['word/document.xml']
+[2026-02-19T03:46:44.999265+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpf9p8puaf.docx contract=CON900
+[2026-02-19T03:46:49.620063+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpqk0oj4rd.docx contract=CON900 files=['word/document.xml']
+[2026-02-19T03:46:49.634811+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpqk0oj4rd.docx contract=CON900
+[2026-02-19T04:06:47.905526+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpmmqdolsj.docx contract=CON900 files=['word/document.xml']
+[2026-02-19T04:06:47.926433+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpmmqdolsj.docx contract=CON900
+[2026-02-19T04:06:54.099947+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpdhkf6uy7.docx contract=CON900 files=['word/document.xml']
+[2026-02-19T04:06:54.123557+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpdhkf6uy7.docx contract=CON900
+[2026-02-19T04:12:59.851314+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp773f8fuk.docx contract=CON900 files=['word/document.xml']
+[2026-02-19T04:12:59.868146+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp773f8fuk.docx contract=CON900
+[2026-02-19T04:13:09.007343+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpqb235wqr.docx contract=CON900 files=['word/document.xml']
+[2026-02-19T04:13:09.024599+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpqb235wqr.docx contract=CON900
+[2026-02-20T07:00:34.124884+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp8jghc4g4.docx contract=S6-02-006BYF files=['word/document.xml']
+[2026-02-20T07:00:34.158414+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp8jghc4g4.docx contract=S6-02-006BYF
+[2026-02-20T07:00:45.905014+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp7a1vn6hg.docx contract=S6-02-006BYF files=['word/document.xml']
+[2026-02-20T07:00:45.930459+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp7a1vn6hg.docx contract=S6-02-006BYF
+[2026-02-20T07:09:27.194392+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpxnzlddme.docx contract=S6-02-006BYF files=['word/document.xml']
+[2026-02-20T07:09:27.222506+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpxnzlddme.docx contract=S6-02-006BYF
+[2026-02-20T07:09:33.408051+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp_o_e7lyr.docx contract=S6-02-006BYF files=['word/document.xml']
+[2026-02-20T07:09:33.440235+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp_o_e7lyr.docx contract=S6-02-006BYF
+[2026-02-20T07:39:23.619109+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpfiyc1mfo.docx contract=S6-02-001ETE files=['word/document.xml']
+[2026-02-20T07:39:23.667322+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpfiyc1mfo.docx contract=S6-02-001ETE
+[2026-02-20T07:39:43.427929+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp9xac2_55.docx contract=S6-02-001ETE files=['word/document.xml']
+[2026-02-20T07:39:43.474739+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp9xac2_55.docx contract=S6-02-001ETE
+[2026-02-20T07:39:49.066207+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpc7bhhpwl.docx contract=S6-02-001ETE files=['word/document.xml']
+[2026-02-20T07:39:49.128385+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpc7bhhpwl.docx contract=S6-02-001ETE
+[2026-02-20T07:39:56.485195+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp4j3iqtuc.docx contract=S6-02-001ETE files=['word/document.xml']
+[2026-02-20T07:39:56.535380+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp4j3iqtuc.docx contract=S6-02-001ETE
+[2026-02-20T07:40:13.604587+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpd9f8lhsz.docx contract=S6-02-001ETE files=['word/document.xml']
+[2026-02-20T07:40:13.670651+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpd9f8lhsz.docx contract=S6-02-001ETE
+[2026-02-20T07:40:33.236742+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp3__lt_az.docx contract=S6-02-001ETE files=['word/document.xml']
+[2026-02-20T07:40:33.269621+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp3__lt_az.docx contract=S6-02-001ETE
+[2026-02-20T07:40:38.771394+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpolbrne9f.docx contract=S6-02-001ETE files=['word/document.xml']
+[2026-02-20T07:40:38.825110+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpolbrne9f.docx contract=S6-02-001ETE
+[2026-02-20T07:40:46.227571+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpdzuf8w5n.docx contract=S6-02-001ETE files=['word/document.xml']
+[2026-02-20T07:40:46.291263+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpdzuf8w5n.docx contract=S6-02-001ETE
+[2026-02-20T08:23:01.329061+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpdoo116x3.docx contract=S6-02-001ETE files=['word/document.xml']
+[2026-02-20T08:23:01.388793+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpdoo116x3.docx contract=S6-02-001ETE
+[2026-02-20T08:23:16.449113+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpsolec5tk.docx contract=S6-02-001ETE files=['word/document.xml']
+[2026-02-20T08:23:16.500433+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpsolec5tk.docx contract=S6-02-001ETE
+[2026-02-20T08:51:03.385724+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp4ctqq9yl.docx contract=S6-02-001LCT files=['word/document.xml']
+[2026-02-20T08:51:03.464906+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp4ctqq9yl.docx contract=S6-02-001LCT
+[2026-02-20T08:51:16.965967+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmplzce8bga.docx contract=S6-02-001LCT files=['word/document.xml']
+[2026-02-20T08:51:17.028122+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmplzce8bga.docx contract=S6-02-001LCT
+[2026-02-20T10:02:59.373014+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpmgbodkf7.docx contract=S6-02-001ETE files=['word/document.xml']
+[2026-02-20T10:02:59.436856+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpmgbodkf7.docx contract=S6-02-001ETE
+[2026-02-20T10:03:09.752893+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpzztb2q3v.docx contract=S6-02-001ETE files=['word/document.xml']
+[2026-02-20T10:03:09.811430+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpzztb2q3v.docx contract=S6-02-001ETE
+[2026-02-21T09:09:21.859444+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpke3tdag9.docx contract=S6-02-001ETE files=['word/document.xml']
+[2026-02-21T09:09:21.871441+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpke3tdag9.docx contract=S6-02-001ETE
+[2026-02-21T09:18:49.506405+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp202trx5d.docx contract=S6-02-001ETE files=['word/document.xml']
+[2026-02-21T09:18:49.522416+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp202trx5d.docx contract=S6-02-001ETE
+[2026-02-21T09:24:05.879707+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmplsp8jrf8.docx contract=S6-02-001ETE files=['word/document.xml']
+[2026-02-21T09:24:05.900355+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmplsp8jrf8.docx contract=S6-02-001ETE
+[2026-02-21T09:42:00.006903+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpuyhhi8jo.docx contract=S6-02-001ETE files=['word/document.xml']
+[2026-02-21T09:42:00.086737+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpuyhhi8jo.docx contract=S6-02-001ETE
+[2026-02-21T09:42:21.056496+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp5uyhyhq3.docx contract=S6-02-001ETE files=['word/document.xml']
+[2026-02-21T09:42:21.106486+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp5uyhyhq3.docx contract=S6-02-001ETE
+[2026-02-21T09:42:53.034836+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpqzue0rhk.docx contract=S6-02-001ETE files=['word/document.xml']
+[2026-02-21T09:42:53.082383+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpqzue0rhk.docx contract=S6-02-001ETE
+[2026-02-21T09:43:06.116537+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp4ez51eup.docx contract=S6-02-001ETE files=['word/document.xml']
+[2026-02-21T09:43:06.171343+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp4ez51eup.docx contract=S6-02-001ETE
+[2026-02-21T12:55:15.088081+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpn5wv7ble.docx contract=S6-02-006BYF files=['word/document.xml']
+[2026-02-21T12:55:15.168990+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpn5wv7ble.docx contract=S6-02-006BYF
+[2026-02-21T12:55:33.430232+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpl2iutrei.docx contract=S6-02-006BYF files=['word/document.xml']
+[2026-02-21T12:55:33.487049+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpl2iutrei.docx contract=S6-02-006BYF
+[2026-02-22T04:43:28.092207+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp3g7whtyd.docx contract=CON001 files=['word/document.xml']
+[2026-02-22T04:43:28.163468+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp3g7whtyd.docx contract=CON001
+[2026-02-22T04:43:42.788999+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpblgl0rwd.docx contract=CON001 files=['word/document.xml']
+[2026-02-22T04:43:42.791076+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpblgl0rwd.docx contract=CON001
+[2026-02-22T07:08:31.297019+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpbmr7vtqq.docx contract=S6-02-001ETE files=['word/document.xml']
+[2026-02-22T07:08:31.328440+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpbmr7vtqq.docx contract=S6-02-001ETE
+[2026-02-22T07:08:42.945210+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp0gg70lkd.docx contract=S6-02-001ETE files=['word/document.xml']
+[2026-02-22T07:08:42.962199+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp0gg70lkd.docx contract=S6-02-001ETE
+[2026-02-22T07:32:27.859402+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp1sc6qaxw.docx contract=CON001 files=['word/document.xml']
+[2026-02-22T07:32:27.891376+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp1sc6qaxw.docx contract=CON001
+[2026-02-22T07:32:38.479010+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp4nf408cl.docx contract=CON001 files=['word/document.xml']
+[2026-02-22T07:32:38.511827+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp4nf408cl.docx contract=CON001
+[2026-02-22T08:02:13.969164+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpm8516u0z.docx contract=S6-02-001ETE files=['word/document.xml']
+[2026-02-22T08:02:14.001168+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpm8516u0z.docx contract=S6-02-001ETE
+[2026-02-22T08:02:24.768504+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp3f5ijt56.docx contract=S6-02-001ETE files=['word/document.xml']
+[2026-02-22T08:02:24.801484+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp3f5ijt56.docx contract=S6-02-001ETE
+[2026-02-22T10:23:06.654884+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpf512nr9k.docx contract=S6-02-003QWE files=['word/document.xml']
+[2026-02-22T10:23:06.711713+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpf512nr9k.docx contract=S6-02-003QWE
+[2026-02-22T10:23:37.115291+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmps1m61wsd.docx contract=S6-02-003QWE files=['word/document.xml']
+[2026-02-22T10:23:37.185853+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmps1m61wsd.docx contract=S6-02-003QWE
+[2026-02-22T13:43:15.708119+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpixlkag03.docx contract=CON001 files=['word/document.xml']
+[2026-02-22T13:43:15.771663+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpixlkag03.docx contract=CON001
+[2026-02-22T13:43:41.057470+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp7cxkt22p.docx contract=CON001 files=['word/document.xml']
+[2026-02-22T13:43:41.109096+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmp7cxkt22p.docx contract=CON001
+[2026-02-22T14:47:48.766519+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpq2vjjmgg.docx contract=CON001 files=['word/document.xml']
+[2026-02-22T14:47:48.798171+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpq2vjjmgg.docx contract=CON001
+[2026-02-22T14:47:58.999740+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpo91gk3tc.docx contract=CON001 files=['word/document.xml']
+[2026-02-22T14:47:59.003751+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpo91gk3tc.docx contract=CON001
+[2026-02-22T15:06:11.723037+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpbh4cey4o.docx contract=S6-02-008POI files=['word/document.xml']
+[2026-02-22T15:06:11.773093+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpbh4cey4o.docx contract=S6-02-008POI
+[2026-02-22T15:06:34.968771+00:00] repaired=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpqfjvar2t.docx contract=S6-02-008POI files=['word/document.xml']
+[2026-02-22T15:06:35.018527+00:00] using_template=C:\Users\LTP-IT~1\AppData\Local\Temp\tmpqfjvar2t.docx contract=S6-02-008POI

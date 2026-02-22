@@ -1,0 +1,39 @@
+--- get_role_from_request called
+request.user present id=1
+request.user.role=User
+returning role from request.user: User
+--- get_role_from_request called
+request.user present id=1
+request.user.role=User
+returning role from request.user: User
+--- get_role_from_request called
+request.user present id=1
+request.user.role=User
+returning role from request.user: User
+--- get_role_from_request called
+request.user present id=1
+request.user.role=User
+returning role from request.user: User
+--- get_role_from_request called
+request.user present id=1
+request.user.role=User
+returning role from request.user: User
+--- get_role_from_request called
+request.user present id=1
+request.user.role=User
+returning role from request.user: User
+--- get_role_from_request called
+request.user present id=1
+request.user.role=User
+db lookup user: True
+returning role from db: Admin
+--- get_role_from_request called
+request.user present id=1
+request.user.role=User
+db lookup user: True
+returning role from db: Admin
+--- get_role_from_request called
+request.user present id=1
+request.user.role=User
+db lookup user: True
+returning role from db: Admin
