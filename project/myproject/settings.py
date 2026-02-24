@@ -21,22 +21,32 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-xt!h9_29sn0&sdn%p+y1yf&ml=n(llwtv0-q%tc!6s@=7dc-u('
+# Read secret and debug flags from environment for production safety.
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-xt!h9_29sn0&sdn%p+y1yf&ml=n(llwtv0-q%tc!6s@=7dc-u(')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# Use `DJANGO_DEBUG=False` in production.
+DEBUG = os.environ.get('DJANGO_DEBUG', 'True').lower() in ('1', 'true', 'yes')
 
-ALLOWED_HOSTS = ['*']
+# Restrict hosts in production via `DJANGO_ALLOWED_HOSTS="example.com,api.example.com"`.
+ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
 
 # CORS Configuration
-CORS_ALLOWED_ORIGINS = [
-    'http://localhost:3000',
-    'http://localhost:3001',
-    'http://127.0.0.1:3000',
-    'http://10.124.29.177:3000',
-]
+# In production, set `CORS_ALLOWED_ORIGINS` to a comma-separated list in env.
+env_cors = os.environ.get('CORS_ALLOWED_ORIGINS')
+if env_cors:
+    CORS_ALLOWED_ORIGINS = [u.strip() for u in env_cors.split(',') if u.strip()]
+else:
+    # sensible defaults for local development
+    CORS_ALLOWED_ORIGINS = [
+        'http://localhost:3000',
+        'http://localhost:3001',
+        'http://127.0.0.1:3000',
+    ]
 
-CORS_ALLOW_CREDENTIALS = True
+# Only allow credentials from CORS in debug/dev by default. In production,
+# explicitly set `CORS_ALLOW_CREDENTIALS=True` if required for your frontend.
+CORS_ALLOW_CREDENTIALS = os.environ.get('CORS_ALLOW_CREDENTIALS', str(DEBUG)).lower() in ('1', 'true', 'yes')
 
 
 # Application definition
@@ -58,6 +68,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'myproject.bl_agreement',
     'myproject.uv_agreement',
+    'myproject.master_data',
 ]
 
 # Note: 'rolepermissions' intentionally not added to INSTALLED_APPS here
@@ -278,3 +289,26 @@ LOGGING = {
         'level': 'WARNING',
     }
 }
+
+# Production-oriented security settings (defaults read from environment)
+# These should be explicitly configured in production. Defaults favor local
+# development when DEBUG=True.
+SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT', str(not DEBUG)).lower() in ('1', 'true', 'yes')
+SESSION_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE', str(not DEBUG)).lower() in ('1', 'true', 'yes')
+CSRF_COOKIE_SECURE = os.environ.get('CSRF_COOKIE_SECURE', str(not DEBUG)).lower() in ('1', 'true', 'yes')
+
+# HTTP Strict Transport Security
+SECURE_HSTS_SECONDS = int(os.environ.get('SECURE_HSTS_SECONDS', '0' if DEBUG else '31536000'))
+SECURE_HSTS_INCLUDE_SUBDOMAINS = os.environ.get('SECURE_HSTS_INCLUDE_SUBDOMAINS', str(not DEBUG)).lower() in ('1', 'true', 'yes')
+SECURE_HSTS_PRELOAD = os.environ.get('SECURE_HSTS_PRELOAD', 'False').lower() in ('1', 'true', 'yes')
+
+# Browser security headers
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = os.environ.get('X_FRAME_OPTIONS', 'DENY')
+
+# If running behind a proxy that sets X-Forwarded-Proto, enable this.
+if os.environ.get('SECURE_PROXY_SSL_HEADER', 'False').lower() in ('1', 'true', 'yes'):
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+else:
+    SECURE_PROXY_SSL_HEADER = None
