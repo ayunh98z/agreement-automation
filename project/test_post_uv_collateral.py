@@ -1,8 +1,13 @@
 import json
 import urllib.request
+import os
 
-URL_TOKEN = 'http://localhost:8000/api/token/'
-URL_UV_COLL = 'http://localhost:8000/api/uv-collateral/'
+API_BASE = os.environ.get('API_BASE')
+if not API_BASE:
+    raise RuntimeError("Environment variable API_BASE is required (e.g. 'http://127.0.0.1:8000').")
+
+URL_TOKEN = API_BASE + '/api/token/'
+URL_UV_COLL = API_BASE + '/api/uv-collateral/'
 
 creds = {'username':'admin', 'password':'admin123'}
 
@@ -36,7 +41,7 @@ def post_uv_collateral(token):
 
 
 def create_contract(token, contract_number):
-    url = 'http://localhost:8000/api/contracts/'
+    url = API_BASE + '/api/contracts/'
     payload = {'contract_number': contract_number, 'name_of_debtor': 'Test Debtor Contract'}
     data = json.dumps(payload).encode('utf-8')
     req = urllib.request.Request(url, data=data, headers={'Content-Type':'application/json', 'Authorization': f"Bearer {token}"})

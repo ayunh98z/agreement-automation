@@ -5,9 +5,14 @@ import { toast } from 'react-toastify';
 import '../UserManagement/UserManagement.css';
 import pdfIcon from '../../assets/icons/pdf-icon.svg';
 import { getIndonesianNumberWord, getIndonesianDateInWords, parseDateFromDisplay, getIndonesianDayName, getIndonesianDateDisplay, formatNumberWithDots, formatDateDisplay, isDateFieldName, formatFieldName, titleCasePayload } from '../../utils/formatting';
-import { t } from '../../utils/messages';
+import useT from '../../hooks/useT';
+import { t as messages_t } from '../../utils/messages';
 import { requestWithAuth } from '../../utils/api';
 import { stripIdKeys, normalizeSection } from '../../utils/payloadUtils';
+
+// Module-level fallback `t` for non-React scope usages (keeps existing code working)
+const t = messages_t;
+
 
 // Helper: Extract branch_id from JWT token
 export const getUserBranchIdFromToken = (token) => {
@@ -27,6 +32,49 @@ export const getMonthInRomanNumeral = (monthNumber) => {
   return romanNumerals[monthNumber - 1] || '';
 };
 
+// Helper: recursively uppercase fields that end with _in_word or _by_word
+const _uppercaseWordFieldsRecursive = (obj) => {
+  if (obj === null || typeof obj === 'undefined') return obj;
+  if (typeof obj === 'string') return obj;
+  if (Array.isArray(obj)) return obj.map(_uppercaseWordFieldsRecursive);
+  if (typeof obj === 'object') {
+    const out = {};
+    Object.keys(obj).forEach(k => {
+      try {
+        const v = obj[k];
+        if (/_in_word$|_by_word$/.test(k)) {
+          out[k] = (v === null || typeof v === 'undefined') ? v : String(v).toUpperCase();
+        } else if (typeof v === 'object') {
+          out[k] = _uppercaseWordFieldsRecursive(v);
+        } else {
+          out[k] = v;
+        }
+      } catch (e) {
+        out[k] = obj[k];
+      }
+    });
+    return out;
+  }
+  return obj;
+};
+
+// Helper: recursively uppercase all string values in an object/array
+const _uppercaseAllStringsRecursive = (val) => {
+  try {
+    if (val === null || typeof val === 'undefined') return val;
+    if (typeof val === 'string') return val.toString().toUpperCase();
+    if (Array.isArray(val)) return val.map(_uppercaseAllStringsRecursive);
+    if (typeof val === 'object') {
+      const out = {};
+      Object.keys(val).forEach(k => {
+        try { out[k] = _uppercaseAllStringsRecursive(val[k]); } catch (e) { out[k] = val[k]; }
+      });
+      return out;
+    }
+    return val;
+  } catch (e) { return val; }
+};
+
 // Use shared `stripIdKeys` from utils/payloadUtils
 
 // Styles constant used by the inlined form
@@ -42,6 +90,7 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
   // State UI lokal
   const [saving, setSaving] = useState(false);
   const [usernameDisplay, setUsernameDisplay] = useState('');
+  const t = useT();
 
   useEffect(() => {
     try {
@@ -53,11 +102,11 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
         try {
           const token = localStorage.getItem('access_token');
           if (!token) return;
-          const res = await axios.get('http://localhost:8000/api/whoami/', { headers: { 'Authorization': `Bearer ${token}` } });
+          const res = await requestWithAuth({ method: 'get', url: '/api/whoami/' });
           setUsernameDisplay(res.data.username || res.data.full_name || '');
           return;
         } catch (err) { /* ignore */ }
-      
+
         try {
           // fallback: try decode JWT payload to get username
           const token = localStorage.getItem('access_token');
@@ -76,6 +125,7 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
     } catch (e) { /* ignore */ }
   }, []);
 
+
   // Determine if current user is Admin (used to control Delete button visibility)
   let isAdmin = false;
   try {
@@ -84,6 +134,15 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
       const ud = JSON.parse(raw);
       const role = (ud.role || ud.role_name || '').toString().toLowerCase();
       if (role.includes('admin')) isAdmin = true;
+    }
+  } catch (e) { /* ignore */ }
+  let isAudit = false;
+  try {
+    const raw2 = localStorage.getItem('user_data');
+    if (raw2) {
+      const ud2 = JSON.parse(raw2);
+      const role2 = (ud2.role || ud2.role_name || '').toString().toLowerCase();
+      if (role2.includes('audit')) isAudit = true;
     }
   } catch (e) { /* ignore */ }
 
@@ -97,7 +156,7 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
       const downloadType = asPdf ? '&download=pdf' : '';
 
       // Agreement
-      const url1 = `http://localhost:8000/api/${base}/download-docx/?contract_number=${encodeURIComponent(contractNum)}${downloadType}&type=agreement`;
+      const url1 = `/api/${base}/download-docx/?contract_number=${encodeURIComponent(contractNum)}${downloadType}&type=agreement`;
       const resp1 = await requestWithAuth({ method: 'get', url: url1, responseType: 'blob', headers: token ? { Authorization: `Bearer ${token}` } : {} });
       const contentType1 = (resp1.headers && resp1.headers['content-type']) || '';
       const isPdf1 = contentType1.includes('pdf');
@@ -117,7 +176,7 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
       await new Promise(resolve => setTimeout(resolve, 500));
 
       // SP3
-      const url2 = `http://localhost:8000/api/${base}/download-docx/?contract_number=${encodeURIComponent(contractNum)}${downloadType}&type=sp3`;
+      const url2 = `/api/${base}/download-docx/?contract_number=${encodeURIComponent(contractNum)}${downloadType}&type=sp3`;
       const resp2 = await requestWithAuth({ method: 'get', url: url2, responseType: 'blob', headers: token ? { Authorization: `Bearer ${token}` } : {} });
       const contentType2 = (resp2.headers && resp2.headers['content-type']) || '';
       const isPdf2 = contentType2.includes('pdf');
@@ -139,6 +198,19 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
 
   // Fungsi untuk menangani penyimpanan (dengan refresh token saat kadaluwarsa)
   const handleSave = async () => {
+    // Prevent saving from create-document modal when collateral section is empty
+    if (inModal && createOnly) {
+      try {
+        const coll = collateralData || {};
+        const anyFilled = Object.keys(coll).some(k => coll[k] !== undefined && coll[k] !== null && String(coll[k]).trim() !== '');
+        if (!anyFilled) {
+          const msg = t('collateral_required');
+          setError(msg);
+          try { toast.error(msg); } catch (e) {}
+          return;
+        }
+      } catch (e) { /* ignore validation errors */ }
+    }
     setSaving(true);
     setError('');
 
@@ -170,26 +242,49 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
           }
         });
 
+        // When saving from the create modal, ignore any BM phone entered in the
+        // Branch Manager section. Prefer branch phone (`branch_data.phone_number_branch`) —
+        // backend will copy that into `phone_number_of_bm` when present.
+        if (inModal && createOnly) {
+          try { delete bmDataToSave.phone_number_of_bm; } catch (e) { /* ignore */ }
+        }
+        // When saving from the edit modal, BM phone (BM section) is deprecated/unused.
+        // Ensure we don't send it so it won't overwrite the agreement value.
+        if (inModal && editOnly) {
+          try { delete bmDataToSave.phone_number_of_bm; } catch (e) { /* ignore */ }
+        }
+
         const headerFieldsToSave = { ...headerFields };
-        // Ensure admin_rate is numeric and default to 0 when empty
-        if (typeof contractDataToSave.admin_rate === 'undefined' || contractDataToSave.admin_rate === '' || contractDataToSave.admin_rate === null) {
+        // Ensure admin_rate is numeric and default to 0 when empty.
+        // Use getNumFromValue (locale-aware) and clamp to a safe range to avoid DB out-of-range errors.
+        try {
+          let v = getNumFromValue(contractDataToSave.admin_rate);
+          if (v === null || typeof v === 'undefined') v = 0;
+          // clamp to 0..1000 (adjust upper bound if DB allows larger values)
+          v = Math.max(0, Math.min(v, 1000));
+          contractDataToSave.admin_rate = v;
+        } catch (e) {
           contractDataToSave.admin_rate = 0;
+        }
+        // Ensure previous_topup_amount (Outstanding Previous Contract) defaults to 0 when empty
+        if (typeof contractDataToSave.previous_topup_amount === 'undefined' || contractDataToSave.previous_topup_amount === '' || contractDataToSave.previous_topup_amount === null) {
+          contractDataToSave.previous_topup_amount = 0;
         } else {
-          contractDataToSave.admin_rate = Number(contractDataToSave.admin_rate) || 0;
+          contractDataToSave.previous_topup_amount = Number(contractDataToSave.previous_topup_amount) || 0;
         }
         // (no _display fields added â€” visual formatting handled in inputs)
         if (headerFieldsToSave.agreement_date) {
-          headerFieldsToSave.agreement_day_in_word = getIndonesianDayName(headerFieldsToSave.agreement_date) || headerFieldsToSave.agreement_day_in_word || '';
-          headerFieldsToSave.agreement_date_in_word = getIndonesianDateInWords(headerFieldsToSave.agreement_date) || headerFieldsToSave.agreement_date_in_word || '';
-          headerFieldsToSave.agreement_date_display = `(${getIndonesianDateDisplay(headerFieldsToSave.agreement_date)})` || headerFieldsToSave.agreement_date_display || '';
+          headerFieldsToSave.agreement_day_in_word = (getIndonesianDayName(headerFieldsToSave.agreement_date) || headerFieldsToSave.agreement_day_in_word || '').toString().toUpperCase();
+          headerFieldsToSave.agreement_date_in_word = (getIndonesianDateInWords(headerFieldsToSave.agreement_date) || headerFieldsToSave.agreement_date_in_word || '').toString().toUpperCase();
+          headerFieldsToSave.agreement_date_display = (`(${getIndonesianDateDisplay(headerFieldsToSave.agreement_date)})` || headerFieldsToSave.agreement_date_display || '').toString().toUpperCase();
         }
         if (headerFieldsToSave.sp3_date) {
-          headerFieldsToSave.sp3_date_in_word = getIndonesianDateInWords(headerFieldsToSave.sp3_date) || headerFieldsToSave.sp3_date_in_word || '';
-          headerFieldsToSave.sp3_date_display = `(${getIndonesianDateDisplay(headerFieldsToSave.sp3_date)})` || headerFieldsToSave.sp3_date_display || '';
+          headerFieldsToSave.sp3_date_in_word = (getIndonesianDateInWords(headerFieldsToSave.sp3_date) || headerFieldsToSave.sp3_date_in_word || '').toString().toUpperCase();
+          headerFieldsToSave.sp3_date_display = (`(${getIndonesianDateDisplay(headerFieldsToSave.sp3_date)})` || headerFieldsToSave.sp3_date_display || '').toString().toUpperCase();
         }
         if (headerFieldsToSave.date_of_delegated) {
-          headerFieldsToSave.date_of_delegated_in_word = getIndonesianDateInWords(headerFieldsToSave.date_of_delegated) || headerFieldsToSave.date_of_delegated_in_word || '';
-          headerFieldsToSave.date_of_delegated_display = `(${getIndonesianDateDisplay(headerFieldsToSave.date_of_delegated)})` || headerFieldsToSave.date_of_delegated_display || '';
+          headerFieldsToSave.date_of_delegated_in_word = (getIndonesianDateInWords(headerFieldsToSave.date_of_delegated) || headerFieldsToSave.date_of_delegated_in_word || '').toString().toUpperCase();
+          headerFieldsToSave.date_of_delegated_display = (`(${getIndonesianDateDisplay(headerFieldsToSave.date_of_delegated)})` || headerFieldsToSave.date_of_delegated_display || '').toString().toUpperCase();
         }
         // Ensure debtor name and phone number appear in header fields for templates
         headerFieldsToSave.name_of_debtor = headerFieldsToSave.name_of_debtor || (contractDataToSave && contractDataToSave.name_of_debtor) || '';
@@ -197,6 +292,9 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
 
         const debtorToSave = { ...contractDataToSave };
         const effectiveContractNumber = (contractNumber && String(contractNumber).trim()) ? contractNumber : (initialContractNumber || '');
+        // Treat as update only when explicitly editing (`editOnly`) or when an initialContractNumber is present.
+        // Do NOT treat `initialContractData` as an update signal — allow pre-filling the create modal without sending `edit_only`.
+        const isUpdateLocal = !!(editOnly || initialContractNumber);
         const payload = {
           contract_number: effectiveContractNumber,
           branch_id: selectedBranchId,
@@ -208,11 +306,15 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
           collateral_data: collateralData,
           header_fields: headerFieldsToSave,
           created_by: usernameDisplay,
-          edit_only: !!(typeof editOnly !== 'undefined' ? editOnly : false),
+          edit_only: isUpdateLocal,
           create_only: !!(typeof createOnly !== 'undefined' ? createOnly : false)
         };
         // When saving from a modal (create/edit) request backend to skip server-side normalization
-        try { if (inModal) payload.skip_normalization = true; } catch (e) { /* ignore */ }
+        // For Add-Contract modal (createOnly/contractOnly) we WANT server-side normalization
+        // (e.g., ensure contract identifiers are uppercased). Only request skip for other modals.
+        try {
+          if (inModal && !(createOnly || contractOnly)) payload.skip_normalization = true;
+        } catch (e) { /* ignore */ }
 
         if (editOnly || initialContractNumber) {
           Object.keys(extraFields || {}).forEach((k) => {
@@ -238,11 +340,14 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
 
         // Normalize numeric fields to avoid sending empty strings for numeric DB columns
         let normalizedPayload = { ...payload };
-        // For modal flows we preserve database-provided text as-is;
-        // apply title-casing only for non-modal full-form saves.
-        if (!inModal) {
-          try { normalizedPayload = titleCasePayload(normalizedPayload, numericFields); } catch (e) { /* non-fatal */ }
-        }
+        // Apply title-casing on the client side except for Add-Contract modal
+        // (createOnly in a modal) — preserve raw text exactly as entered there.
+        try {
+          // Skip title-casing for modal create/edit and Add-Contract (preserve modal input)
+            if (!(inModal && (createOnly || editOnly || contractOnly))) {
+            normalizedPayload = titleCasePayload(normalizedPayload, numericFields);
+          }
+        } catch (e) { /* non-fatal */ }
         // Skip section-level normalization when saving from modal (send exactly as entered in modal)
         if (!inModal) {
           ['contract_data','debtor','collateral_data','bm_data','branch_data','header_fields','extra_fields'].forEach(sec => {
@@ -257,16 +362,64 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
         // Remove client-side created/updated fields; server will set authoritative values
         try { delete normalizedPayload.created_by; delete normalizedPayload.created_at; delete normalizedPayload.updated_at; } catch (e) {}
 
+        // If saving from Add-Contract modal (createOnly/contractOnly in a modal),
+        // force ALL text fields to UPPERCASE before sending.
+        try {
+          const _uppercaseStringsRecursive = (val) => {
+            if (val === null || typeof val === 'undefined') return val;
+            if (typeof val === 'string') return val.toString().trim().toUpperCase();
+            if (Array.isArray(val)) return val.map(_uppercaseStringsRecursive);
+            if (typeof val === 'object') {
+              const out = {};
+              Object.keys(val).forEach(k => {
+                try { out[k] = _uppercaseStringsRecursive(val[k]); } catch (e) { out[k] = val[k]; }
+              });
+              return out;
+            }
+            return val;
+          };
+
+          if (inModal && (createOnly || editOnly || contractOnly)) {
+            normalizedPayload = _uppercaseStringsRecursive(normalizedPayload);
+          } else {
+            if (normalizedPayload && normalizedPayload.contract_number) normalizedPayload.contract_number = String(normalizedPayload.contract_number).toUpperCase();
+            if (normalizedPayload && normalizedPayload.contract_data && normalizedPayload.contract_data.topup_contract) normalizedPayload.contract_data.topup_contract = String(normalizedPayload.contract_data.topup_contract).toUpperCase();
+          }
+        } catch (e) { /* ignore */ }
+
+        // When saving from modal (create/edit), ensure collateral text fields are stored UPPERCASE.
+        try {
+          if ((inModal && (createOnly || editOnly)) && normalizedPayload && normalizedPayload.collateral_data && typeof normalizedPayload.collateral_data === 'object') {
+            const cd = { ...normalizedPayload.collateral_data };
+            Object.keys(cd).forEach((k) => {
+              try {
+                const v = cd[k];
+                if (v !== undefined && v !== null && typeof v === 'string') cd[k] = v.toString().trim().toUpperCase();
+              } catch (e) { /* ignore per-field errors */ }
+            });
+            normalizedPayload.collateral_data = cd;
+          }
+        } catch (e) { /* non-fatal */ }
+
+        try {
+          // Uppercase any *_in_word or *_by_word fields before sending
+          try { normalizedPayload = _uppercaseWordFieldsRecursive(normalizedPayload); } catch (e) {}
+        } catch (e) {}
         try { console.log('Final normalizedPayload to be sent (BL):', normalizedPayload); } catch (e) {}
-        return axios.post(`http://localhost:8000/api/${saveBase}/`, normalizedPayload, { headers });
+        return requestWithAuth({ method: 'post', url: `/api/${saveBase}/`, data: normalizedPayload, headers });
     };
     try {
-      await doSave(localStorage.getItem('access_token'));
+      const res = await doSave(localStorage.getItem('access_token'));
       const savedContractNumber = contractNumber || initialContractNumber || '';
       const isUpdate = !!(editOnly || initialContractNumber || initialContractData);
       toast.success(t(isUpdate ? 'save_updated' : 'save_added'));
+      // If backend returned updated AgreementAccess, pass it to onSaved so parent can update accessMap
+      let returnedAA = null;
+      try {
+        returnedAA = res && res.data && res.data.agreement_access ? res.data.agreement_access : (res && res.agreement_access ? res.agreement_access : null);
+      } catch (e) { returnedAA = null; }
       if (typeof onSaved === 'function') {
-        try { onSaved(savedContractNumber); } catch (e) { console.warn('onSaved callback failed', e); }
+        try { onSaved(savedContractNumber, returnedAA); } catch (e) { console.warn('onSaved callback failed', e); }
       }
       // no automatic download on save; button now only saves data
     } catch (err) {
@@ -277,7 +430,7 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
         try {
           const refresh = localStorage.getItem('refresh_token');
           if (!refresh) throw new Error('No refresh token available');
-          const r = await axios.post('http://localhost:8000/api/token/refresh/', { refresh });
+          const r = await axios.post(`${process.env.REACT_APP_API_BASE || ''}/api/token/refresh/`, { refresh });
           const newAccess = r.data.access;
           if (newAccess) {
             localStorage.setItem('access_token', newAccess);
@@ -311,20 +464,21 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
             const status = resp.status;
             // If backend returned duplicate contract error, show friendly toast
             if (status === 409 || respLower.includes('duplicate') || respLower.includes('already registered') || respLower.includes('already exists') || respLower.includes('unique')) {
-              const dupMsg = 'Failed to save. The contract number you entered is already registered in the system.';
+              const dupMsg = t('duplicate_contract_exists');
               setError(dupMsg);
               try { toast.error(dupMsg); } catch (e) {}
             } else {
               const url = resp.request?.responseURL || resp.config?.url || 'unknown';
               let body = '';
               try { body = typeof resp.data === 'string' ? resp.data : JSON.stringify(resp.data); } catch (e) { body = String(resp.data); }
-              const errMsg = `Failed to save (${status}): ${body && body.substring(0,200)}`;
+              const reason = (bodyErr && String(bodyErr)) || (body && String(body)) || String(status);
+              const errMsg = t('failed_saving_contract_prefix') + reason.substring(0,200);
               setError(errMsg);
               toast.error(errMsg);
               console.error('Save error response:', resp);
             }
           } else {
-            const errMsg = 'Failed to save data: ' + (err.message || 'unknown error');
+            const errMsg = t('failed_save_data_prefix') + (err.message || 'unknown error');
             setError(errMsg);
             toast.error(errMsg);
             console.error('Save error:', err);
@@ -367,63 +521,32 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
     if (initialContractNumber) return;
     try {
       if (initialContractData.contract_number) setContractNumber(initialContractData.contract_number);
-      setContractData(prev => ({ ...prev, ...initialContractData }));
+      setContractData(prev => _uppercaseWordFieldsRecursive({ ...prev, ...initialContractData }));
     } catch (e) { console.warn('Failed to apply initialContractData to form', e); }
   }, [initialContractData, initialContractNumber]);
 
-  const handleContractOnlySave = async () => {
-    setContractOnlySaving(true);
-    setContractOnlyError('');
-    try {
-      const token = localStorage.getItem('access_token');
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      const payload = {};
-      Object.keys(contractData || {}).forEach((k) => {
-        if (/_in_word$|_by_word$/.test(k)) return;
-        let v = contractData[k];
-        if (numericFields.includes(k) && v !== undefined && v !== null && v !== '') {
-          const n = Number(String(v).replace(/\./g, '').replace(/,/g, ''));
-          v = Number.isNaN(n) ? v : n;
-        }
-        payload[k] = v;
-      });
-      try { payload.created_by = usernameDisplay || ''; } catch (e) { payload.created_by = ''; }
-      const nowIso = new Date().toISOString();
-      payload.created_at = nowIso; payload.updated_at = nowIso;
-      const res = await axios.post('http://localhost:8000/api/contracts/', payload, { headers });
-      if (typeof onContractSaved === 'function') {
-        try { onContractSaved(res.data || payload); } catch (e) { console.warn('onContractSaved failed', e); }
-      }
-    } catch (err) {
-      console.error('Failed saving contract-only', err);
-      const resp = err?.response;
-      if (resp) {
-        const status = resp.status;
-        const bodyErr = resp.data?.error || resp.data?.message || '';
-        if (status === 409 || (bodyErr && String(bodyErr).toLowerCase().includes('duplicate'))) {
-          const msg = 'Failed to save. The contract number you entered is already registered in the system.';
-          try { toast.error(msg); } catch (e) {}
-          setContractOnlyError(msg);
-        } else {
-          const url = resp.request?.responseURL || resp.config?.url || 'unknown';
-          let body = '';
-          try { body = typeof resp.data === 'string' ? resp.data : JSON.stringify(resp.data); } catch (e) { body = String(resp.data); }
-          const errMsg = `Failed saving contract (${status}) ${url}: ${body && body.substring(0,200)}`;
-          setContractOnlyError(errMsg);
-          try { toast.error(errMsg); } catch (e) {}
-          console.error('Contract-only save response:', resp);
-        }
-      } else {
-        const msg = 'Failed saving contract: ' + (err.message || 'unknown error');
-        setContractOnlyError(msg);
-      }
-    } finally {
-      setContractOnlySaving(false);
-    }
-  };
-
   const [contracts, setContracts] = useState([]);
   const [filteredContracts, setFilteredContracts] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const handleDeleteRow = async (row) => {
+    if (!row || !row.contract_number) return;
+    const ok = window.confirm(`Delete agreement ${row.contract_number}? This cannot be undone.`);
+    if (!ok) return;
+    try {
+      setError('');
+      await requestWithAuth({ method: 'delete', url: `/api/bl-agreement/?contract_number=${encodeURIComponent(row.contract_number)}` });
+      toast.success('Record deleted');
+      if (typeof onSaved === 'function') {
+        try { await onSaved(); } catch (e) {}
+      }
+    } catch (err) {
+      console.error('Delete failed', err);
+      const msg = err?.response?.data?.error || t('delete_failed');
+      setError(msg);
+      toast.error(msg);
+    }
+  };
   const [showContractDropdown, setShowContractDropdown] = useState(false);
   const [branches, setBranches] = useState([]);
   const [selectedBranchId, setSelectedBranchId] = useState('');
@@ -500,8 +623,8 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
       const ad = headerFields?.agreement_date;
       if (!ad) return;
       const iso = parseDateFromDisplay(ad) || ad;
-      const dayName = getIndonesianDayName(iso) || '';
-      const dateWords = getIndonesianDateInWords(iso) || '';
+      const dayName = (getIndonesianDayName(iso) || '').toUpperCase();
+      const dateWords = (getIndonesianDateInWords(iso) || '').toUpperCase();
       // Also keep SP3 date synchronized to the agreement date so SP3 follows agreement
       setHeaderFields(prev => ({ ...prev,
         agreement_day_in_word: dayName || prev.agreement_day_in_word || '',
@@ -512,6 +635,97 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
       }));
     } catch (e) { /* ignore */ }
   }, [headerFields?.agreement_date]);
+
+  // Ensure fields like *_in_word / *_by_word show uppercase in UI
+  useEffect(() => {
+    try {
+      if (headerFields && typeof headerFields === 'object') {
+        const u = _uppercaseWordFieldsRecursive(headerFields);
+        if (JSON.stringify(u) !== JSON.stringify(headerFields)) setHeaderFields(u);
+      }
+    } catch (e) {}
+  }, [headerFields]);
+  // If in create/edit modal, ensure all text fields show uppercase immediately
+  useEffect(() => {
+    if (!(inModal && (createOnly || editOnly))) return;
+    try {
+      if (headerFields && typeof headerFields === 'object') {
+        const u = _uppercaseAllStringsRecursive(headerFields);
+        if (JSON.stringify(u) !== JSON.stringify(headerFields)) setHeaderFields(u);
+      }
+    } catch (e) {}
+  }, [headerFields, inModal, createOnly, editOnly]);
+  useEffect(() => {
+    try {
+      if (contractData && typeof contractData === 'object') {
+        const u = _uppercaseWordFieldsRecursive(contractData);
+        if (JSON.stringify(u) !== JSON.stringify(contractData)) setContractData(u);
+      }
+    } catch (e) {}
+  }, [contractData]);
+  useEffect(() => {
+    if (!(inModal && (createOnly || editOnly))) return;
+    try {
+      if (contractData && typeof contractData === 'object') {
+        const u = _uppercaseAllStringsRecursive(contractData);
+        if (JSON.stringify(u) !== JSON.stringify(contractData)) setContractData(u);
+      }
+    } catch (e) {}
+  }, [contractData, inModal, createOnly, editOnly]);
+  useEffect(() => {
+    try {
+      if (bmData && typeof bmData === 'object') {
+        const u = _uppercaseWordFieldsRecursive(bmData);
+        if (JSON.stringify(u) !== JSON.stringify(bmData)) setBmData(u);
+      }
+    } catch (e) {}
+  }, [bmData]);
+  useEffect(() => {
+    if (!(inModal && (createOnly || editOnly))) return;
+    try {
+      if (bmData && typeof bmData === 'object') {
+        const u = _uppercaseAllStringsRecursive(bmData);
+        if (JSON.stringify(u) !== JSON.stringify(bmData)) setBmData(u);
+      }
+    } catch (e) {}
+  }, [bmData, inModal, createOnly, editOnly]);
+  useEffect(() => {
+    try {
+      if (collateralData && typeof collateralData === 'object') {
+        const u = _uppercaseWordFieldsRecursive(collateralData);
+        if (JSON.stringify(u) !== JSON.stringify(collateralData)) setCollateralData(u);
+      }
+    } catch (e) {}
+  }, [collateralData]);
+  useEffect(() => {
+    if (!(inModal && (createOnly || editOnly))) return;
+    try {
+      if (collateralData && typeof collateralData === 'object') {
+        const u = _uppercaseAllStringsRecursive(collateralData);
+        if (JSON.stringify(u) !== JSON.stringify(collateralData)) setCollateralData(u);
+      }
+    } catch (e) {}
+  }, [collateralData, inModal, createOnly, editOnly]);
+
+  useEffect(() => {
+    if (!(inModal && createOnly)) return;
+    try {
+      if (branchData && typeof branchData === 'object') {
+        const u = _uppercaseAllStringsRecursive(branchData);
+        if (JSON.stringify(u) !== JSON.stringify(branchData)) setBranchData(u);
+      }
+    } catch (e) {}
+  }, [branchData, inModal, createOnly]);
+
+  useEffect(() => {
+    if (!(inModal && createOnly)) return;
+    try {
+      if (extraFields && typeof extraFields === 'object') {
+        const u = _uppercaseAllStringsRecursive(extraFields);
+        if (JSON.stringify(u) !== JSON.stringify(extraFields)) setExtraFields(u);
+      }
+    } catch (e) {}
+  }, [extraFields, inModal, createOnly]);
 
   // Auto-generate SP3 Number when agreement date or contract number changes
   useEffect(() => {
@@ -537,7 +751,7 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
       const raw = bmData?.date_birth_of_bm;
       if (!raw || String(raw).trim() === '') return;
       const iso = parseDateFromDisplay(raw) || raw;
-      const words = getIndonesianDateInWords(iso || raw) || '';
+      const words = (getIndonesianDateInWords(iso || raw) || '').toUpperCase();
       setBmData(prev => {
         if (prev.date_birth_of_bm === iso && prev.date_birth_of_bm_in_word === words) return prev;
         const out = { ...prev, date_birth_of_bm_in_word: words };
@@ -548,40 +762,211 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
   }, [bmData?.date_birth_of_bm]);
   const [debtor, setDebtor] = useState(null);
   const [collateral, setCollateral] = useState(null);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [contractOnlySaving, setContractOnlySaving] = useState(false);
   const [contractOnlyError, setContractOnlyError] = useState('');
 
+  const handleContractOnlySave = async () => {
+    setContractOnlySaving(true); setContractOnlyError('');
+    try {
+      const token = localStorage.getItem('access_token'); const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const payload = {};
+      Object.keys(contractData || {}).forEach((k) => {
+        if (/_in_word$|_by_word$/.test(k)) return;
+        let v = contractData[k];
+        // Ensure Outstanding Previous Contract (`previous_topup_amount`) defaults to 0 when empty
+        if (k === 'previous_topup_amount' && (v === undefined || v === null || v === '')) {
+          v = 0;
+        } else if (numericFields.includes(k) && v !== undefined && v !== null && v !== '') {
+          const n = parseToNumber(v);
+          v = n === null ? v : n;
+        }
+        payload[k] = v;
+      });
+      try { payload.created_by = usernameDisplay || '' } catch (e) { payload.created_by = ''; }
+      const nowIso = new Date().toISOString(); payload.created_at = nowIso; payload.updated_at = nowIso;
+      // Ensure previous_topup_amount is numeric (avoid sending empty string)
+      try { payload.previous_topup_amount = Number(payload.previous_topup_amount) || 0; } catch (e) { payload.previous_topup_amount = 0; }
+      // Ensure admin_rate defaults to 0 when empty and is numeric
+      try { payload.admin_rate = getNumFromValue(payload.admin_rate); } catch (e) { payload.admin_rate = 0; }
+      // Apply client-side normalization. For Add-Contract modal (contractOnly)
+      // we will force ALL text fields to UPPERCASE and instruct backend to
+      // skip server-side normalization so the casing is preserved.
+      let normalizedContractPayload = payload;
+      try {
+        if (!contractOnly) {
+          normalizedContractPayload = titleCasePayload(payload, numericFields);
+        } else {
+          // Uppercase recursively all string values in the payload
+          const _uppercaseStringsRecursive = (val) => {
+            if (val === null || typeof val === 'undefined') return val;
+            if (typeof val === 'string') return val.toString().trim().toUpperCase();
+            if (Array.isArray(val)) return val.map(_uppercaseStringsRecursive);
+            if (typeof val === 'object') {
+              const out = {};
+              Object.keys(val).forEach(k => {
+                try { out[k] = _uppercaseStringsRecursive(val[k]); } catch (e) { out[k] = val[k]; }
+              });
+              return out;
+            }
+            return val;
+          };
+          normalizedContractPayload = _uppercaseStringsRecursive(payload);
+        }
+      } catch (e) { /* non-fatal */ }
+      // When saving via Add-Contract modal (contractOnly) instruct backend to skip normalization
+      try { if (contractOnly) normalizedContractPayload.skip_normalization = true; } catch (e) { /* ignore */ }
+      const res = await requestWithAuth({ method: 'post', url: '/api/contracts/', data: normalizedContractPayload });
+      if (typeof onContractSaved === 'function') { try { onContractSaved(res.data || payload); } catch (e) { console.warn('onContractSaved failed', e); } }
+    } catch (err) {
+      console.error('Failed saving contract-only', err);
+      const resp = err?.response;
+      if (resp) {
+        const status = resp.status;
+        const bodyErr = resp.data?.error || resp.data?.message || '';
+        if (status === 409 || (bodyErr && String(bodyErr).toLowerCase().includes('duplicate'))) {
+          const msg = t('duplicate_contract_exists');
+          try { toast.error(msg); } catch (e) {}
+          setContractOnlyError(msg);
+        } else {
+          const url = resp.request?.responseURL || resp.config?.url || 'unknown';
+          let body = '';
+          try { body = typeof resp.data === 'string' ? resp.data : JSON.stringify(resp.data); } catch (e) { body = String(resp.data); }
+          const reason = (bodyErr && String(bodyErr)) || (body && String(body)) || String(status);
+          const errMsg = t('failed_saving_contract_prefix') + reason.substring(0,200);
+          setContractOnlyError(errMsg);
+          try { toast.error(errMsg); } catch (e) {}
+          console.error('Contract-only save response:', resp);
+        }
+      } else {
+        const msg = t('failed_saving_contract_prefix') + (err.message || 'unknown error');
+        setContractOnlyError(msg);
+        try { toast.error(msg); } catch (e) { /* ignore toast errors */ }
+      }
+    } finally { setContractOnlySaving(false); }
+  };
+
   const bmFields = [
     'name_of_bm','place_birth_of_bm','date_birth_of_bm','date_birth_of_bm_in_word',
     'street_of_bm','subdistrict_of_bm','district_of_bm','city_of_bm','province_of_bm',
-    'nik_number_of_bm','phone_number_of_bm'
+    'nik_number_of_bm'
   ];
 
-  const branchFields = ['street_name','subdistrict','district','city','province'];
+  const branchFields = ['street_name','subdistrict','district','city','province','phone_number_branch'];
 
   const collateralFields = [
     'collateral_type','number_of_certificate','number_of_ajb','surface_area','name_of_collateral_owner','capacity_of_building','location_of_land'
   ];
 
-  const numericFields = ['loan_amount','notaris_fee','admin_fee','net_amount','previous_topup_amount','mortgage_amount','tlo','life_insurance',
+  const numericFields = ['loan_amount','notaris_fee','admin_fee','admin_rate','net_amount','previous_topup_amount','mortgage_amount','tlo','life_insurance',
     'stamp_amount','financing_agreement_amount','security_agreement_amount','upgrading_land_rights_amount','total_amount'];
-  const rateFields = ['flat_rate', 'admin_rate'];
+  const rateFields = ['flat_rate'];
 
+  // Helper: normalize numeric input strings to preserve decimal separator when pasted
+  // More robust: strip stray characters, detect decimal separator by last occurrence,
+  // collapse multiple grouping separators and ensure only one decimal point remains.
+  const normalizeNumericInput = (input) => {
+    if (input === null || input === undefined) return '';
+    let s = String(input).trim();
+    if (s === '') return '';
+
+    // Keep only digits, dot, comma, minus and whitespace
+    s = s.replace(/[^0-9.,\s-]/g, '').trim();
+
+    // Remove spaces inside number (some locales use non-breaking spaces as thousands separators)
+    s = s.replace(/\s+/g, '');
+
+    const hasDot = s.indexOf('.') >= 0;
+    const hasComma = s.indexOf(',') >= 0;
+
+    if (hasDot && hasComma) {
+      // Decide which is the decimal separator by which appears last
+      const lastDot = s.lastIndexOf('.');
+      const lastComma = s.lastIndexOf(',');
+      if (lastDot > lastComma) {
+        // dot is decimal separator: remove all commas
+        s = s.replace(/,/g, '');
+        // if multiple dots exist, keep only the last as decimal separator
+        const parts = s.split('.');
+        if (parts.length > 2) {
+          const dec = parts.pop();
+          s = parts.join('') + '.' + dec;
+        }
+      } else {
+        // comma is decimal separator: remove all dots then convert comma to dot
+        s = s.replace(/\./g, '');
+        const parts = s.split(',');
+        if (parts.length > 2) {
+          const dec = parts.pop();
+          s = parts.join('') + ',' + dec;
+        }
+        s = s.replace(/,/g, '.');
+      }
+    } else if (hasComma && !hasDot) {
+      const parts = s.split(',');
+      const last = parts[parts.length - 1];
+      if (last.length === 2) {
+        // treat comma as decimal separator
+        const dec = parts.pop();
+        s = parts.join('') + '.' + dec;
+      } else {
+        // remove all commas (thousands separators)
+        s = s.replace(/,/g, '');
+      }
+    } else if (hasDot && !hasComma) {
+      const parts = s.split('.');
+      const last = parts[parts.length - 1];
+      if (last.length === 2) {
+        // dot as decimal separator: keep last as decimal and collapse others
+        const dec = parts.pop();
+        s = parts.join('') + '.' + dec;
+      } else if (parts.length > 1) {
+        // dots used as thousands separators
+        s = s.replace(/\./g, '');
+      }
+    }
+
+    // Remove leading zeros but preserve single zero or decimals like 0.50
+    s = s.replace(/^(-?)0+(?=\d)/, '$1');
+
+    return s;
+  };
+
+  const parseToNumber = (input) => {
+    const norm = normalizeNumericInput(input);
+    if (norm === '' || norm === null || typeof norm === 'undefined') return null;
+    const n = Number(norm);
+    return Number.isNaN(n) ? null : n;
+  };
+
+  const getNumFromValue = (v) => {
+    if (v === undefined || v === null || v === '') return 0;
+    const n = parseToNumber(v);
+    return n === null ? 0 : n;
+  };
+
+  // Urutan field contract data untuk ditampilkan di modal create/edit BL Agreement. Urutan ini tidak memengaruhi urutan di template PDF, yang diatur terpisah di backend.
   const contractFields = [
     // Identitiy debtor
     'contract_number','nik_number_of_debtor','name_of_debtor','place_birth_of_debtor','date_birth_of_debtor','date_birth_of_debtor_in_word',
-    'street_of_debtor','subdistrict_of_debtor','district_of_debtor','city_of_debtor','province_of_debtor',
-    'phone_number_of_debtor','business_partners_relationship','business_type',
+    'business_partners_relationship','business_type','street_of_debtor','subdistrict_of_debtor','district_of_debtor','city_of_debtor','province_of_debtor',
+    'phone_number_of_debtor',
     // Bank fields
     'bank_account_number','name_of_bank','name_of_account_holder','virtual_account_number',
     // Previous contract
     'topup_contract','previous_topup_amount',
     // New numeric fields to show in create-contract modal
-    'loan_amount','loan_amount_in_word','net_amount','net_amount_in_word','term','term_by_word','flat_rate','flat_rate_by_word','notaris_fee','notaris_fee_in_word','admin_fee','admin_fee_in_word',
-    'admin_rate','admin_rate_in_word','mortgage_amount','mortgage_amount_in_word','tlo','tlo_in_word',
-    'life_insurance','life_insurance_in_word','stamp_amount','financing_agreement_amount','security_agreement_amount','upgrading_land_rights_amount','total_amount'
+    'loan_amount','loan_amount_in_word',
+    'flat_rate','flat_rate_by_word',
+    'term','term_by_word',
+    'admin_fee','admin_fee_in_word',
+    'notaris_fee','notaris_fee_in_word',
+    'admin_rate','admin_rate_in_word',
+    'tlo','tlo_in_word',
+    'stamp_amount','financing_agreement_amount','security_agreement_amount','upgrading_land_rights_amount',
+    'life_insurance','life_insurance_in_word',
+    'mortgage_amount','mortgage_amount_in_word',
+    'total_amount','net_amount','net_amount_in_word'
   ];
   
   const hiddenForUV = new Set(['mortgage_amount', 'mortgage_amount_in_word']);
@@ -602,11 +987,11 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
     const token = localStorage.getItem('access_token');
     if (!token) { setContracts([]); setLoadingContracts(false); return; }
     try {
-      const response = await axios.get('http://localhost:8000/api/bl-agreement/contracts/', { headers: { 'Authorization': `Bearer ${token}` } });
+      const response = await requestWithAuth({ method: 'get', url: '/api/bl-agreement/contracts/' });
       setContracts(response.data.contracts || []);
     } catch (err) {
       console.error('Error loading contracts:', err);
-      if (!err.response || err.response.status !== 401) setError('Gagal memuat daftar kontrak');
+      if (!err.response || err.response.status !== 401) setError(t('failed_load_contracts'));
     } finally { setLoadingContracts(false); }
   };
 
@@ -615,12 +1000,12 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
     const token = localStorage.getItem('access_token');
     try {
       const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-      const res = await axios.get('http://localhost:8000/api/branches/', { headers });
-      const items = res.data.branches || [];
+      const branchRes = await requestWithAuth({ method: 'get', url: '/api/master-data/branches/', headers });
+      const items = branchRes.data.branches || [];
       setBranches(items);
     } catch (err) {
       console.error('Error loading branches:', err);
-      if (!err.response || err.response.status !== 401) setError('Gagal memuat daftar cabang');
+      if (!err.response || err.response.status !== 401) setError(t('failed_load_branches'));
     } finally { setLoadingBranches(false); }
   };
 
@@ -661,21 +1046,45 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
     } catch (e) { /* ignore */ }
   }, [createOnly, branches, selectedBranchId]);
 
-  // Keep total_amount in sync with component numeric fields
+  // Perhitungan otomatis total_amount 
   useEffect(() => {
-    const getNum = (v) => { if (v === undefined || v === null || v === '') return 0; const s = String(v).replace(/\./g, '').replace(/,/g, '').trim(); const n = Number(s); return Number.isNaN(n) ? 0 : n; };
     try {
-      const sum = getNum(contractData.stamp_amount)
-        + getNum(contractData.financing_agreement_amount)
-        + getNum(contractData.security_agreement_amount)
-        + getNum(contractData.upgrading_land_rights_amount)
-        + getNum(contractData.admin_fee)
-        + getNum(contractData.life_insurance);
+      const sum = getNumFromValue(contractData.stamp_amount)
+        + getNumFromValue(contractData.financing_agreement_amount)
+        + getNumFromValue(contractData.security_agreement_amount)
+        + getNumFromValue(contractData.upgrading_land_rights_amount)
+        + getNumFromValue(contractData.admin_fee)
+        + getNumFromValue(contractData.life_insurance);
       if (String(contractData.total_amount || '') !== String(sum)) {
         setContractData(prev => ({ ...prev, total_amount: sum }));
       }
     } catch (e) { /* ignore */ }
   }, [contractData.stamp_amount, contractData.financing_agreement_amount, contractData.security_agreement_amount, contractData.upgrading_land_rights_amount, contractData.admin_fee, contractData.life_insurance]);
+
+  // Perhitungan otomatis loan_amount
+  useEffect(() => {
+    try {
+      const loan = getNumFromValue(contractData.loan_amount);
+      const admin = getNumFromValue(contractData.admin_fee);
+      const notaris = getNumFromValue(contractData.notaris_fee);
+      const prevTop = getNumFromValue(contractData.previous_topup_amount);
+      const net = loan - admin - notaris - prevTop;
+      if (String(contractData.net_amount || '') !== String(net)) {
+        setContractData(prev => ({ ...prev, net_amount: net }));
+      }
+    } catch (e) { /* ignore */ }
+  }, [contractData.loan_amount, contractData.admin_fee, contractData.notaris_fee, contractData.previous_topup_amount]);
+
+  // Auto-calculate mortgage_amount = loan_amount * 125%
+  useEffect(() => {
+    try {
+      const loan = getNumFromValue(contractData.loan_amount);
+      const mort = Math.round((loan * 1.25) * 100) / 100; // keep 2 decimals
+      if (String(contractData.mortgage_amount || '') !== String(mort)) {
+        setContractData(prev => ({ ...prev, mortgage_amount: mort }));
+      }
+    } catch (e) { /* ignore */ }
+  }, [contractData.loan_amount]);
 
   useEffect(() => {
     if (!selectedDirector) return;
@@ -698,11 +1107,7 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
 
     (async () => {
       try {
-        const token = localStorage.getItem('access_token');
-        const res = await axios.get('http://localhost:8000/api/directors/', {
-          params: { id: selectedDirector, name: selectedDirector },
-          headers: token ? { Authorization: `Bearer ${token}` } : {}
-        });
+        const res = await requestWithAuth({ method: 'get', url: '/api/directors/', params: { id: selectedDirector, name: selectedDirector } });
         const director = res.data.director || (Array.isArray(res.data.directors) ? res.data.directors[0] : null) || null;
         if (director) {
           setHeaderFields(prev => ({
@@ -720,11 +1125,11 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
     const token = localStorage.getItem('access_token');
     if (!token) { setDirectors([]); setLoadingDirectors(false); return; }
     try {
-      const res = await axios.get('http://localhost:8000/api/directors/', { headers: { 'Authorization': `Bearer ${token}` } });
+      const res = await requestWithAuth({ method: 'get', url: '/api/directors/' });
       setDirectors(res.data.directors || []);
     } catch (err) {
       console.error('Error loading directors:', err);
-      if (!err.response || err.response.status !== 401) setError('Gagal memuat daftar direktur');
+      if (!err.response || err.response.status !== 401) setError(t('failed_load_directors'));
     } finally { setLoadingDirectors(false); }
   };
 
@@ -739,7 +1144,8 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
       subdistrict: sel.subdistrict ?? sel.subdistrict_of_bm ?? '',
       district: sel.district ?? sel.district_of_bm ?? '',
       city: sel.city ?? sel.city_of_bm ?? sel.name ?? '',
-      province: sel.province ?? sel.province_of_bm ?? ''
+      province: sel.province ?? sel.province_of_bm ?? '',
+      phone_number_branch: sel.phone_number_branch ?? ''
     });
     // Setel `place_of_agreement` ke name cabang (dari tabel branches)
     setHeaderFields(prev => ({ ...prev, place_of_agreement: sel.name ?? '' }));
@@ -779,7 +1185,7 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
     try {
       const params = {};
       if (String(city).match(/^\d+$/)) params.bm_id = city; else params.city = city;
-      const res = await axios.get('http://localhost:8000/api/branch-manager/', { params, headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` } });
+      const res = await requestWithAuth({ method: 'get', url: '/api/branch-manager/', params });
       const bm = res.data.bm || {};
       setBmData(prevBmData => {
         const newBm = { ...prevBmData };
@@ -799,7 +1205,7 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
       // mode=create â†’ fetch from source tables (contract + collateral); default â†’ fetch from agreement table
       const params = { contract_number: cn };
       if (forCreate || createOnly) { params.mode = 'create'; }
-      const response = await axios.get(`http://localhost:8000/api/${base}/`, { params, headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` } });
+      const response = await requestWithAuth({ method: 'get', url: `/api/${base}/`, params });
       console.log('handleView response for', cn, response && response.data ? Object.keys(response.data) : response);
 
       setDebtor(response.data.debtor || null);
@@ -814,8 +1220,8 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
         // In CREATE mode, these stay empty â€” user selects branch via dropdown
         const isCreateMode = forCreate || createOnly;
         const directBmData = {};
+        const bmResp = !isCreateMode ? (response.data.branch_manager || {}) : {};
         if (!isCreateMode) {
-          const bmResp = response.data.branch_manager || {};
           bmFields.forEach((f) => { directBmData[f] = bmResp[f] ?? ''; });
         } else {
           bmFields.forEach((f) => { directBmData[f] = ''; });
@@ -829,6 +1235,9 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
           directBranchData.district = branchResp.district ?? '';
           directBranchData.city = branchResp.city ?? '';
           directBranchData.province = branchResp.province ?? '';
+          // For edit mode, prefer phone from branch_manager (bmResp) when available,
+          // then fall back to agreement row (`blRow.phone_number_of_bm`), then branchResp.
+          directBranchData.phone_number_branch = (bmResp && (bmResp.phone_number_of_bm !== undefined && bmResp.phone_number_of_bm !== null)) ? bmResp.phone_number_of_bm : ((blRow && (blRow.phone_number_of_bm !== undefined && blRow.phone_number_of_bm !== null)) ? blRow.phone_number_of_bm : (branchResp.phone_number_branch ?? ''));
         } else {
           directBranchData.street_name = '';
           directBranchData.subdistrict = '';
@@ -859,10 +1268,18 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
         // In create mode, remove stale SP3/date values so auto-generate useEffect values are preserved
         if (isCreateMode) { delete directHeader.sp3_number; delete directHeader.sp3_date; delete directHeader.agreement_date; }
 
-        setContractData(directContractData);
+        setContractData(_uppercaseWordFieldsRecursive(directContractData));
+        try {
+          // ensure mortgage_amount is populated immediately for modal/edit flows
+          const loanVal = getNumFromValue(directContractData.loan_amount);
+          const mortVal = Math.round((loanVal * 1.25) * 100) / 100;
+          if (String(directContractData.mortgage_amount || '') !== String(mortVal)) {
+            setContractData(prev => ({ ...prev, mortgage_amount: mortVal }));
+          }
+        } catch (e) { /* ignore */ }
         // In create mode, don't overwrite BM/branch â€” they come from branch dropdown selection
         if (!isCreateMode) {
-          setBmData(directBmData);
+          setBmData(_uppercaseWordFieldsRecursive(directBmData));
         }
         // Ensure branch selector is populated when editing (not creating) so top-level `branch_id` is sent
         if (!isCreateMode) {
@@ -870,15 +1287,16 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
             const branchResp = response.data.branch || {};
             const resolvedBranchId = branchResp?.id || branchResp?.branch_id || blRow?.branch_id || blRow?.branch || blRow?.branchId || '';
             if (resolvedBranchId) setSelectedBranchId(String(resolvedBranchId));
+            try { console.log('handleView(edit): blRow.phone_number_of_bm=', blRow && blRow.phone_number_of_bm, 'branchResp.phone_number_branch=', branchResp.phone_number_branch); } catch (e) {}
           } catch (e) { /* ignore */ }
           setBranchData(directBranchData);
         }
-        setCollateralData(directCollateralData);
+        setCollateralData(_uppercaseWordFieldsRecursive(directCollateralData));
         const known = new Set([...contractFields, ...bmFields, ...branchFields, ...collateralFields, ...Object.keys(directHeader || {})]);
         const extras = {};
         Object.keys(blRow || {}).forEach(k => { if (!known.has(k) && k !== 'id') extras[k] = blRow[k]; });
         setExtraFields(extras);
-        setHeaderFields(prev => ({ ...prev, ...directHeader }));
+        setHeaderFields(prev => _uppercaseWordFieldsRecursive({ ...prev, ...directHeader }));
         if (!response.data.collateral) setCollateral(response.data.collateral || null);
         return;
       }
@@ -945,7 +1363,15 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
       const newHeaderFields = { ...headerFields, phone_number_of_lolc: d.phone_number_of_lolc ?? headerFields.phone_number_of_lolc, name_of_director: selectedDirector || headerFields.name_of_director };
       if (!forCreate) { setHeaderFields(prev => ({ ...prev, phone_number_of_lolc: (d && d.phone_number_of_lolc) ? d.phone_number_of_lolc : (prev.phone_number_of_lolc || ''), name_of_director: selectedDirector || prev.name_of_director })); }
 
-      setContractData(newContractData);
+      setContractData(_uppercaseWordFieldsRecursive(newContractData));
+      try {
+        // ensure mortgage_amount is populated immediately when viewing existing contract
+        const loanVal2 = getNumFromValue(newContractData.loan_amount);
+        const mortVal2 = Math.round((loanVal2 * 1.25) * 100) / 100;
+        if (String(newContractData.mortgage_amount || '') !== String(mortVal2)) {
+          setContractData(prev => ({ ...prev, mortgage_amount: mortVal2 }));
+        }
+      } catch (e) { /* ignore */ }
       setCollateralData(newCollateralData);
       if (!forCreate) setBmData(newBmData);
 
@@ -953,15 +1379,19 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
       let newBranchData = { street_name: '', subdistrict: '', district: '', city: '', province: '' };
       if (!forCreate && !createOnly) {
         const branchResp = response.data.branch || {};
+        const bmFromResp = response.data.branch_manager || {};
         newBranchData = {
           street_name: branchResp.street_name ?? '',
           subdistrict: branchResp.subdistrict ?? '',
           district: branchResp.district ?? '',
           city: branchResp.city ?? '',
-          province: branchResp.province ?? ''
+          province: branchResp.province ?? '',
+          // Prefer branch phone from branch_manager (bmFromResp), then debtor.d.phone_number_of_bm, then branchResp
+          phone_number_branch: (bmFromResp && (bmFromResp.phone_number_of_bm !== undefined && bmFromResp.phone_number_of_bm !== null)) ? bmFromResp.phone_number_of_bm : ((d && (d.phone_number_of_bm !== undefined && d.phone_number_of_bm !== null)) ? d.phone_number_of_bm : (branchResp.phone_number_branch ?? ''))
         };
       }
       if (!forCreate) {
+        try { console.log('handleView(non-edit): d.phone_number_of_bm=', d && d.phone_number_of_bm, 'branchResp.phone_number_branch=', response.data.branch && response.data.branch.phone_number_branch); } catch (e) {}
         setBranchData(newBranchData);
       }
       if (!forCreate) {
@@ -972,10 +1402,10 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
         if (selectedDirector) setHeaderFields(prev => ({ ...prev, name_of_director: selectedDirector }));
       }
 
-      if (!response.data.debtor && !response.data.collateral) setError('Data tidak ditemukan untuk nomor kontrak ini');
+      if (!response.data.debtor && !response.data.collateral) setError(t('data_not_found_contract'));
     } catch (err) {
       console.error('handleView Error for', cn, err);
-      if (err.response?.status === 404) setError('Data tidak ditemukan untuk nomor kontrak ini'); else setError(err.response?.data?.error || 'Gagal mengambil data');
+      if (err.response?.status === 404) setError(t('data_not_found_contract')); else setError(err.response?.data?.error || t('failed_fetch_data'));
       setDebtor(null); setCollateral(null);
     } finally { setLoading(false); }
   };
@@ -990,19 +1420,22 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
     const toTitleCase = (s) => String(s).split(/\s+/).filter(Boolean).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
 
     const f = String(fieldName);
-    // Frontend-only override: rename BPKB field label
-    if (f.toLowerCase().replace(/[^a-z0-9]/g, '') === 'namebpkbowner') return 'Collateral Owner';
-    // preserve existing special-case: previous_topup_amount -> Outstanding Previous Contract
+    // Prefer translation entries when available (reactive via `t` in component scope)
+    try {
+      const translated = (typeof t === 'function') ? t(f) : undefined;
+      if (translated && translated !== f) return translated;
+    } catch (e) { /* ignore translation errors and fall back */ }
+
+    // Frontend-only override: rename BPKB field label — use translation key when possible
+    if (f.toLowerCase().replace(/[^a-z0-9]/g, '') === 'namebpkbowner') return (typeof t === 'function') ? t('name_of_collateral_owner') : 'Collateral Owner';
+    // preserve existing special-case: previous_topup_amount -> Outstanding Previous Contract (use translation key)
     if (f.startsWith('previous_topup_amount')) {
-      const raw = f.replace(/^previous_topup_amount/, 'Outstanding Previous Contract').replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').trim();
-      return toTitleCase(raw);
+      return (typeof t === 'function') ? t('previous_topup_amount') : toTitleCase('Outstanding Previous Contract');
     }
-    // preserve existing special-case: topup_contract -> Previous Contract
+    // preserve existing special-case: topup_contract -> Previous Contract (use translation key)
     if (f.startsWith('topup_contract')) {
-      const raw = f.replace(/^topup_contract/, 'Previous Contract').replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').trim();
-      return toTitleCase(raw);
+      return (typeof t === 'function') ? t('topup_contract') : toTitleCase('Previous Contract');
     }
-    // (no special-case mapping for collateral owner here)
 
     // Normalize raw label into words
     const raw = f.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').trim();
@@ -1042,7 +1475,7 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
 
   const formatFieldValue = (value) => {
     if (value === null || value === undefined) return '-';
-    if (typeof value === 'boolean') return value ? 'Ya' : 'Tidak';
+    if (typeof value === 'boolean') return t(value ? 'yes' : 'no');
     if (typeof value === 'object') return JSON.stringify(value);
     return String(value);
   };
@@ -1062,7 +1495,7 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
   const fetchContractLookup = async (cn) => {
     if (!cn || !String(cn).trim()) return {};
     try {
-      const url = `http://localhost:8000/api/contracts/lookup/?contract_number=${encodeURIComponent(String(cn).trim())}`;
+      const url = `/api/contracts/lookup/?contract_number=${encodeURIComponent(String(cn).trim())}`;
       const res = await requestWithAuth({ method: 'get', url });
       return res.data || {};
     } catch (err) {
@@ -1074,8 +1507,10 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
   // handler for contract number changes inside the Add-Contract modal
   const handleContractNumberModalChange = async (value) => {
     try {
-      setContractNumber(value);
-      setContractData(prev => ({ ...prev, contract_number: value }));
+      // enforce max length for modal contract_number
+      const v12 = String(value || '').slice(0, 12);
+      setContractNumber(v12);
+      setContractData(prev => ({ ...prev, contract_number: v12 }));
       // don't attempt lookup on every keystroke for short values (prevents overwriting typed input)
       const trimmed = String(value || '').trim();
       if (!trimmed) return;
@@ -1111,6 +1546,7 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
 
   const handleInputChange = (section, field, value) => {
     try { console.debug('handleInputChange', section, field, value, 'len', (value || '').toString().length); } catch (e) { /* ignore logging errors */ }
+    const uppercaseMode = !!(inModal && (createOnly || editOnly));
     if (section === 'bm') {
       if (String(field).toLowerCase().includes('nik')) {
         const raw = String(value || '').replace(/\D/g, '').slice(0,16);
@@ -1119,11 +1555,19 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
         const iso = parseDateFromDisplay(value);
         setBmData(prev => ({ ...prev, [field]: iso }));
       } else {
-        setBmData(prev => ({ ...prev, [field]: value }));
+        const outVal = (uppercaseMode && typeof value === 'string') ? String(value).toUpperCase() : value;
+        setBmData(prev => ({ ...prev, [field]: outVal }));
       }
     }
-    if (section === 'branch') setBranchData(prev => ({ ...prev, [field]: value }));
+    if (section === 'branch') {
+      const outVal = (uppercaseMode && typeof value === 'string') ? String(value).toUpperCase() : value;
+      setBranchData(prev => ({ ...prev, [field]: outVal }));
+    }
     if (section === 'contract') {
+      // Enforce max length for identifiers
+      if (field === 'contract_number' || field === 'topup_contract') {
+        value = String(value || '').slice(0, 12);
+      }
       if (String(field).toLowerCase().includes('nik')) {
         const raw = String(value || '').replace(/\D/g, '').slice(0,16);
         setContractData(prev => ({ ...prev, [field]: raw }));
@@ -1142,7 +1586,7 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
                   const data = await fetchContractLookup(cn);
                   const c = data.contract || data || {};
                   const mapped = {};
-                  const nikFields = ['name_of_debtor','place_birth_of_debtor','date_birth_of_debtor','date_birth_of_debtor_in_word','street_of_debtor','subdistrict_of_debtor','district_of_debtor','city_of_debtor','province_of_debtor','phone_number_of_debtor','business_partners_relationship','business_type'];
+                  const nikFields = ['name_of_debtor','place_birth_of_debtor','date_birth_of_debtor','date_birth_of_debtor_in_word','business_partners_relationship','business_type','street_of_debtor','subdistrict_of_debtor','district_of_debtor','city_of_debtor','province_of_debtor','phone_number_of_debtor','bank_account_number','name_of_bank','name_of_account_holder'];
                   nikFields.forEach((f) => {
                     const v = findValueInObj(c, f);
                     if (v !== undefined && v !== null && String(v).trim() !== '') mapped[f] = v;
@@ -1156,7 +1600,7 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
               try {
                 const token = localStorage.getItem('access_token');
                 const headers = token ? { Authorization: `Bearer ${token}` } : {};
-                const resp = await axios.get('http://localhost:8000/api/contracts/table/', { headers });
+                const resp = await requestWithAuth({ method: 'get', url: '/api/contracts/table/' });
                 const items = resp.data?.contracts || resp.data || [];
                 const matched = (items || []).find(it => {
                   const cand = ((it.debtor && (it.debtor.nik_number_of_debtor || it.debtor.nik)) || it.nik_number_of_debtor || it.debtor_nik || '').toString().replace(/\D/g, '');
@@ -1168,7 +1612,7 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
                     const data2 = await fetchContractLookup(cn2);
                     const c2 = data2.contract || data2 || {};
                     const mapped2 = {};
-                    const nikFields2 = ['name_of_debtor','place_birth_of_debtor','date_birth_of_debtor','date_birth_of_debtor_in_word','street_of_debtor','subdistrict_of_debtor','district_of_debtor','city_of_debtor','province_of_debtor','phone_number_of_debtor','business_partners_relationship','business_type'];
+                    const nikFields2 = ['name_of_debtor','place_birth_of_debtor','date_birth_of_debtor','date_birth_of_debtor_in_word','business_partners_relationship','business_type','street_of_debtor','subdistrict_of_debtor','district_of_debtor','city_of_debtor','province_of_debtor','phone_number_of_debtor','bank_account_number','name_of_bank','name_of_account_holder'];
                     nikFields2.forEach((f) => {
                       const v = findValueInObj(c2, f);
                       if (v !== undefined && v !== null && String(v).trim() !== '') mapped2[f] = v;
@@ -1190,30 +1634,52 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
         return;
       }
       if (numericFields.includes(field)) {
-        const raw = (value || '').toString().replace(/\./g, '').replace(/,/g, '').trim();
+        const raw = normalizeNumericInput(value || '');
         // update numeric field and recompute total_amount
         setContractData(prev => {
           const updated = { ...prev, [field]: raw };
           try {
-            const getNum = (v) => { if (v === undefined || v === null || v === '') return 0; const s = String(v).replace(/\./g, '').replace(/,/g, '').trim(); const n = Number(s); return Number.isNaN(n) ? 0 : n; };
-                  const sum = getNum(updated.stamp_amount)
-                    + getNum(updated.financing_agreement_amount)
-                    + getNum(updated.security_agreement_amount)
-                    + getNum(updated.upgrading_land_rights_amount)
-                    + getNum(updated.admin_fee)
-                    + getNum(updated.life_insurance);
-                  updated.total_amount = sum;
+            const sum = getNumFromValue(updated.stamp_amount)
+              + getNumFromValue(updated.financing_agreement_amount)
+              + getNumFromValue(updated.security_agreement_amount)
+              + getNumFromValue(updated.upgrading_land_rights_amount)
+              + getNumFromValue(updated.admin_fee)
+              + getNumFromValue(updated.life_insurance);
+            updated.total_amount = sum;
           } catch (e) { /* ignore */ }
           return updated;
         });
       } else {
-        if (isDateFieldName(field)) { const iso = parseDateFromDisplay(value); setContractData(prev => ({ ...prev, [field]: iso })); } else { setContractData(prev => ({ ...prev, [field]: value })); }
+        if (isDateFieldName(field)) {
+          const iso = parseDateFromDisplay(value);
+          setContractData(prev => ({ ...prev, [field]: iso }));
+        } else {
+          const outVal = (uppercaseMode && typeof value === 'string') ? String(value).toUpperCase() : value;
+          setContractData(prev => ({ ...prev, [field]: outVal }));
+        }
       }
     }
     if (section === 'collateral') {
-      if (numericFields.includes(field)) { const raw = (value || '').toString().replace(/\./g, '').replace(/,/g, '').trim(); setCollateralData(prev => ({ ...prev, [field]: raw })); } else { if (isDateFieldName(field)) { const iso = parseDateFromDisplay(value); setCollateralData(prev => ({ ...prev, [field]: iso })); } else { setCollateralData(prev => ({ ...prev, [field]: value })); } }
+      if (numericFields.includes(field)) {
+        const raw = normalizeNumericInput(value || ''); setCollateralData(prev => ({ ...prev, [field]: raw }));
+      } else {
+        if (isDateFieldName(field)) {
+          const iso = parseDateFromDisplay(value); setCollateralData(prev => ({ ...prev, [field]: iso }));
+        } else {
+          const outVal = (uppercaseMode && typeof value === 'string') ? String(value).toUpperCase() : value;
+          setCollateralData(prev => ({ ...prev, [field]: outVal }));
+        }
+      }
     }
-    if (section === 'header') { if (isDateFieldName(field)) { const iso = parseDateFromDisplay(value); setHeaderFields(prev => ({ ...prev, [field]: iso })); } else { setHeaderFields(prev => ({ ...prev, [field]: value })); } }
+    if (section === 'header') {
+      if (isDateFieldName(field)) {
+        const iso = parseDateFromDisplay(value);
+        setHeaderFields(prev => ({ ...prev, [field]: iso }));
+      } else {
+        const outVal = (uppercaseMode && typeof value === 'string') ? String(value).toUpperCase() : value;
+        setHeaderFields(prev => ({ ...prev, [field]: outVal }));
+      }
+    }
   };
 
   
@@ -1225,21 +1691,38 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
   // Label/input styles (use base styles; modal chrome handled by CSS)
   let labelStyle = baseLabelStyle;
   let inputStyle = baseInputStyle;
+  const readOnlyInputStyle = { backgroundColor: '#f5f5f5', border: '1px solid #e6e6e6', color: '#555', cursor: 'pointer' };
   const sectionPadding = compact ? 8 : 12;
   const h4Style = { marginTop: 0, fontSize: compact ? 14 : 16 };
 
   // Local label overrides for BL so changes are scoped to BL only
   const formatLabel = (f) => {
     if (!f) return '';
-    if (f === 'notaris_fee') return 'Handling Fee';
-    if (f === 'notaris_fee_in_word') return 'Handling Fee In Word';
-    if (f === 'flat_rate') return 'Effective Rate';
-    if (f === 'flat_rate_by_word') return 'Effective Rate In Word';
+    if (f === 'notaris_fee') return t('notaris_fee');
+    if (f === 'notaris_fee_in_word') return t('notaris_fee_in_word');
+    if (f === 'flat_rate') return t('flat_rate');
+    if (f === 'flat_rate_by_word') return t('flat_rate_by_word');
     return formatFieldName(f);
   };
 
-  // Contract fields and renderer (keeps JSX concise)
-  const contractFieldList = ['name_of_debtor','place_birth_of_debtor','date_birth_of_debtor','street_of_debtor','subdistrict_of_debtor','district_of_debtor','city_of_debtor','province_of_debtor','nik_number_of_debtor','phone_number_of_debtor','business_partners_relationship','business_type','topup_contract','previous_topup_amount','bank_account_number','name_of_bank','name_of_account_holder','virtual_account_number','loan_amount','loan_amount_in_word','net_amount','net_amount_in_word','term','term_by_word','flat_rate','flat_rate_by_word','notaris_fee','notaris_fee_in_word','admin_fee','admin_fee_in_word','admin_rate','admin_rate_in_word','mortgage_amount','stamp_amount','financing_agreement_amount','security_agreement_amount','upgrading_land_rights_amount','total_amount'];
+  // Urutan field kontrak yang akan ditampilkan di form, pastikan `life_insurance` muncul di modal create BL (jika createOnly atau editOnly+inModal) dan tambahkan ke list jika belum ada
+  const contractFieldList = [
+    'name_of_debtor','place_birth_of_debtor','date_birth_of_debtor',
+    'business_partners_relationship','business_type',
+    'street_of_debtor','subdistrict_of_debtor','district_of_debtor','city_of_debtor','province_of_debtor',
+    'nik_number_of_debtor','phone_number_of_debtor',
+    'topup_contract','previous_topup_amount',
+    'bank_account_number','name_of_bank','name_of_account_holder','virtual_account_number',
+    'loan_amount','loan_amount_in_word',
+    'flat_rate','flat_rate_by_word',
+    'term','term_by_word',
+    'admin_fee','admin_fee_in_word',
+    'notaris_fee','notaris_fee_in_word',
+    'admin_rate','admin_rate_in_word',
+    'mortgage_amount',
+    'stamp_amount','financing_agreement_amount','security_agreement_amount','upgrading_land_rights_amount',
+    'total_amount',
+    'net_amount','net_amount_in_word'];
   // Ensure `life_insurance` appears in create modal; add it to contractFieldList when createOnly && not contractOnly
   const effectiveContractFields = (() => {
     if ((createOnly || (inModal && editOnly)) && !contractOnly) {
@@ -1271,12 +1754,8 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
         const n = Number(contractData[baseField] || 0) || 0;
         value = (n === 0) ? '' : (getIndonesianNumberWord(n) || contractData[f] || '');
       }
-      // ensure display is Capital Each Word
-      const titleCase = (s) => {
-        if (!s || typeof s !== 'string') return s || '';
-        return s.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-      };
-      value = titleCase(value);
+      // ensure display is UPPERCASE for "in_word"/"by_word" fields
+      value = (value === null || typeof value === 'undefined') ? '' : String(value).toUpperCase();
       return (
         <div key={f} style={{ display: 'flex', flexDirection: 'column' }}>
           <label style={labelStyle}>{formatLabel(f)}</label>
@@ -1286,24 +1765,35 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
     }
     const isNumericField = /amount|loan|mortgage|previous_topup_amount|notaris_fee|admin_fee|tlo|stamp_amount|financing_agreement_amount|security_agreement_amount|upgrading_land_rights_amount|net_amount|total_amount|life_insurance/i.test(f) || numericFields.includes(f);
     if (isNumericField) {
+      const isReadOnly = (f === 'total_amount' || f === 'net_amount' || f === 'mortgage_amount');
       return (
         <div key={f} style={{ display: 'flex', flexDirection: 'column' }}>
           <label style={labelStyle}>{formatLabel(f)}</label>
           <input
             type="text"
             value={formatNumberWithDots(contractData[f])}
-            onChange={(e) => {
-              const raw = (e.target.value || '').toString().replace(/\./g, '').replace(/,/g, '').trim();
+            readOnly={isReadOnly}
+            onChange={isReadOnly ? undefined : (e) => {
+              const raw = normalizeNumericInput(e.target.value || '');
               handleInputChange('contract', f, raw);
             }}
-            style={inputStyle}
+            onPaste={isReadOnly ? undefined : (e) => {
+              try {
+                e.preventDefault();
+                const text = (e.clipboardData && e.clipboardData.getData) ? e.clipboardData.getData('text') : (window.clipboardData ? window.clipboardData.getData('Text') : '');
+                const raw = normalizeNumericInput(text || '');
+                handleInputChange('contract', f, raw);
+              } catch (err) { /* ignore paste errors */ }
+            }}
+            style={isReadOnly ? { ...inputStyle, ...readOnlyInputStyle } : inputStyle}
           />
         </div>
       );
     }
     const inputType = isDateFieldName(f) ? 'date' : 'text';
     const isNikField = /nik/i.test(f);
-    return (
+        const maxLen = isNikField ? 16 : (f === 'contract_number' || f === 'topup_contract' ? 12 : undefined);
+        return (
       <div key={f} style={{ display: 'flex', flexDirection: 'column' }}>
         <label style={labelStyle}>{formatLabel(f)}</label>
         <input
@@ -1322,7 +1812,7 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
           }}
           inputMode={isNikField ? 'numeric' : undefined}
           pattern={isNikField ? "\\d*" : undefined}
-          maxLength={isNikField ? 16 : undefined}
+          maxLength={maxLen}
           style={inputStyle}
         />
       </div>
@@ -1331,16 +1821,8 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
 
   if (contractOnly) {
     const visibleContractFields = getVisibleContractFields(true);
-    // Reorder so that bank fields appear immediately after `business_type` in contract-only modal
-    const bankFieldsOrder = ['bank_account_number', 'name_of_bank', 'name_of_account_holder'];
-    let visibleOrdered = visibleContractFields.filter(f => !bankFieldsOrder.includes(f));
-    const insertIdx = visibleOrdered.indexOf('business_type');
-    const banksToInsert = bankFieldsOrder.filter(f => visibleContractFields.includes(f));
-    if (insertIdx >= 0) {
-      visibleOrdered.splice(insertIdx + 1, 0, ...banksToInsert);
-    } else if (banksToInsert.length) {
-      visibleOrdered = visibleOrdered.concat(banksToInsert);
-    }
+    // Use default order as defined in `contractFieldList` (preserve original order)
+    const visibleOrdered = visibleContractFields;
 
     // Use same styles as the Add Collateral modal
     const fieldLabelStyleLocal = { fontSize: 13, fontWeight: 600, color: '#333', marginBottom: 6 };
@@ -1348,12 +1830,20 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
     const fieldGroupStyleLocal = { display: 'flex', flexDirection: 'column' };
 
     // Determine which fields are required in this modal (exclude virtual_account_number, topup_contract,
-    // and intentionally do not mark `admin_rate` and `previous_topup_amount` as required)
+    // previous_topup_amount and intentionally do not mark `admin_rate` as required)
     const requiredFields = visibleOrdered.filter(f => !['virtual_account_number', 'topup_contract', 'admin_rate', 'previous_topup_amount'].includes(f) && !/_in_word$|_by_word$/.test(f));
+
+    // compute handling fee (stamp + financing + security + upgrading)
+    const handlingFee = getNumFromValue(contractData.stamp_amount)
+      + getNumFromValue(contractData.financing_agreement_amount)
+      + getNumFromValue(contractData.security_agreement_amount)
+      + getNumFromValue(contractData.upgrading_land_rights_amount);
+    const notarisFeeValue = getNumFromValue(contractData.notaris_fee);
+    const showHandlingMismatch = (contractData.notaris_fee !== undefined && contractData.notaris_fee !== null && String(contractData.notaris_fee).toString().trim() !== '') && (notarisFeeValue !== handlingFee);
 
     return (
       <div style={{ padding: 20, minWidth: 560 }}>
-        {contractOnlyError && <div style={{ marginBottom: 12, color: '#a33' }}>{contractOnlyError}</div>}
+        {/* contractOnlyError rendered as toast only; modal inline message removed */}
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             {visibleOrdered.map((f) => {
@@ -1364,15 +1854,20 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
               if (/date|birth/i.test(baseField)) {
                 value = getIndonesianDateInWords(contractData[baseField]) || contractData[f] || '';
               } else {
-                const n = Number(contractData[baseField] || 0) || 0;
-                value = getIndonesianNumberWord(n) || contractData[f] || '';
+                const raw = contractData[baseField];
+                if (raw === '' || raw === null || raw === undefined) {
+                  value = contractData[f] || '';
+                } else {
+                  const n = Number(String(raw).replace(/\./g, '').replace(/,/g, '.')) || 0;
+                  value = (n === 0) ? '' : (getIndonesianNumberWord(String(raw)) || contractData[f] || '');
+                }
               }
               return (
                 <div key={f} style={fieldGroupStyleLocal}>
                   <label style={fieldLabelStyleLocal}>
                     {formatLabel(f)}{requiredFields.includes(f) ? <span style={{ color: '#a33', marginLeft: 6 }}>*</span> : null}
                   </label>
-                  <input type="text" placeholder="" style={fieldInputStyleLocal} value={value} disabled />
+                  <input type="text" placeholder="" style={fieldInputStyleLocal} value={(value === null || typeof value === 'undefined') ? '' : String(value).toUpperCase()} disabled />
                 </div>
               );
             }
@@ -1388,12 +1883,12 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
                     onChange={(e) => handleInputChange('contract', f, e.target.value)}
                     style={fieldInputStyleLocal}
                   >
-                    <option value="">-- Select relationship --</option>
-                    <option value="Suami">Suami</option>
-                    <option value="Istri">Istri</option>
-                    <option value="Anak Kandung">Anak Kandung</option>
-                    <option value="Saudara Kandung">Saudara Kandung</option>
-                    <option value="Orangtua">Orangtua</option>
+                    <option value="">-- Select Relationship --</option>
+                    <option value="SUAMI">SUAMI</option>
+                    <option value="ISTRI">ISTRI</option>
+                    <option value="ANAK KANDUNG">ANAK KANDUNG</option>
+                    <option value="SAUDARA KANDUNG">SAUDARA KANDUNG</option>
+                    <option value="ORANGTUA">ORANGTUA</option>
                   </select>
                 </div>
               );
@@ -1401,6 +1896,7 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
 
             const isNumericField = /amount|loan|mortgage|previous_topup_amount|notaris_fee|admin_fee|tlo|stamp_amount|financing_agreement_amount|security_agreement_amount|upgrading_land_rights_amount|net_amount|total_amount|life_insurance/i.test(f) || numericFields.includes(f);
             if (isNumericField) {
+                const isReadOnly = (f === 'total_amount' || f === 'net_amount' || f === 'mortgage_amount');
               return (
                 <div key={f} style={fieldGroupStyleLocal}>
                   <label style={fieldLabelStyleLocal}>
@@ -1409,11 +1905,20 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
                   <input
                     type="text"
                     value={formatNumberWithDots(contractData[f])}
-                    onChange={(e) => {
-                      const raw = (e.target.value || '').toString().replace(/\./g, '').replace(/,/g, '').trim();
+                    readOnly={isReadOnly}
+                    onChange={isReadOnly ? undefined : (e) => {
+                      const raw = normalizeNumericInput(e.target.value || '');
                       handleInputChange('contract', f, raw);
                     }}
-                    style={fieldInputStyleLocal}
+                    onPaste={isReadOnly ? undefined : (e) => {
+                      try {
+                        e.preventDefault();
+                        const text = (e.clipboardData && e.clipboardData.getData) ? e.clipboardData.getData('text') : (window.clipboardData ? window.clipboardData.getData('Text') : '');
+                        const raw = normalizeNumericInput(text || '');
+                        handleInputChange('contract', f, raw);
+                      } catch (err) { /* ignore paste errors */ }
+                    }}
+                    style={isReadOnly ? { ...fieldInputStyleLocal, ...readOnlyInputStyle } : fieldInputStyleLocal}
                   />
                 </div>
               );
@@ -1421,6 +1926,7 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
 
             const inputType = isDateFieldName(f) ? 'date' : 'text';
             const isNikField = /nik/i.test(f);
+            const maxLenLocal = isNikField ? 16 : (f === 'contract_number' || f === 'topup_contract' ? 12 : undefined);
             return (
               <div key={f} style={fieldGroupStyleLocal}>
                 <label style={fieldLabelStyleLocal}>
@@ -1442,12 +1948,23 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
                   }}
                   inputMode={isNikField ? 'numeric' : undefined}
                   pattern={isNikField ? "\\d*" : undefined}
-                  maxLength={isNikField ? 16 : undefined}
+                  maxLength={maxLenLocal}
                   style={fieldInputStyleLocal}
                 />
               </div>
             );
           })}
+        </div>
+
+        <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-start', alignItems: 'flex-start', flexDirection: 'column', width: '100%' }}>
+          <div style={{ fontSize: 10, color: '#333', fontWeight: 600 }}>
+            {(typeof t === 'function') ? t('handling_processing_fee') : 'Handling/Processing Fee'} : <span style={{ fontWeight: 700 }}>{formatNumberWithDots(handlingFee)}</span>
+          </div>
+          {showHandlingMismatch ? (
+            <div style={{ marginTop: 8, backgroundColor: '#f8d7da', color: '#721c24', padding: '8px 10px', borderRadius: 4, alignSelf: 'center', width: '100%', textAlign: 'center' }}>
+              {(typeof t === 'function') ? t('handling_fee_mismatch') : 'Nilai Handling/Processing Fee tidak sesuai'}
+            </div>
+          ) : null}
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
@@ -1479,23 +1996,23 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16 }}>
           {/* Filter (moved to the top per UX request) */}
           <div style={{ border: '1px solid #e6e6e6', padding: sectionPadding, borderRadius: 6 }}>
-            <h4 style={h4Style}>Filter</h4>
+            <h4 style={h4Style}>{t('filter')}</h4>
               <div style={{ display: 'flex', gap: 8 }}>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <label style={{ fontSize: 13, fontWeight: 600, color: '#333', marginBottom: 6 }}>Contract Number{inModal && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
-                  <input placeholder="Contract Number" value={contractNumber} onChange={(e) => handleContractNumberChange(e.target.value)} style={inputStyle} />
+                  <label style={{ fontSize: 13, fontWeight: 600, color: '#333', marginBottom: 6 }}>{t('contract_number')}{inModal && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
+                  <input placeholder={t('contract_number')} value={contractNumber} onChange={(e) => handleContractNumberChange(e.target.value)} style={inputStyle} />
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <label style={{ fontSize: 13, fontWeight: 600, color: '#333', marginBottom: 6 }}>Branch{inModal && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
+                  <label style={{ fontSize: 13, fontWeight: 600, color: '#333', marginBottom: 6 }}>{t('branch')}{inModal && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
                   <select value={selectedBranchId || ''} onChange={(e) => { setSelectedBranchId(e.target.value); handleBranchSelectLoad(e.target.value); }} style={inputStyle}>
-                    <option value="">-- Select Branch --</option>
+                    <option value="">{t('-- Select Branch --') || '-- Select Branch --'}</option>
                     {(branches || []).map(b => <option key={b.id} value={b.id}>{b.name || b.branch_name || b.city || b.id}</option>)}
                   </select>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <label style={{ fontSize: 13, fontWeight: 600, color: '#333', marginBottom: 6 }}>Director{inModal && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
+                  <label style={{ fontSize: 13, fontWeight: 600, color: '#333', marginBottom: 6 }}>{t('director')}{inModal && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
                   <select value={selectedDirector || ''} onChange={(e) => {
                     const v = e.target.value;
                     setSelectedDirector(v);
@@ -1528,7 +2045,7 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
 
           {/* Agreement Detail container (compact when in modal) */}
           <div style={inModal ? { marginTop: 12 } : { marginTop: 12, border: '1px solid #e6e6e6', padding: sectionPadding, borderRadius: 6 }}>
-            <h4 style={h4Style}>Agreement Detail</h4>
+            <h4 style={h4Style}>{t('agreement_detail')}</h4>
               <div style={{ display: 'grid', gridTemplateColumns: inModal ? '1fr 1fr' : '1fr 1fr 1fr', gap: 8 }}>
                 {(() => {
                   const modalOrder = ['place_of_agreement','date_of_delegated','agreement_date','sp3_number','name_of_director','phone_number_of_lolc'];
@@ -1547,8 +2064,7 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
                             const n = Number(headerFields[base] || 0) || 0;
                             val = (n === 0) ? '' : (getIndonesianNumberWord(n) || headerFields[f] || '');
                           }
-                          const titleCase = (s) => { if (!s || typeof s !== 'string') return s || ''; return s.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '); };
-                          return <input type="text" value={titleCase(val)} disabled style={{ ...inputStyle, backgroundColor: '#f5f5f5' }} />;
+                          return <input type="text" value={(val === null || typeof val === 'undefined') ? '' : String(val).toUpperCase()} disabled style={{ ...inputStyle, backgroundColor: '#f5f5f5' }} />;
                         })()
                       ) : (
                         <input type={/(^(agreement_date|date_of_delegated)$|_date$|^sp3_date$)/i.test(f) ? 'date' : 'text'} value={headerFields[f] ?? ''} onChange={(e) => handleInputChange('header', f, e.target.value)} style={inputStyle} />
@@ -1562,7 +2078,7 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }}>
             {/* Contract container */}
             <div style={inModal ? {} : { border: '1px solid #e6e6e6', padding: sectionPadding, borderRadius: 6 }}>
-              <h4 style={h4Style}>Contract</h4>
+              <h4 style={h4Style}>{t('tab_contract') || t('contract')}</h4>
               <div style={{ display: 'grid', gridTemplateColumns: inModal ? '1fr 1fr' : '1fr 1fr 1fr', gap: 8 }}>
                 {(inModal ? getVisibleContractFields(true) : effectiveContractFields).map(renderContractField)}
               </div>
@@ -1570,12 +2086,25 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
 
             {/* Collateral container */}
             <div style={inModal ? {} : { border: '1px solid #e6e6e6', padding: sectionPadding, borderRadius: 6 }}>
-              <h4 style={h4Style}>Collateral</h4>
+              <h4 style={h4Style}>{t('collateral')}</h4>
               <div style={{ display: 'grid', gridTemplateColumns: inModal ? '1fr 1fr' : '1fr 1fr 1fr', gap: 8 }}>
                 {['collateral_type','number_of_certificate','number_of_ajb','surface_area','name_of_collateral_owner','capacity_of_building','location_of_land'].map(f => (
                   <div key={f} style={{ display: 'flex', flexDirection: 'column' }}>
                     <label style={labelStyle}>{formatLabel(f)}</label>
-                    <input type={numericFields.includes(f) ? 'number' : 'text'} value={collateralData[f] ?? ''} onChange={(e) => handleInputChange('collateral', f, e.target.value)} style={inputStyle} />
+                    <input
+                      type={numericFields.includes(f) ? 'number' : 'text'}
+                      value={collateralData[f] ?? ''}
+                      onChange={(e) => handleInputChange('collateral', f, e.target.value)}
+                      onPaste={(e) => {
+                        try {
+                          e.preventDefault();
+                          const text = (e.clipboardData && e.clipboardData.getData) ? e.clipboardData.getData('text') : (window.clipboardData ? window.clipboardData.getData('Text') : '');
+                          const raw = normalizeNumericInput(text || '');
+                          handleInputChange('collateral', f, raw);
+                        } catch (err) { /* ignore */ }
+                      }}
+                      style={inputStyle}
+                    />
                   </div>
                 ))}
               </div>
@@ -1586,13 +2115,13 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16, marginTop: 12 }}>
           {/* Branch Manager */}
           <div style={inModal ? {} : { border: '1px solid #e6e6e6', padding: sectionPadding, borderRadius: 6 }}>
-            <h4 style={h4Style}>Branch Manager</h4>
+            <h4 style={h4Style}>{t('tab_branch_manager') || t('name_of_bm')}</h4>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              {['name_of_bm','place_birth_of_bm','date_birth_of_bm','date_birth_of_bm_in_word','nik_number_of_bm','street_of_bm','subdistrict_of_bm','district_of_bm','city_of_bm','province_of_bm','phone_number_of_bm'].map(f => (
+              {['name_of_bm','place_birth_of_bm','date_birth_of_bm','date_birth_of_bm_in_word','nik_number_of_bm','street_of_bm','subdistrict_of_bm','district_of_bm','city_of_bm','province_of_bm'].map(f => (
                   <div key={f} style={{ display: 'flex', flexDirection: 'column' }}>
                     <label style={labelStyle}>{formatLabel(f)}</label>
-                    {f === 'date_birth_of_bm_in_word' ? (
-                      (() => { const base = 'date_birth_of_bm'; const val = getIndonesianDateInWords(bmData[base]) || bmData[f] || ''; const titleCase = (s) => { if (!s || typeof s !== 'string') return s || ''; return s.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '); }; return <input type="text" value={titleCase(val)} disabled style={{ ...inputStyle, backgroundColor: '#f5f5f5' }} /> })()
+                      {f === 'date_birth_of_bm_in_word' ? (
+                      (() => { const base = 'date_birth_of_bm'; const val = getIndonesianDateInWords(bmData[base]) || bmData[f] || ''; return <input type="text" value={(val === null || typeof val === 'undefined') ? '' : String(val).toUpperCase()} disabled style={{ ...inputStyle, backgroundColor: '#f5f5f5' }} /> })()
                     ) : (
                       <input type={/date/i.test(f) ? 'date' : 'text'} value={bmData[f] ?? ''} onChange={(e) => handleInputChange('bm', f, e.target.value)} style={inputStyle} />
                     )}
@@ -1603,11 +2132,11 @@ function BLAgreementForm({ initialContractNumber = '', initialContractData = nul
 
           {/* Branches */}
           <div style={inModal ? {} : { border: '1px solid #e6e6e6', padding: sectionPadding, borderRadius: 6 }}>
-            <h4 style={h4Style}>Branches</h4>
+            <h4 style={h4Style}>{t('tab_branches') || t('branch')}</h4>
             <div style={{ display: 'grid', gridTemplateColumns: inModal ? '1fr 1fr' : '1fr', gap: 8 }}>
-              {['street_name','subdistrict','district','city','province'].map(f => (
+              {branchFields.map(f => (
                 <div key={f} style={{ display: 'flex', flexDirection: 'column' }}>
-                  <label style={labelStyle}>{formatLabel(f)}</label>
+                  <label style={labelStyle}>{(t(f) && t(f) !== f) ? t(f) : formatLabel(f)}</label>
                   <input type="text" value={branchData[f] ?? ''} onChange={(e) => handleInputChange('branch', f, e.target.value)} style={inputStyle} />
                 </div>
               ))}
@@ -1687,6 +2216,10 @@ export default function BLAgreement() {
       const ud = JSON.parse(rawUser);
       const role = (ud.role || ud.role_name || '').toString().toLowerCase();
       if (role.includes('admin')) isAdmin = true;
+      // additional role flags used to control visibility of create/add buttons
+      var isCsa = role.includes('csa');
+      var isBod = role.includes('bod');
+      var isAudit = role.includes('audit');
     }
   } catch (e) { /* ignore */ }
   // Require all visible collateral fields in the BL add-collateral modal
@@ -1723,6 +2256,8 @@ export default function BLAgreement() {
   const [branchData, setBranchData] = useState({ branch_name: '', branch_code: '' });
   const [contractData, setContractData] = useState({ contract_date: '', contract_amount: '' });
 
+  
+
   // requestWithAuth moved to `utils/api.js`
 
   // Gaya field form lokal agar sesuai dengan form lain
@@ -1736,7 +2271,7 @@ export default function BLAgreement() {
     setLoading(true);
     setError('');
     try {
-      const res = await requestWithAuth({ method: 'get', url: 'http://localhost:8000/api/bl-agreement/' });
+      const res = await requestWithAuth({ method: 'get', url: '/api/bl-agreement/' });
       let items = res.data?.agreements || res.data?.results || res.data || [];
       if (!Array.isArray(items)) items = items ? [items] : [];
       const rows = items.map(item => ({
@@ -1772,7 +2307,7 @@ export default function BLAgreement() {
       } catch (e) {}
     } catch (err) {
       console.error('Error loading agreements', err);
-      setError('Failed to load agreements');
+      setError(t('failed_load_contracts'));
     } finally {
       setLoading(false);
     }
@@ -1781,7 +2316,7 @@ export default function BLAgreement() {
   const fetchAccessForContract = async (contractNumber) => {
     if (!contractNumber) return null;
     try {
-      const url = `http://localhost:8000/api/bl-agreement/${encodeURIComponent(contractNumber)}/access/`;
+      const url = `/api/bl-agreement/${encodeURIComponent(contractNumber)}/access/`;
       const res = await requestWithAuth({ method: 'get', url });
       if (res && res.data) {
         setAccessMap(prev => ({ ...prev, [contractNumber]: res.data }));
@@ -1809,7 +2344,7 @@ export default function BLAgreement() {
 
   const fetchContractData = async (cn, forCreate = false) => {
     try {
-      const url = `http://localhost:8000/api/bl-agreement/?contract_number=${encodeURIComponent(cn)}${forCreate ? '&mode=create' : ''}`;
+      const url = `/api/bl-agreement/?contract_number=${encodeURIComponent(cn)}${forCreate ? '&mode=create' : ''}`;
       const res = await requestWithAuth({ method: 'get', url });
       // backend mengembalikan { debtor: ..., collateral: ... }
       return res.data || {};
@@ -1823,7 +2358,7 @@ export default function BLAgreement() {
     if (!row.contract_number) { setError(t('contract_number_empty')); return; }
     try {
       // Download Agreement DOCX
-      const url1 = `http://localhost:8000/api/bl-agreement/download-docx/?contract_number=${encodeURIComponent(row.contract_number)}&type=agreement`;
+      const url1 = `/api/bl-agreement/download-docx/?contract_number=${encodeURIComponent(row.contract_number)}&type=agreement`;
       const res1 = await requestWithAuth({ method: 'get', url: url1, responseType: 'blob' });
       const contentType1 = (res1.headers && res1.headers['content-type']) || '';
       const blob1 = new Blob([res1.data], { type: contentType1 || 'application/octet-stream' });
@@ -1850,7 +2385,7 @@ export default function BLAgreement() {
 
       // Wait 500ms then download SP3 DOCX
       await new Promise(resolve => setTimeout(resolve, 500));
-      const url2 = `http://localhost:8000/api/bl-agreement/download-docx/?contract_number=${encodeURIComponent(row.contract_number)}&type=sp3`;
+      const url2 = `/api/bl-agreement/download-docx/?contract_number=${encodeURIComponent(row.contract_number)}&type=sp3`;
       const res2 = await requestWithAuth({ method: 'get', url: url2, responseType: 'blob' });
       const contentType2 = (res2.headers && res2.headers['content-type']) || '';
       const blob2 = new Blob([res2.data], { type: contentType2 || 'application/octet-stream' });
@@ -1875,7 +2410,7 @@ export default function BLAgreement() {
       // refresh access status after SP3 download as well
       try { await fetchAccessForContract(row.contract_number); } catch (e) {}
     } catch (err) {
-      console.error('Download failed', err); setError('Failed to download the documents');
+      console.error('Download failed', err); setError(t('failed_download_documents'));
     }
   };
 
@@ -1883,7 +2418,7 @@ export default function BLAgreement() {
     if (!row.contract_number) { setError(t('contract_number_empty')); return; }
     try {
       // Download Agreement PDF
-      const url1 = `http://localhost:8000/api/bl-agreement/download-docx/?contract_number=${encodeURIComponent(row.contract_number)}&type=agreement&download=pdf`;
+      const url1 = `/api/bl-agreement/download-docx/?contract_number=${encodeURIComponent(row.contract_number)}&type=agreement&download=pdf`;
       const res1 = await requestWithAuth({ method: 'get', url: url1, responseType: 'blob' });
       const contentType1 = (res1.headers && res1.headers['content-type']) || '';
       const blob1 = new Blob([res1.data], { type: contentType1 || 'application/pdf' });
@@ -1902,7 +2437,7 @@ export default function BLAgreement() {
 
       // Wait 500ms then download SP3 PDF
       await new Promise(resolve => setTimeout(resolve, 500));
-      const url2 = `http://localhost:8000/api/bl-agreement/download-docx/?contract_number=${encodeURIComponent(row.contract_number)}&type=sp3&download=pdf`;
+      const url2 = `/api/bl-agreement/download-docx/?contract_number=${encodeURIComponent(row.contract_number)}&type=sp3&download=pdf`;
       const res2 = await requestWithAuth({ method: 'get', url: url2, responseType: 'blob' });
       const contentType2 = (res2.headers && res2.headers['content-type']) || '';
       const blob2 = new Blob([res2.data], { type: contentType2 || 'application/pdf' });
@@ -1924,15 +2459,24 @@ export default function BLAgreement() {
         const resp = err?.response;
         if (resp) {
           const status = resp.status;
+          // show english toast when server forbids due to exhausted grants
+          if (status === 403) {
+            try { toast.error('Download limit reached'); } catch (e) {}
+            // refresh access state so UI reflects change
+            try { await fetchAccessForContract(row.contract_number); } catch (e) {}
+            return;
+          }
           const contentType = (resp.headers && resp.headers['content-type']) || '';
           if (contentType.includes('application/json')) {
             const data = resp.data;
-            if (data && typeof data.text === 'function') {
-              const txt = await data.text();
-              try { const js = JSON.parse(txt); setError(`PDF conversion failed (${status}): ${js.error || js.detail || JSON.stringify(js)}`); return; } catch (e) { setError(`PDF conversion failed (${status})`); return; }
+            try {
+              const msg = (data && (data.error || data.detail)) || JSON.stringify(data);
+              setError(`PDF conversion failed (${status}): ${msg}`);
+              return;
+            } catch (e) {
+              setError(`PDF conversion failed (${status})`);
+              return;
             }
-            setError(`PDF conversion failed (${status})`);
-            return;
           }
           setError(`PDF download failed (${status})`);
           return;
@@ -1940,7 +2484,7 @@ export default function BLAgreement() {
       } catch (e) {
         console.error('Error while formatting PDF download error', e);
       }
-      setError('Failed to download PDFs');
+      setError(t('failed_download_pdfs'));
     }
   };
 
@@ -1950,50 +2494,14 @@ export default function BLAgreement() {
     if (!ok) return;
     try {
       setError('');
-      // fetch full data so we can restore on Undo
-      let backup = null;
-      try {
-        const det = await requestWithAuth({ method: 'get', url: `http://localhost:8000/api/bl-agreement/?contract_number=${encodeURIComponent(row.contract_number)}` });
-        backup = det.data || {};
-      } catch (e) {
-        // continue even if fetch detail fails
-        backup = null;
-      }
+      await requestWithAuth({ method: 'delete', url: `/api/bl-agreement/?contract_number=${encodeURIComponent(row.contract_number)}` });
 
-      await requestWithAuth({ method: 'delete', url: `http://localhost:8000/api/bl-agreement/?contract_number=${encodeURIComponent(row.contract_number)}` });
-
-      const toastId = toast.success(
-        (<div>
-          Record deleted
-          {backup ? (
-            <button style={{ marginLeft: 12, background: 'transparent', border: 'none', color: '#0a1e3d', cursor: 'pointer', fontWeight: 600 }} onClick={async () => {
-              try {
-                // Recreate record using backup payload
-                const payload = {
-                  contract_number: row.contract_number,
-                  debtor: backup.debtor || {},
-                  collateral: backup.collateral || {},
-                  branch: backup.branch || {},
-                  branch_manager: backup.branch_manager || {},
-                  header_fields: backup.header || {}
-                };
-                try { stripIdKeys(payload); } catch (e) {}
-                await requestWithAuth({ method: 'post', url: 'http://localhost:8000/api/bl-agreement/', data: payload });
-                toast.success('Record restored');
-                await loadAgreements();
-              } catch (re) {
-                console.error('Restore failed', re);
-                toast.error(re?.response?.data?.error || 'Restore failed');
-              }
-            }}>Undo</button>
-          ) : null}
-        </div>), { autoClose: 5000 }
-      );
+      toast.success('Record deleted');
 
       await loadAgreements();
     } catch (err) {
       console.error('Delete failed', err);
-      const msg = err?.response?.data?.error || 'Failed to delete record';
+      const msg = err?.response?.data?.error || t('delete_failed');
       setError(msg);
       toast.error(msg);
     }
@@ -2004,7 +2512,7 @@ export default function BLAgreement() {
     try {
       const payload = { contract_number: contractNumber, debtor: { name_of_debtor: formDebtorName, nik_number_of_debtor: formNik }, collateral: { collateral_type: formCollateralType }, skip_normalization: true };
       try { stripIdKeys(payload); } catch (e) {}
-      await requestWithAuth({ method: 'post', url: 'http://localhost:8000/api/bl-agreement/', data: payload });
+      await requestWithAuth({ method: 'post', url: '/api/bl-agreement/', data: payload });
       toast.success(t('save_success'));
       setShowCreateModal(false);
       await loadAgreements();
@@ -2013,7 +2521,7 @@ export default function BLAgreement() {
       } catch (e) { /* ignore */ }
     } catch (err) {
       console.error('Save failed', err);
-      const errMsg = 'Failed to save data';
+      const errMsg = t('save_failed');
       setError(errMsg);
       toast.error(errMsg);
     } finally {
@@ -2026,12 +2534,12 @@ export default function BLAgreement() {
     try {
       const payload = { contract_number: contractNumber, debtor: { name_of_debtor: formDebtorName, nik_number_of_debtor: formNik }, collateral: { collateral_type: formCollateralType }, skip_normalization: true };
       try { stripIdKeys(payload); } catch (e) {}
-      await requestWithAuth({ method: 'post', url: 'http://localhost:8000/api/bl-agreement/', data: payload });
+      await requestWithAuth({ method: 'post', url: '/api/bl-agreement/', data: payload });
       toast.success(t('save_success'));
       // refresh daftar lalu unduh
       await loadAgreements();
       // Request PDF when available
-      const url = `http://localhost:8000/api/bl-agreement/download-docx/?contract_number=${encodeURIComponent(contractNumber)}`;
+      const url = `/api/bl-agreement/download-docx/?contract_number=${encodeURIComponent(contractNumber)}`;
       const res = await requestWithAuth({ method: 'get', url, responseType: 'blob' });
       const contentType = (res.headers && res.headers['content-type']) || '';
       const blob = new Blob([res.data], { type: contentType || 'application/octet-stream' });
@@ -2061,7 +2569,7 @@ export default function BLAgreement() {
       } catch (e) { /* ignore */ }
     } catch (err) {
       console.error('Save & Download failed', err);
-      const errMsg = 'Failed to save and download';
+      const errMsg = t('failed_save_and_download');
       setError(errMsg);
       toast.error(errMsg);
     } finally {
@@ -2073,7 +2581,7 @@ export default function BLAgreement() {
     if (!contractNumber) { setError(t('contract_number_empty')); return; }
     try {
       // Request PDF when available
-      const url = `http://localhost:8000/api/bl-agreement/download-docx/?contract_number=${encodeURIComponent(contractNumber)}`;
+      const url = `/api/bl-agreement/download-docx/?contract_number=${encodeURIComponent(contractNumber)}`;
       const res = await requestWithAuth({ method: 'get', url, responseType: 'blob' });
       const contentType = (res.headers && res.headers['content-type']) || '';
       const blob = new Blob([res.data], { type: contentType || 'application/octet-stream' });
@@ -2092,7 +2600,7 @@ export default function BLAgreement() {
       const isPdf = contentType.includes('pdf');
       const link = document.createElement('a'); link.href = window.URL.createObjectURL(blob); link.download = `BL_Agreement_${contractNumber}${isPdf ? '.pdf' : '.docx'}`; document.body.appendChild(link); link.click(); link.remove();
       try { if (contractNumber) await fetchAccessForContract(contractNumber); } catch (e) { /* ignore */ }
-    } catch (err) { console.error('Download failed', err); setError('Failed to download the document'); }
+    } catch (err) { console.error('Download failed', err); setError(t('failed_download_documents')); }
   };
 
   const formatDateShort = (iso) => {
@@ -2103,15 +2611,15 @@ export default function BLAgreement() {
   return (
     <div>
       <div className="content-section">
-        <h2>BL Agreement</h2>
-        <p>Before creating the document, make sure to fill in the contract and collateral data first.</p>
+        <h2>{t('bl_agreement')}</h2>
+        <p>{t('before_create_doc_note')}</p>
       </div>
 
       <div className="user-management-actions" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <input
             type="text"
-            placeholder="Search contract, debtor, NIK..."
+            placeholder={t('search_agreements_placeholder')}
             value={searchQuery}
             onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
             aria-label="Search agreements"
@@ -2120,23 +2628,27 @@ export default function BLAgreement() {
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <button
-            className="btn-primary"
-            onClick={() => { setModalMode('create'); setContractNumber(''); setFormDebtorName(''); setFormNik(''); setFormCollateralType(''); setError(''); setSelectedBranchId(''); setContractOnlyMode(true); setShowCreateModal(true); }}
-            title="Add a new contract"
-          >
-            Add Contract
-          </button>
-          
-          <button
-            className="btn-primary"
-            onClick={() => { setModalMode('create'); setContractNumber(''); setFormDebtorName(''); setFormNik(''); setFormCollateralType(''); setError(''); setSelectedBranchId(''); setCollateralMode(true); setShowCreateModal(true); }}
-            title="Add a new BL collateral"
-          >
-            Add Collateral
-          </button>
+          {(isAdmin || isCsa) && (
+            <>
+              <button
+                className="btn-primary"
+                onClick={() => { setModalMode('create'); setContractNumber(''); setFormDebtorName(''); setFormNik(''); setFormCollateralType(''); setError(''); setSelectedBranchId(''); setContractOnlyMode(true); setShowCreateModal(true); }}
+                title="Add a new contract"
+              >
+                {t('add_contract')}
+              </button>
 
-          <button className="btn-save" onClick={() => { setModalMode('create'); setContractNumber(''); setFormDebtorName(''); setFormNik(''); setFormCollateralType(''); setError(''); setSelectedBranchId(''); setContractOnlyMode(false); setCollateralMode(false); setShowCreateModal(true); }}>Create Document</button>
+              <button
+                className="btn-primary"
+                onClick={() => { setModalMode('create'); setContractNumber(''); setFormDebtorName(''); setFormNik(''); setFormCollateralType(''); setError(''); setSelectedBranchId(''); setCollateralMode(true); setShowCreateModal(true); }}
+                title="Add a new BL collateral"
+              >
+                {t('add_collateral')}
+              </button>
+
+              <button className="btn-save" onClick={() => { setModalMode('create'); setContractNumber(''); setFormDebtorName(''); setFormNik(''); setFormCollateralType(''); setError(''); setSelectedBranchId(''); setContractOnlyMode(false); setCollateralMode(false); setShowCreateModal(true); }}>{t('create_document')}</button>
+            </>
+          )}
         </div>
       </div>
 
@@ -2153,18 +2665,18 @@ export default function BLAgreement() {
               <table className="user-table agreements-table">
                 <thead>
                   <tr>
-                    <th>Agreement Date</th>
-                    <th>Contract Number</th>
-                    <th>Name of Debtor</th>
-                    <th>NIK Debtor</th>
-                    <th>Collateral Type</th>
-                    <th>Created By</th>
-                    <th>Action</th>
+                    <th>{t('Agreement Date')}</th>
+                    <th>{t('contract_number')}</th>
+                    <th>{t('name_of_debtor')}</th>
+                    <th>{t('nik_number_of_debtor')}</th>
+                    <th>{t('collateral_type')}</th>
+                    <th>{t('user')}</th>
+                    <th>{t('actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {pagedAgreements.length === 0 ? (
-                    <tr><td className="no-data" colSpan={7}>No agreements found.</td></tr>
+                    <tr><td className="no-data" colSpan={7}>{t('no_agreements')}</td></tr>
                   ) : (
                     pagedAgreements.map((row) => (
                       <tr key={row.contract_number}>
@@ -2176,95 +2688,174 @@ export default function BLAgreement() {
                         <td>{row.created_by}</td>
                         <td>
                           <div style={{ display: 'flex', gap: 8 }}>
-                            <button
-                              onClick={() => handleEdit(row)}
-                              title="Edit"
-                              aria-label={`Edit ${row.contract_number || ''}`}
-                              className="action-btn compact-action-btn"
-                              disabled={((): any => {
-                                try {
-                                  const rawUser = localStorage.getItem('user_data');
-                                  if (!rawUser) return false;
-                                  const ud = JSON.parse(rawUser);
-                                  const role = (ud.role || ud.role_name || '').toString().toLowerCase();
-                                  const username = ud.username || ud.user || ud.full_name || '';
-                                  if (!role.includes('csa')) return false;
-                                  if (!row.created_by || String(row.created_by) !== String(username)) return false;
-                                  const aa = accessMap[row.contract_number];
-                                  if (!aa) return false; // if no access record, allow (server-side will enforce)
-                                  if (aa.locked) return true;
-                                  const remaining = (aa.edit_grants || 0) - (aa.edit_consumed || 0);
-                                  return !(remaining > 0);
-                                } catch (e) { return false; }
-                              })()}
-                            >
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z" fill="#0a1e3d"/>
-                                <path d="M20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z" fill="#0a1e3d"/>
-                              </svg>
-                            </button>
-                            {/* Access badge for CSA creators (remaining downloads / edits) */}
                             {(() => {
                               try {
-                                const aa = accessMap[row.contract_number];
-                                if (!aa) return null;
-                                const remDl = Math.max(0, (aa.download_grants || 0) - (aa.download_consumed || 0));
-                                const remEd = Math.max(0, (aa.edit_grants || 0) - (aa.edit_consumed || 0));
+                                const rawUser = localStorage.getItem('user_data');
+                                if (!rawUser) return null;
+                                const ud = JSON.parse(rawUser);
+                                const role = (ud.role || ud.role_name || '').toString().toLowerCase();
+                                const username = ud.username || ud.user || ud.full_name || '';
+                                if (!role.includes('csa') && !role.includes('admin')) {
+                                  if (role.includes('audit')) {
+                                    return (
+                                      <button
+                                        className="action-btn compact-action-btn"
+                                        disabled
+                                        title={t('no_access')}
+                                        style={{ opacity: 0.5, cursor: 'not-allowed' }}
+                                        aria-label={t('no_access')}
+                                      >
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                          <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z" fill="#0a1e3d"/>
+                                          <path d="M20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z" fill="#0a1e3d"/>
+                                        </svg>
+                                      </button>
+                                    );
+                                  }
+                                  return null;
+                                }
+                                // Compute whether edit should be disabled and the title text
+                                const editDisabled = (() => {
+                                  try {
+                                    const rawUser2 = localStorage.getItem('user_data');
+                                    if (!rawUser2) return false;
+                                    const ud2 = JSON.parse(rawUser2);
+                                    const role2 = (ud2.role || ud2.role_name || '').toString().toLowerCase();
+                                    const username2 = ud2.username || ud2.user || ud2.full_name || '';
+                                    if (!role2.includes('csa')) return false;
+                                    // For CSA: disallow edit when the row wasn't created by this user
+                                    if (!row.created_by || String(row.created_by) !== String(username2)) return true;
+                                    const aa = accessMap[row.contract_number];
+                                    if (!aa) return false; // if no access record, allow (server-side will enforce)
+                                    if (aa.locked) return true;
+                                    const remaining = (aa.edit_grants || 0) - (aa.edit_consumed || 0);
+                                    return !(remaining > 0);
+                                  } catch (e) { return false; }
+                                })();
+
+                                const editTitle = (() => {
+                                  try {
+                                    const rawUser2 = localStorage.getItem('user_data');
+                                    if (!rawUser2) return t('edit');
+                                    const ud2 = JSON.parse(rawUser2);
+                                    const role2 = (ud2.role || ud2.role_name || '').toString().toLowerCase();
+                                    const username2 = ud2.username || ud2.user || ud2.full_name || '';
+                                    if (!role2.includes('csa')) return t('edit');
+                                    // For CSA: show no_access when row not created by this user
+                                    if (!row.created_by || String(row.created_by) !== String(username2)) return t('no_access');
+                                    const aa = accessMap[row.contract_number];
+                                    if (!aa) return t('edit');
+                                    if (aa.locked) return t('no_access');
+                                    const remaining = (aa.edit_grants || 0) - (aa.edit_consumed || 0);
+                                    return (remaining > 0) ? t('edit') : t('no_access');
+                                  } catch (e) { return t('edit'); }
+                                })();
+
+                                if (editDisabled) {
+                                  return (
+                                    <button
+                                      title={editTitle}
+                                      aria-label={`${t('edit')} ${row.contract_number || ''}`}
+                                      className="action-btn compact-action-btn"
+                                      disabled
+                                      style={{ opacity: 0.5, cursor: 'not-allowed' }}
+                                    >
+                                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z" fill="#0a1e3d"/>
+                                        <path d="M20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z" fill="#0a1e3d"/>
+                                      </svg>
+                                    </button>
+                                  );
+                                }
+
                                 return (
-                                  <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', marginLeft: 6 }}>
-                                    <small style={{ fontSize: 12, color: aa.locked ? '#a33' : '#444' }}>DL: {remDl} · ED: {remEd}{aa.locked ? ' (locked)' : ''}</small>
-                                  </div>
+                                  <button
+                                    onClick={() => handleEdit(row)}
+                                    title={editTitle}
+                                    aria-label={`${editTitle} ${row.contract_number || ''}`}
+                                    className="action-btn compact-action-btn"
+                                  >
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                      <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z" fill="#0a1e3d"/>
+                                      <path d="M20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z" fill="#0a1e3d"/>
+                                    </svg>
+                                  </button>
                                 );
                               } catch (e) { return null; }
                             })()}
+                            {/* Access badge hidden by configuration */}
+                            {null}
 
                             {/* DOCX download removed per request (hidden for all roles) */}
-                            <button
-                              onClick={() => handleDownloadPdf(row)}
-                              title={(() => {
-                                try {
-                                  const rawUser = localStorage.getItem('user_data');
-                                  if (!rawUser) return 'Download BL Agreement + BL SP3 (PDF)';
+                            {(() => {
+                              let title = t('Download');
+                              let disabled = false;
+                              try {
+                                const rawUser = localStorage.getItem('user_data');
+                                if (!rawUser) {
+                                  title = t('Download');
+                                  disabled = false;
+                                } else {
                                   const ud = JSON.parse(rawUser);
                                   const role = (ud.role || ud.role_name || '').toString().toLowerCase();
                                   const username = ud.username || ud.user || ud.full_name || '';
-                                  if (!role.includes('csa')) return 'Download BL Agreement + BL SP3 (PDF)';
-                                  if (!row.created_by || String(row.created_by) !== String(username)) return 'Download BL Agreement + BL SP3 (PDF)';
-                                  const aa = accessMap[row.contract_number];
-                                  if (!aa) return 'Download BL Agreement + BL SP3 (PDF)';
-                                  const remaining = (aa.download_grants || 0) - (aa.download_consumed || 0);
-                                  if (aa.locked || !(remaining > 0)) return 'No download access remaining';
-                                  return 'Download BL Agreement + BL SP3 (PDF)';
-                                } catch (e) { return 'Download BL Agreement + BL SP3 (PDF)'; }
-                              })()}
-                              aria-label={`Download PDF ${row.contract_number || ''}`}
-                              className="action-btn compact-action-btn"
-                              disabled={(() => {
-                                try {
-                                  const rawUser = localStorage.getItem('user_data');
-                                  if (!rawUser) return false;
-                                  const ud = JSON.parse(rawUser);
-                                  const role = (ud.role || ud.role_name || '').toString().toLowerCase();
-                                  const username = ud.username || ud.user || ud.full_name || '';
-                                  if (!role.includes('csa')) return false;
-                                  if (!row.created_by || String(row.created_by) !== String(username)) return false;
-                                  const aa = accessMap[row.contract_number];
-                                  if (!aa) return false; // server-side will enforce
-                                  if (aa.locked) return true;
-                                  const remaining = (aa.download_grants || 0) - (aa.download_consumed || 0);
-                                  return !(remaining > 0);
-                                } catch (e) { return false; }
-                              })()}
-                            >
-                              <img src={pdfIcon} alt="PDF" style={{ width: 18, height: 18 }} />
-                            </button>
+                                  try {
+                                    if (!role.includes('csa')) title = t('Download');
+                                    if (!row.created_by || String(row.created_by) !== String(username)) title = t('Download');
+                                    const aa = accessMap[row.contract_number];
+                                    if (!aa) title = t('Download');
+                                    const remaining = (aa?.download_grants || 0) - (aa?.download_consumed || 0);
+                                    if (aa?.locked || !(remaining > 0)) title = t('Download');
+                                  } catch (e) { /* ignore title fallbacks */ }
+
+                                  if (!role.includes('csa')) {
+                                    if (role.includes('audit')) disabled = true; else disabled = false;
+                                  } else {
+                                    // For CSA: disallow download when the row wasn't created by this user
+                                    if (!row.created_by || String(row.created_by) !== String(username)) {
+                                      disabled = true;
+                                    } else {
+                                      const aa = accessMap[row.contract_number];
+                                      if (!aa) disabled = false;
+                                      if (aa && aa.locked) disabled = true;
+                                      const remaining = (aa?.download_grants || 0) - (aa?.download_consumed || 0);
+                                      if (aa && !(remaining > 0)) disabled = true;
+                                    }
+                                  }
+                                }
+                              } catch (e) { disabled = false; title = t('Download'); }
+
+                              if (disabled) {
+                                return (
+                                  <button
+                                    title={title}
+                                    aria-label={`${t('Download')} ${row.contract_number || ''}`}
+                                    className="action-btn compact-action-btn"
+                                    disabled
+                                    style={{ opacity: 0.5, cursor: 'not-allowed' }}
+                                  >
+                                    <img src={pdfIcon} alt="PDF" style={{ width: 18, height: 18, opacity: 0.6 }} />
+                                  </button>
+                                );
+                              }
+
+                              return (
+                                <button
+                                  onClick={() => handleDownloadPdf(row)}
+                                  title={title}
+                                  aria-label={`${t('Download')} ${row.contract_number || ''}`}
+                                  className="action-btn compact-action-btn"
+                                >
+                                  <img src={pdfIcon} alt="PDF" style={{ width: 18, height: 18 }} />
+                                </button>
+                              );
+                            })()}
                             {isAdmin && (
                               <button
                                 onClick={() => handleDeleteRow(row)}
-                                title="Delete"
-                                aria-label={`Delete ${row.contract_number || ''}`}
+                                title={t('delete')}
+                                aria-label={`${t('delete')} ${row.contract_number || ''}`}
                                 className="action-btn compact-action-btn"
-                                style={{ color: '#000', borderColor: '#000' }}
                               >
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                   <path d="M3 6h18" stroke="#000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -2274,6 +2865,27 @@ export default function BLAgreement() {
                                 </svg>
                               </button>
                             )}
+                            {(() => {
+                              try {
+                                const raw = localStorage.getItem('user_data');
+                                if (!raw) return null;
+                                const ud = JSON.parse(raw);
+                                const role = (ud.role || ud.role_name || '').toString().toLowerCase();
+                                if (role.includes('audit') && !isAdmin) {
+                                  return (
+                                    <button className="action-btn compact-action-btn" disabled title={t('no_access')} style={{ opacity: 0.5, cursor: 'not-allowed' }} aria-label={t('no_access')}>
+                                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M3 6h18" stroke="#000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="#000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                        <path d="M10 11v6M14 11v6" stroke="#000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                        <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" stroke="#000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                      </svg>
+                                    </button>
+                                  );
+                                }
+                                return null;
+                              } catch (e) { return null; }
+                            })()}
                           </div>
                         </td>
                       </tr>
@@ -2315,7 +2927,7 @@ export default function BLAgreement() {
               <div className="modal-header">
               <h3 className="modal-title">
                 {modalMode === 'edit' && contractNumber ? `Edit ${contractNumber}` : (
-                  contractOnlyMode ? 'Add Contract' : (collateralMode ? 'Add Collateral' : 'Create Document')
+                  contractOnlyMode ? t('add_contract') : (collateralMode ? t('add_collateral') : t('create_document'))
                 )}
               </h3>
               <button className="modal-close-btn" onClick={() => { setShowCreateModal(false); setContractOnlyMode(false); setCollateralMode(false); }}>&times;</button>
@@ -2326,7 +2938,7 @@ export default function BLAgreement() {
                 <BLEditForm
                   initialContractNumber={contractNumber}
                   initialSelectedBranchId={selectedBranchId}
-                  onSaved={async (cn) => { setShowCreateModal(false); setContractOnlyMode(false); await loadAgreements(); if (cn) { setContractNumber(cn); try { await fetchAccessForContract(cn); } catch (e) {} } }}
+                  onSaved={async (cn, aa) => { setShowCreateModal(false); setContractOnlyMode(false); await loadAgreements(); if (cn) { setContractNumber(cn); try { if (aa) { setAccessMap(prev => ({ ...prev, [cn]: aa })); } else { await fetchAccessForContract(cn); } } catch (e) {} } }}
                 />
               ) : collateralMode ? (
                 <div style={{ padding: 20, minWidth: 560 }}>
@@ -2334,7 +2946,7 @@ export default function BLAgreement() {
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                     <div style={fieldGroupStyle}>
-                      <label style={fieldLabelStyle}>Contract Number{requiredCollateralFields.includes('contract_number') && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
+                        <label style={fieldLabelStyle}>{t('contract_number')}{requiredCollateralFields.includes('contract_number') && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
                       <input
                         type="text"
                         value={collateralForm.contract_number}
@@ -2375,42 +2987,42 @@ export default function BLAgreement() {
                     </div>
 
                     <div style={fieldGroupStyle}>
-                      <label style={fieldLabelStyle}>Name of Debtor{requiredCollateralFields.includes('name_of_debtor') && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
+                      <label style={fieldLabelStyle}>{t('name_of_debtor')}{requiredCollateralFields.includes('name_of_debtor') && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
                       <input type="text" value={collateralForm.name_of_debtor} disabled style={{ ...fieldInputStyle, backgroundColor: '#f5f5f5' }} />
                     </div>
 
                     <div style={fieldGroupStyle}>
-                      <label style={fieldLabelStyle}>Collateral Type{requiredCollateralFields.includes('collateral_type') && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
+                      <label style={fieldLabelStyle}>{t('collateral_type')}{requiredCollateralFields.includes('collateral_type') && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
                       <input type="text" value={collateralForm.collateral_type} onChange={(e) => setCollateralForm(prev => ({ ...prev, collateral_type: e.target.value }))} style={fieldInputStyle} />
                     </div>
 
                     <div style={fieldGroupStyle}>
-                      <label style={fieldLabelStyle}>Number of Certificate{requiredCollateralFields.includes('number_of_certificate') && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
+                      <label style={fieldLabelStyle}>{t('number_of_certificate')}{requiredCollateralFields.includes('number_of_certificate') && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
                       <input type="text" value={collateralForm.number_of_certificate} onChange={(e) => setCollateralForm(prev => ({ ...prev, number_of_certificate: e.target.value }))} style={fieldInputStyle} />
                     </div>
 
                     <div style={fieldGroupStyle}>
-                      <label style={fieldLabelStyle}>Number of AJB{requiredCollateralFields.includes('number_of_ajb') && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
+                      <label style={fieldLabelStyle}>{t('number_of_ajb')}{requiredCollateralFields.includes('number_of_ajb') && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
                       <input type="text" value={collateralForm.number_of_ajb} onChange={(e) => setCollateralForm(prev => ({ ...prev, number_of_ajb: e.target.value }))} style={fieldInputStyle} />
                     </div>
 
                     <div style={fieldGroupStyle}>
-                      <label style={fieldLabelStyle}>Surface Area{requiredCollateralFields.includes('surface_area') && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
+                      <label style={fieldLabelStyle}>{t('surface_area')}{requiredCollateralFields.includes('surface_area') && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
                       <input type="text" value={collateralForm.surface_area} onChange={(e) => setCollateralForm(prev => ({ ...prev, surface_area: e.target.value }))} style={fieldInputStyle} />
                     </div>
 
                     <div style={fieldGroupStyle}>
-                      <label style={fieldLabelStyle}>Name of Collateral Owner{requiredCollateralFields.includes('name_of_collateral_owner') && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
+                      <label style={fieldLabelStyle}>{t('name_of_collateral_owner')}{requiredCollateralFields.includes('name_of_collateral_owner') && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
                       <input type="text" value={collateralForm.name_of_collateral_owner} onChange={(e) => setCollateralForm(prev => ({ ...prev, name_of_collateral_owner: e.target.value }))} style={fieldInputStyle} />
                     </div>
 
                     <div style={fieldGroupStyle}>
-                      <label style={fieldLabelStyle}>Capacity of Building{requiredCollateralFields.includes('capacity_of_building') && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
+                      <label style={fieldLabelStyle}>{t('capacity_of_building')}{requiredCollateralFields.includes('capacity_of_building') && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
                       <input type="text" value={collateralForm.capacity_of_building} onChange={(e) => setCollateralForm(prev => ({ ...prev, capacity_of_building: e.target.value }))} style={fieldInputStyle} />
                     </div>
 
                     <div style={fieldGroupStyle}>
-                      <label style={fieldLabelStyle}>Location of Land{requiredCollateralFields.includes('location_of_land') && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
+                      <label style={fieldLabelStyle}>{t('location_of_land')}{requiredCollateralFields.includes('location_of_land') && <span style={{ color: '#a33', marginLeft: 6 }}>*</span>}</label>
                       <input type="text" value={collateralForm.location_of_land} onChange={(e) => setCollateralForm(prev => ({ ...prev, location_of_land: e.target.value }))} style={fieldInputStyle} />
                     </div>
                   </div>
@@ -2419,57 +3031,65 @@ export default function BLAgreement() {
                     <button className="btn-save" onClick={async () => {
                       setCollateralSaving(true); setCollateralError('');
                       try {
-                        // Normalize certain collateral fields before sending:
-                        // - `name_of_collateral_owner` and `location_of_land` => Title Case (Capital Each Word)
-                        // - `collateral_type` => UPPERCASE if single word, Title Case if multiple words
-                        const normalizedCollateralType = (() => {
-                          const raw = (collateralForm.collateral_type || '').toString().trim();
-                          if (!raw) return raw;
-                          return raw.split(/\s+/).length === 1 ? raw.toUpperCase() : titleCasePayload(raw);
-                        })();
-                        const normalizedNameOfCollateralOwner = titleCasePayload(collateralForm.name_of_collateral_owner || '');
-                        // Do not title-case `location_of_land` — preserve raw input
-                        const normalizedLocationOfLand = collateralForm.location_of_land || '';
+                        // ATURAN KETIKA SAVE DI COLLATERAL
+                        // Normalize: store ALL collateral fields as UPPERCASE on save
+                        const normalizedContractNumber = (collateralForm.contract_number || '').toString().trim().toUpperCase();
+                        const normalizedCollateralType = (collateralForm.collateral_type || '').toString().trim().toUpperCase();
+                        const normalizedNumberOfCertificate = (collateralForm.number_of_certificate || '').toString().trim().toUpperCase();
+                        const normalizedNumberOfAjb = (collateralForm.number_of_ajb || '').toString().trim().toUpperCase();
+                        const normalizedSurfaceArea = (collateralForm.surface_area || '').toString().trim().toUpperCase();
+                        const normalizedNameOfCollateralOwner = (collateralForm.name_of_collateral_owner || '').toString().trim().toUpperCase();
+                        const normalizedCapacityOfBuilding = (collateralForm.capacity_of_building || '').toString().trim().toUpperCase();
+                        const normalizedLocationOfLand = (collateralForm.location_of_land || '').toString().trim().toUpperCase();
 
                         const payload = {
-                          contract_number: collateralForm.contract_number,
+                          contract_number: normalizedContractNumber,
                           collateral_type: normalizedCollateralType,
-                          number_of_certificate: collateralForm.number_of_certificate,
-                          number_of_ajb: collateralForm.number_of_ajb,
-                          surface_area: collateralForm.surface_area,
+                          number_of_certificate: normalizedNumberOfCertificate,
+                          number_of_ajb: normalizedNumberOfAjb,
+                          surface_area: normalizedSurfaceArea,
                           name_of_collateral_owner: normalizedNameOfCollateralOwner,
-                          capacity_of_building: collateralForm.capacity_of_building,
+                          capacity_of_building: normalizedCapacityOfBuilding,
                           location_of_land: normalizedLocationOfLand
                         };
-                        await requestWithAuth({ method: 'post', url: 'http://localhost:8000/api/bl-collateral/', data: payload });
+                        try { console.log('Collateral payload to send:', payload); } catch (e) {}
+                        await requestWithAuth({ method: 'post', url: '/api/bl-collateral/', data: payload });
                         setShowCreateModal(false);
                         setCollateralMode(false);
                         loadAgreements();
-                        setSuccessMessage('Collateral data saved successfully');
+                        setSuccessMessage(t('collateral_saved'));
                         setTimeout(() => setSuccessMessage(''), 4000);
                         toast.success(t('collateral_saved'));
-                      } catch (err) {
+                        } catch (err) {
                         console.error('Save collateral failed', err);
                         const resp = err?.response;
                         const bodyErr = resp?.data?.error || resp?.data?.message || '';
                         if (resp && (resp.status === 409 || (bodyErr && String(bodyErr).toLowerCase().includes('duplicate')))) {
-                          const msg = 'Failed to save. The contract number you entered is already registered in the system.';
+                          const msg = t('duplicate_contract_exists');
                           try { toast.error(msg); } catch (e) {}
                         } else {
-                          const msg = err?.response?.data?.error || 'Failed to save collateral';
-                          setCollateralError(msg);
-                          try { toast.error(msg); } catch (e) {}
+                          const respErr = resp;
+                          const bodyText = (respErr && (respErr.data && (respErr.data.error || respErr.data.message))) ? String(respErr.data.error || respErr.data.message) : JSON.stringify(respErr?.data || respErr || '');
+                          const l = String(bodyText || '').toLowerCase();
+                          const isFk = l.includes('1452') || l.includes('foreign key') || l.includes('cannot add or update a child row') || (l.includes('bl_collateral') && l.includes('foreign'));
+                          if (isFk) {
+                            const fkMsg = t('fk_contract_missing');
+                            try { toast.error(fkMsg); } catch (e) {}
+                          } else {
+                            const msg = err?.response?.data?.error || t('failed_save_collateral');
+                            setCollateralError(msg);
+                            try { toast.error(msg); } catch (e) {}
+                          }
                         }
                       } finally {
                         setCollateralSaving(false);
                       }
-                    }} disabled={collateralSaving || !isCollateralFormValid()}>{collateralSaving ? 'Saving...' : 'Save Collateral'}</button>
+                    }} disabled={collateralSaving || !isCollateralFormValid()}>{collateralSaving ? t('saving') : t('save_collateral')}</button>
                   </div>
                 </div>
                 ) : (
                 <div>
                 <BLCreateForm
-                  initialContractData={lastSavedContract}
                   contractOnly={contractOnlyMode}
                   inModal={true}
                   initialSelectedBranchId={selectedBranchId}
@@ -2487,7 +3107,7 @@ export default function BLAgreement() {
                     loadAgreements();
                     toast.success(t('contract_saved'));
                   }}
-                  onSaved={async (cn) => { setShowCreateModal(false); setContractOnlyMode(false); await loadAgreements(); if (cn) { setContractNumber(cn); try { await fetchAccessForContract(cn); } catch (e) {} } }}
+                  onSaved={async (cn, aa) => { setShowCreateModal(false); setContractOnlyMode(false); await loadAgreements(); if (cn) { setContractNumber(cn); try { if (aa) { setAccessMap(prev => ({ ...prev, [cn]: aa })); } else { await fetchAccessForContract(cn); } } catch (e) {} } }}
                 />
                 
                 </div>

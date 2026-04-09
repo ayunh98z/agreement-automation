@@ -56,32 +56,38 @@ Agreement access (CSA one-time flow)
     `ED` counts and `locked` state.
 
 Developer steps (tests & build)
-------------------------------
-- Build frontend (Windows PowerShell from workspace root):
+User Guide
+----------
 
-  cd frontend
-  npm run build
+Panduan pengguna dipindahkan ke [docs/PANDUAN-PENGGUNA.md](docs/PANDUAN-PENGGUNA.md#L1).
 
-- Run unit-only Python tests (avoid pytest-django test DB setup):
+   - Untuk akses terbatas, gunakan fitur one-time access (akses sekali pakai)
+     dengan masa berlaku singkat.
+   - Untuk kolaborasi internal, berikan peran `lihat/komentar/edit` sesuai
+     kebutuhan.
 
-  .\.venv\Scripts\python.exe -m pytest -p no:pytest_django -q
+9. Keamanan & Privasi
+   - Jangan bagikan kredensial akun. Gunakan logout pada perangkat publik.
+   - Hanya beri akses kepada orang yang membutuhkan. Semua aksi dicatat di
+     audit log.
 
-  or use the project wrapper (unit tests by default):
+10. Troubleshooting Umum
+    - Login gagal: cek username/password atau hubungi admin.
+    - File gagal unggah: cek format dan ukuran; coba koneksi internet.
+    - Akses ditolak: ajukan permintaan akses atau hubungi pemilik dokumen.
 
-  .\run-tests.ps1
+11. Best Practices
+    - Gunakan komentar dan versi untuk kolaborasi, jangan edit versi final
+      tanpa menyimpan sebagai versi baru.
+    - Periksa audit trail sebelum menyetujui dokumen.
+    - Ikuti konvensi penamaan untuk memudahkan pencarian.
 
-- Run integration tests (requires a runnable test DB and proper credentials):
-  set the env var and run pytest. In PowerShell:
+12. Dukungan & Feedback
+    - Laporkan bug atau permintaan fitur ke tim pengembang dengan langkah
+      reproduksi dan screenshot bila perlu.
+    - Untuk masalah akses atau akun, hubungi admin sistem.
 
-  $env:RUN_INTEGRATION=1
-  .\.venv\Scripts\python.exe -m pytest -q
-
-Notes
------
-- Because the project uses a custom `CustomUser` mapped to an existing
-  `auth_user` table (`managed = False`), pytest-django will attempt to run
-  migrations against the test DB. If your local MySQL test instance does not
-  contain the expected legacy tables, integration tests will fail during test
-  DB creation. Use unit-only runs for quick local development or provide a
-  pre-configured test database for full integration runs.
+Catatan akhir: Jika Anda ingin, saya dapat memindahkan bagian ini ke file
+terpisah `docs/PANDUAN-PENGGUNA.md` atau menambahkan daftar langkah cepat di
+antarmuka aplikasi.
 

@@ -193,94 +193,13 @@ def _safe_rmtree(path, retries=6, delay=0.25):
 
 
 def _convert_docx_to_pdf(docx_path, pdf_path, retries=2, min_size=2048):
-    """Try to convert DOCX to PDF.
-
-    Strategy:
-    1. Try `docx2pdf` (Windows COM or macOS support).
-    2. If unavailable, try LibreOffice `soffice --headless --convert-to pdf`.
-    Return (True, None) on success, otherwise (False, message).
-    """
-    import shlex
-
-    docx2pdf_err = None
+    # Delegate to central helper in `myproject.common` so the configured
+    # `SOFFICE_PATH` is respected across apps.
     try:
-        from docx2pdf import convert
-        docx2pdf_available = True
-    except Exception as imp_e:
-        docx2pdf_available = False
-        docx2pdf_err = f'docx2pdf import failed: {imp_e}'
-
-    if docx2pdf_available:
-        try:
-            # Some COM environments require CoInitialize; attempt to initialize if pythoncom is available
-            try:
-                import pythoncom
-                try:
-                    pythoncom.CoInitializeEx(0)
-                except Exception:
-                    pass
-            except Exception:
-                pythoncom = None
-
-            try:
-                convert(docx_path, pdf_path)
-            finally:
-                if pythoncom is not None:
-                    try:
-                        pythoncom.CoUninitialize()
-                    except Exception:
-                        pass
-
-            if os.path.exists(pdf_path) and os.path.getsize(pdf_path) >= int(min_size or 0):
-                return True, None
-            return False, 'pdf file missing or too small after docx2pdf conversion'
-        except Exception as e:
-            # fall through to try libreoffice
-            docx2pdf_err = f'docx2pdf conversion failed: {e}'
-
-    # Attempt LibreOffice (soffice) fallback
-    soffice_err = None
-    try:
-        # Build command to convert and write to specific output dir
-        outdir = os.path.dirname(os.path.abspath(pdf_path)) or '.'
-        # Use --headless to avoid UI. --convert-to writes file in outdir.
-        cmd = f'soffice --headless --convert-to pdf --outdir {shlex.quote(outdir)} {shlex.quote(docx_path)}'
-        # On Windows, soffice.exe may be in Program Files; rely on PATH or full path provided by admin.
-        proc = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=120)
-        if proc.returncode != 0:
-            soffice_err = f'soffice returned exit {proc.returncode}: {proc.stderr.decode("utf-8", errors="replace")}'
-        else:
-            # LibreOffice names output with same basename + .pdf in outdir
-            expected = os.path.join(outdir, os.path.splitext(os.path.basename(docx_path))[0] + '.pdf')
-            try:
-                if os.path.exists(expected):
-                    # move/rename to requested pdf_path if different
-                    if os.path.abspath(expected) != os.path.abspath(pdf_path):
-                        try:
-                            shutil.move(expected, pdf_path)
-                        except Exception:
-                            # fallback: copy
-                            shutil.copyfile(expected, pdf_path)
-                    if os.path.exists(pdf_path) and os.path.getsize(pdf_path) >= int(min_size or 0):
-                        return True, None
-                    else:
-                        soffice_err = 'LibreOffice produced PDF but file missing or too small'
-                else:
-                    soffice_err = 'LibreOffice did not produce expected PDF file'
-            except Exception as e:
-                soffice_err = f'Error after LibreOffice conversion: {e}'
+        from myproject.common import _convert_docx_to_pdf as _common_convert
+        return _common_convert(docx_path, pdf_path)
     except Exception as e:
-        soffice_err = f'soffice execution failed: {e}'
-
-    # If we reach here, both methods failed (or were unavailable)
-    msgs = []
-    if docx2pdf_err:
-        msgs.append(docx2pdf_err)
-    if soffice_err:
-        msgs.append(soffice_err)
-    if not msgs:
-        msgs.append('No conversion method available')
-    return False, '; '.join(msgs)
+        return False, f'Conversion helper import failed: {e}'
  
 def home(request):
     return HttpResponse('OK')
@@ -371,12 +290,15 @@ def number_to_indonesian_words(val):
                 res = ('koma ' + dec_words).strip()
         else:
             res = spell_int(int(float(s)))
-        return _sentence_case(res)
+        try:
+            return str(res).upper()
+        except Exception:
+            return res
     except Exception:
         return str(val)
 
 
-def date_to_indonesian_words(val):
+def date_to_indonesian_words(val, title_case=False, uppercase_month=False, uppercase_all=False):
     from datetime import datetime, date
     months = ['januari','februari','maret','april','mei','juni','juli','agustus','september','oktober','november','desember']
     if val is None:
@@ -397,22 +319,32 @@ def date_to_indonesian_words(val):
                     d = datetime.strptime(s, '%Y-%m-%d').date()
                 except Exception:
                     return ''
-        day_word = number_to_indonesian_words(d.day)
-        month_word = months[d.month-1]
-        year_word = number_to_indonesian_words(d.year)
-        combined = f"{day_word} {month_word} {year_word}".strip()
+        day_word = number_to_indonesian_words(d.day, title_case=title_case)
+        month_raw = months[d.month-1]
+        year_word = number_to_indonesian_words(d.year, title_case=title_case)
+
+        if uppercase_month:
+            month = month_raw.upper()
+        else:
+            month = month_raw
+
+        combined = f"{day_word} {month} {year_word}".strip()
+        if uppercase_all:
+            try:
+                return combined.upper()
+            except Exception:
+                return combined
         try:
             if not combined:
                 return ''
-            combined = combined[0].upper() + combined[1:].lower() if len(combined) > 1 else combined.upper()
+            return combined.upper()
         except Exception:
-            pass
-        return combined
+            return combined
     except Exception:
         return ''
 
 
-def format_indonesian_date(val):
+def format_indonesian_date(val, uppercase_all=False):
     """Return date as '5 Januari 2025' (month name capitalized) for given value.
     Accepts date/datetime or ISO/date-like strings.
     """
@@ -439,7 +371,8 @@ def format_indonesian_date(val):
                         d = datetime.strptime(s, '%d/%m/%Y').date()
                     except Exception:
                         return ''
-        return f"{d.day} {months[d.month-1]} {d.year}"
+        out = f"{d.day} {months[d.month-1]} {d.year}"
+        return out.upper() if uppercase_all else out
     except Exception:
         return ''
 
@@ -630,7 +563,76 @@ class UserDetailView(APIView):
                         'loan_amount': r[4],
                     })
 
-                return Response({'contracts': contracts}, status=status.HTTP_200_OK)
+                # include column names so frontend can render dynamic contract fields
+                return Response({'contracts': contracts, 'columns': cols}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': f'Error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def post(self, request):
+        """Create a new director record."""
+        name = request.data.get('name') or request.data.get('name_of_director')
+        phone = request.data.get('phone_number_of_lolc') or request.data.get('phone')
+        if not name:
+            return Response({'error': 'Missing name'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            with connection.cursor() as cursor:
+                # Some DB schemas have director_id NOT NULL without AUTO_INCREMENT.
+                # Try to generate a new director_id if needed by taking MAX(director_id)+1.
+                new_id = None
+                try:
+                    cursor.execute("SELECT COALESCE(MAX(director_id), 0) + 1 FROM director")
+                    row = cursor.fetchone()
+                    if row:
+                        new_id = row[0]
+                except Exception:
+                    new_id = None
+
+                if new_id is not None:
+                    cursor.execute("INSERT INTO director (director_id, name_of_director, phone_number_of_lolc) VALUES (%s, %s, %s)", [new_id, name, phone])
+                else:
+                    cursor.execute("INSERT INTO director (name_of_director, phone_number_of_lolc) VALUES (%s, %s)", [name, phone])
+            return Response({'status': 'created'}, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({'error': f'Error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def patch(self, request, pk=None):
+        """Update an existing director by id (pk)."""
+        if not pk:
+            return Response({'error': 'Missing director id'}, status=status.HTTP_400_BAD_REQUEST)
+        name = request.data.get('name') or request.data.get('name_of_director')
+        phone = request.data.get('phone_number_of_lolc') or request.data.get('phone')
+        if name is None and phone is None:
+            return Response({'error': 'No fields to update'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            with connection.cursor() as cursor:
+                updates = []
+                params = []
+                if name is not None:
+                    updates.append('name_of_director=%s')
+                    params.append(name)
+                if phone is not None:
+                    updates.append('phone_number_of_lolc=%s')
+                    params.append(phone)
+                params.append(pk)
+                sql = f"UPDATE director SET {', '.join(updates)} WHERE director_id=%s"
+                cursor.execute(sql, params)
+            return Response({'status': 'updated'}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': f'Error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def delete(self, request, pk=None):
+        """Soft-delete a director by is_active if available, else delete row."""
+        if not pk:
+            return Response({'error': 'Missing director id'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            with connection.cursor() as cursor:
+                # Try soft-delete first
+                try:
+                    cursor.execute("UPDATE director SET is_active=0 WHERE director_id=%s", [pk])
+                except Exception:
+                    # fallback to hard delete
+                    cursor.execute("DELETE FROM director WHERE director_id=%s", [pk])
+            return Response({'status': 'deleted'}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'error': f'Error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -677,6 +679,14 @@ class UserDetailView(APIView):
             return Response({'user': user, 'message': 'User updated'}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request, username):
+        """Support HTTP PATCH as an alias to PUT for partial updates."""
+        return self.put(request, username)
+
+    def patch(self, request, username):
+        """Support HTTP PATCH as an alias to PUT for partial updates."""
+        return self.put(request, username)
 
 
 class CustomTokenObtainPairView(JWTTokenObtainPairView):
@@ -2285,6 +2295,40 @@ class ContractCreateView(APIView):
                             data_map[field_name] = '-'
 
                 # Ensure primary key is synthesized for legacy PK columns (non-auto_increment)
+                # Allow caller to request skipping server-side normalization (e.g., modal Add-Contract)
+                skip_normalization = False
+                try:
+                    # backend accepts both snake_case and camelCase flags
+                    if data.get('create_only') or data.get('createOnly'):
+                        skip_normalization = True
+                except Exception:
+                    pass
+                try:
+                    if data.get('skip_normalization'):
+                        skip_normalization = True
+                except Exception:
+                    pass
+
+                # Previously we applied Title Case to certain fields. That behavior
+                # is no longer desired. Preserve caller-provided casing by default.
+                # If the caller explicitly requests skipping normalization (modal
+                # create flows), uppercase all textual fields so modal saves persist
+                # in UPPERCASE server-side.
+                try:
+                    if skip_normalization:
+                        for _k in list(data_map.keys()):
+                            # Skip dates and numeric columns
+                            ft = field_type_map.get(_k.lower(), '')
+                            if any(t in ft for t in ('date', 'timestamp', 'datetime')):
+                                continue
+                            if any(t in ft for t in ('int', 'decimal', 'float', 'double', 'numeric')):
+                                continue
+                            v = data_map.get(_k)
+                            if isinstance(v, str):
+                                data_map[_k] = v.strip().upper()
+                except Exception:
+                    pass
+
                 _ensure_synthesized_pk(cursor, cols_meta, data_map, 'contract')
                 # Explicit fallback: if contract_id column exists and not provided, synthesize now
                 try:
@@ -2306,9 +2350,12 @@ class ContractCreateView(APIView):
                         # value may be in data_map under actual column name or in original payload
                         contract_val = data_map.get(contract_col) or (data.get('contract_number') if isinstance(data, dict) else None)
                         if contract_val:
-                            # store uppercase contract_number for consistency
                             try:
-                                data_map[contract_col] = str(contract_val).upper()
+                                # Only force uppercase when normalization is enabled.
+                                if not skip_normalization:
+                                    data_map[contract_col] = str(contract_val).upper()
+                                else:
+                                    data_map[contract_col] = contract_val
                             except Exception:
                                 data_map[contract_col] = contract_val
                             cursor.execute("SELECT 1 FROM contract WHERE LOWER(contract_number)=LOWER(%s) LIMIT 1", [data_map[contract_col]])
@@ -2397,6 +2444,79 @@ class ContractCreateView(APIView):
                 return Response({'contract': row_dict}, status=status.HTTP_200_OK)
         except Exception as e:
             logger.exception('Contract lookup failed')
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class ContractCRUDView(APIView):
+    """Detail endpoint for contract mutations: PATCH and DELETE.
+    Keep create/lookup on /api/contracts/ untouched.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def _detect_pk_column(self, cursor):
+        cursor.execute("SHOW COLUMNS FROM contract")
+        cols_meta = cursor.fetchall()
+        cols = [r[0] for r in cols_meta]
+        for candidate in ('contract_id', 'id', 'id_contract'):
+            if candidate in cols:
+                return candidate, cols_meta
+        # fallback to first column
+        return cols[0] if cols else None, cols_meta
+
+    def patch(self, request, pk=None):
+        if not pk:
+            return Response({'error': 'Missing contract id'}, status=status.HTTP_400_BAD_REQUEST)
+        data = request.data or {}
+        try:
+            with connection.cursor() as cursor:
+                pk_col, cols_meta = self._detect_pk_column(cursor)
+                if not pk_col:
+                    return Response({'error': 'Contract table has no detectable PK'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                # map lowercase -> actual column names
+                cols_info = [r[0] for r in cols_meta]
+                cols_lookup = {c.lower(): c for c in cols_info}
+
+                updates = []
+                params = []
+                for k, v in data.items():
+                    key = str(k).lower()
+                    if key in cols_lookup and cols_lookup[key] != pk_col:
+                        updates.append(f"{cols_lookup[key]}=%s")
+                        params.append(v)
+
+                if not updates:
+                    return Response({'error': 'No updatable fields'}, status=status.HTTP_400_BAD_REQUEST)
+
+                # set updated_at if available
+                if 'updated_at' in cols_lookup and 'updated_at' not in [u.split('=')[0] for u in updates]:
+                    updates.append('updated_at=%s')
+                    params.append(timezone.now())
+
+                params.append(pk)
+                sql = f"UPDATE contract SET {', '.join(updates)} WHERE {pk_col}=%s"
+                cursor.execute(sql, params)
+            return Response({'status': 'updated'}, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.exception('Contract update failed')
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def delete(self, request, pk=None):
+        if not pk:
+            return Response({'error': 'Missing contract id'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            with connection.cursor() as cursor:
+                pk_col, cols_meta = self._detect_pk_column(cursor)
+                if not pk_col:
+                    return Response({'error': 'Contract table has no detectable PK'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                cols = [r[0] for r in cols_meta]
+                # try soft-delete
+                if 'is_active' in cols:
+                    cursor.execute(f"UPDATE contract SET is_active=0 WHERE {pk_col}=%s", [pk])
+                else:
+                    cursor.execute(f"DELETE FROM contract WHERE {pk_col}=%s", [pk])
+            return Response({'status': 'deleted'}, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.exception('Contract delete failed')
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -2501,43 +2621,52 @@ class ContractsTableView(APIView):
     def get(self, request):
         try:
             with connection.cursor() as cursor:
-                # discover columns and pick desired fields if present
+                # discover columns from the contract table
                 cursor.execute("SHOW COLUMNS FROM contract")
                 cols_meta = cursor.fetchall()
                 cols = [r[0] for r in cols_meta]
 
-                # prefer contract_id, fallback to id, else NULL as contract_id
+                # exclude timestamp-like columns from the returned payload
+                excluded = ('created_at', 'updated_at')
+
+                # decide id mapping: prefer contract_id, else alias id -> contract_id
                 id_col = None
                 for candidate in ('contract_id', 'id', 'id_contract'):
                     if candidate in cols:
                         id_col = candidate
                         break
 
-                select_cols = []
-                if id_col:
-                    select_cols.append(f"{id_col} AS contract_id")
+                select_list = []
+                if id_col == 'id':
+                    select_list.append('id AS contract_id')
+                elif id_col == 'contract_id':
+                    select_list.append('contract_id')
                 else:
-                    select_cols.append("NULL AS contract_id")
+                    select_list.append("NULL AS contract_id")
 
-                for wanted in ('contract_number', 'name_of_debtor', 'nik_number_of_debtor', 'loan_amount'):
-                    if wanted in cols:
-                        select_cols.append(wanted)
-                    else:
-                        select_cols.append("'' AS %s" % wanted)
+                # include all other columns (preserve DB order), skipping id alias and timestamps
+                for c in cols:
+                    if c in ('id', 'contract_id'):
+                        continue
+                    if c in excluded:
+                        continue
+                    select_list.append(c)
 
-                sql = f"SELECT DISTINCT {', '.join(select_cols)} FROM contract ORDER BY contract_number"
+                sql = f"SELECT DISTINCT {', '.join(select_list)} FROM contract ORDER BY contract_number"
                 cursor.execute(sql)
                 rows = cursor.fetchall()
+
+                # build returned column names list to send as metadata
+                returned_cols = ['contract_id'] + [c for c in cols if c not in ('id', 'contract_id') and c not in excluded]
+
                 contracts = []
-                for r in rows:
-                    contracts.append({
-                        'contract_id': r[0],
-                        'contract_number': r[1],
-                        'name_of_debtor': r[2],
-                        'nik_number_of_debtor': r[3],
-                        'loan_amount': r[4],
-                    })
-                return Response({'contracts': contracts}, status=status.HTTP_200_OK)
+                for row in rows:
+                    obj = {}
+                    for i, colname in enumerate(returned_cols):
+                        obj[colname] = row[i]
+                    contracts.append(obj)
+
+                return Response({'contracts': contracts, 'columns': returned_cols}, status=status.HTTP_200_OK)
         except Exception as e:
             logger.exception('Contracts table failed')
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -2752,6 +2881,56 @@ class RegionListView(APIView):
         except Exception as e:
             return Response({'error': f'Error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    def post(self, request):
+        """Create a new region record."""
+        name = request.data.get('name') or request.data.get('region_name')
+        code = request.data.get('code')
+        if not name:
+            return Response({'error': 'Missing name'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("INSERT INTO regions (region_name, code, is_active) VALUES (%s, %s, 1)", [name, code])
+            return Response({'status': 'created'}, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({'error': f'Error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def patch(self, request, pk=None):
+        """Update an existing region by id (pk)."""
+        if not pk:
+            return Response({'error': 'Missing region id'}, status=status.HTTP_400_BAD_REQUEST)
+        name = request.data.get('name') or request.data.get('region_name')
+        code = request.data.get('code')
+        if name is None and code is None:
+            return Response({'error': 'No fields to update'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            with connection.cursor() as cursor:
+                # build update dynamically
+                updates = []
+                params = []
+                if name is not None:
+                    updates.append('region_name=%s')
+                    params.append(name)
+                if code is not None:
+                    updates.append('code=%s')
+                    params.append(code)
+                params.append(pk)
+                sql = f"UPDATE regions SET {', '.join(updates)} WHERE id=%s"
+                cursor.execute(sql, params)
+            return Response({'status': 'updated'}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': f'Error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def delete(self, request, pk=None):
+        """Soft-delete a region by marking is_active=0."""
+        if not pk:
+            return Response({'error': 'Missing region id'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("UPDATE regions SET is_active=0 WHERE id=%s", [pk])
+            return Response({'status': 'deleted'}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': f'Error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class AreaListView(APIView):
     """Return list of areas with id, name, and region_id."""
@@ -2768,6 +2947,60 @@ class AreaListView(APIView):
                 cols = ['id', 'name', 'region_id', 'code']
                 rows = [dict(zip(cols, row)) for row in cursor.fetchall()]
                 return Response({'areas': rows}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': f'Error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def post(self, request):
+        """Create a new area record."""
+        name = request.data.get('name')
+        region_id = request.data.get('region_id')
+        code = request.data.get('code')
+        if not name:
+            return Response({'error': 'Missing name'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("INSERT INTO areas (name, region_id, code, is_active) VALUES (%s, %s, %s, 1)", [name, region_id, code])
+            return Response({'status': 'created'}, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({'error': f'Error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def patch(self, request, pk=None):
+        """Update an existing area by id (pk)."""
+        if not pk:
+            return Response({'error': 'Missing area id'}, status=status.HTTP_400_BAD_REQUEST)
+        name = request.data.get('name')
+        region_id = request.data.get('region_id')
+        code = request.data.get('code')
+        if name is None and region_id is None and code is None:
+            return Response({'error': 'No fields to update'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            with connection.cursor() as cursor:
+                updates = []
+                params = []
+                if name is not None:
+                    updates.append('name=%s')
+                    params.append(name)
+                if region_id is not None:
+                    updates.append('region_id=%s')
+                    params.append(region_id)
+                if code is not None:
+                    updates.append('code=%s')
+                    params.append(code)
+                params.append(pk)
+                sql = f"UPDATE areas SET {', '.join(updates)} WHERE id=%s"
+                cursor.execute(sql, params)
+            return Response({'status': 'updated'}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': f'Error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def delete(self, request, pk=None):
+        """Soft-delete an area by marking is_active=0."""
+        if not pk:
+            return Response({'error': 'Missing area id'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("UPDATE areas SET is_active=0 WHERE id=%s", [pk])
+            return Response({'status': 'deleted'}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'error': f'Error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -2804,6 +3037,92 @@ class BranchListView(APIView):
             # Return a clear error message for frontend and log server-side
             err_msg = str(e)
             return Response({'error': f'Error fetching branches: {err_msg}'}, status=status.HTTP_200_OK)
+    
+    def post(self, request):
+        """Create a new branch record."""
+        # accept either 'name' or 'branch_name'
+        area_id = request.data.get('area_id')
+        bm_id = request.data.get('bm_id')
+        name = request.data.get('name') or request.data.get('branch_name')
+        code = request.data.get('code')
+        # accept phone number for branches (frontend may send 'phone_number_branch' or 'phone')
+        phone = request.data.get('phone_number_branch') or request.data.get('phone') or ''
+        street_name = request.data.get('street_name')
+        subdistrict = request.data.get('subdistrict')
+        district = request.data.get('district')
+        city = request.data.get('city')
+        province = request.data.get('province')
+        if not name:
+            return Response({'error': 'Missing branch name'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            with connection.cursor() as cursor:
+                # include phone_number_branch column; use empty string fallback to avoid NOT NULL errors
+                cursor.execute(
+                    "INSERT INTO branches (area_id, bm_id, name, code, street_name, subdistrict, district, city, province, phone_number_branch, is_active) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 1)",
+                    [area_id, bm_id, name, code, street_name, subdistrict, district, city, province, phone]
+                )
+            return Response({'status': 'created'}, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({'error': f'Error creating branch: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def patch(self, request, pk=None):
+        """Update an existing branch by id (pk)."""
+        if not pk:
+            return Response({'error': 'Missing branch id'}, status=status.HTTP_400_BAD_REQUEST)
+        # gather updatable fields
+        area_id = request.data.get('area_id')
+        bm_id = request.data.get('bm_id')
+        name = request.data.get('name') or request.data.get('branch_name')
+        code = request.data.get('code')
+        phone = request.data.get('phone_number_branch') or request.data.get('phone')
+        street_name = request.data.get('street_name')
+        subdistrict = request.data.get('subdistrict')
+        district = request.data.get('district')
+        city = request.data.get('city')
+        province = request.data.get('province')
+        if all(v is None for v in [area_id, bm_id, name, code, street_name, subdistrict, district, city, province]):
+            return Response({'error': 'No fields to update'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            with connection.cursor() as cursor:
+                updates = []
+                params = []
+                if area_id is not None:
+                    updates.append('area_id=%s'); params.append(area_id)
+                if bm_id is not None:
+                    updates.append('bm_id=%s'); params.append(bm_id)
+                if name is not None:
+                    updates.append('name=%s'); params.append(name)
+                if code is not None:
+                    updates.append('code=%s'); params.append(code)
+                if street_name is not None:
+                    updates.append('street_name=%s'); params.append(street_name)
+                if subdistrict is not None:
+                    updates.append('subdistrict=%s'); params.append(subdistrict)
+                if district is not None:
+                    updates.append('district=%s'); params.append(district)
+                if city is not None:
+                    updates.append('city=%s'); params.append(city)
+                if phone is not None:
+                    updates.append('phone_number_branch=%s'); params.append(phone)
+                if province is not None:
+                    updates.append('province=%s'); params.append(province)
+                params.append(pk)
+                sql = f"UPDATE branches SET {', '.join(updates)} WHERE id=%s"
+                cursor.execute(sql, params)
+            return Response({'status': 'updated'}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': f'Error updating branch: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def delete(self, request, pk=None):
+        """Soft-delete a branch by marking is_active=0."""
+        if not pk:
+            return Response({'error': 'Missing branch id'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("UPDATE branches SET is_active=0 WHERE id=%s", [pk])
+            return Response({'status': 'deleted'}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': f'Error deleting branch: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class BranchManagerByCityView(APIView):
@@ -2842,6 +3161,104 @@ class BranchManagerByCityView(APIView):
             return Response({'error': f'Error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+class BranchManagerCRUDView(APIView):
+    """Separate CRUD API for branch_manager table to avoid touching legacy lookup view."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        bm_id = request.data.get('bm_id')
+        branches_id = request.data.get('branches_id')
+        name = request.data.get('name_of_bm') or request.data.get('name')
+        nik = request.data.get('nik_number_of_bm')
+        phone = request.data.get('phone_number_of_bm')
+        place_birth = request.data.get('place_birth_of_bm') or request.data.get('place_of_birth_of_bm')
+        date_birth = request.data.get('date_birth_of_bm') or request.data.get('date_of_birth_of_bm')
+        street = request.data.get('street_name_of_bm') or request.data.get('street_of_bm') or request.data.get('street_name')
+        subdistrict = request.data.get('subdistrict_of_bm') or request.data.get('subdistrict')
+        district = request.data.get('district_of_bm') or request.data.get('district')
+        city = request.data.get('city_of_bm') or request.data.get('city') or request.data.get('name')
+        province = request.data.get('province_of_bm') or request.data.get('province')
+        if not name:
+            return Response({'error': 'Missing name_of_bm'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            with connection.cursor() as cursor:
+                if bm_id:
+                    cursor.execute(
+                        "INSERT INTO branch_manager (bm_id, branches_id, name_of_bm, place_birth_of_bm, date_birth_of_bm, nik_number_of_bm, phone_number_of_bm, street_name_of_bm, subdistrict_of_bm, district_of_bm, city_of_bm, province_of_bm) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                        [bm_id, branches_id, name, place_birth, date_birth, nik, phone, street, subdistrict, district, city, province]
+                    )
+                else:
+                    cursor.execute(
+                        "INSERT INTO branch_manager (branches_id, name_of_bm, place_birth_of_bm, date_birth_of_bm, nik_number_of_bm, phone_number_of_bm, street_name_of_bm, subdistrict_of_bm, district_of_bm, city_of_bm, province_of_bm) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                        [branches_id, name, place_birth, date_birth, nik, phone, street, subdistrict, district, city, province]
+                    )
+            return Response({'status': 'created'}, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({'error': f'Error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def patch(self, request, pk=None):
+        if not pk:
+            return Response({'error': 'Missing bm id'}, status=status.HTTP_400_BAD_REQUEST)
+        branches_id = request.data.get('branches_id')
+        name = request.data.get('name_of_bm') or request.data.get('name')
+        nik = request.data.get('nik_number_of_bm')
+        phone = request.data.get('phone_number_of_bm')
+        place_birth = request.data.get('place_birth_of_bm') or request.data.get('place_of_birth_of_bm')
+        date_birth = request.data.get('date_birth_of_bm') or request.data.get('date_of_birth_of_bm')
+        street = request.data.get('street_name_of_bm') or request.data.get('street_of_bm') or request.data.get('street_name')
+        subdistrict = request.data.get('subdistrict_of_bm') or request.data.get('subdistrict')
+        district = request.data.get('district_of_bm') or request.data.get('district')
+        city = request.data.get('city_of_bm') or request.data.get('city') or request.data.get('name')
+        province = request.data.get('province_of_bm') or request.data.get('province')
+        if name is None and branches_id is None and nik is None and phone is None:
+            return Response({'error': 'No fields to update'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            with connection.cursor() as cursor:
+                updates = []
+                params = []
+                if branches_id is not None:
+                    updates.append('branches_id=%s'); params.append(branches_id)
+                if name is not None:
+                    updates.append('name_of_bm=%s'); params.append(name)
+                if nik is not None:
+                    updates.append('nik_number_of_bm=%s'); params.append(nik)
+                if phone is not None:
+                    updates.append('phone_number_of_bm=%s'); params.append(phone)
+                if street is not None:
+                    updates.append('street_name_of_bm=%s'); params.append(street)
+                if place_birth is not None:
+                    updates.append('place_birth_of_bm=%s'); params.append(place_birth)
+                if date_birth is not None:
+                    updates.append('date_birth_of_bm=%s'); params.append(date_birth)
+                if subdistrict is not None:
+                    updates.append('subdistrict_of_bm=%s'); params.append(subdistrict)
+                if district is not None:
+                    updates.append('district_of_bm=%s'); params.append(district)
+                if city is not None:
+                    updates.append('city_of_bm=%s'); params.append(city)
+                if province is not None:
+                    updates.append('province_of_bm=%s'); params.append(province)
+                params.append(pk)
+                sql = f"UPDATE branch_manager SET {', '.join(updates)} WHERE bm_id=%s"
+                cursor.execute(sql, params)
+            return Response({'status': 'updated'}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': f'Error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def delete(self, request, pk=None):
+        if not pk:
+            return Response({'error': 'Missing bm id'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            with connection.cursor() as cursor:
+                try:
+                    cursor.execute("UPDATE branch_manager SET is_active=0 WHERE bm_id=%s", [pk])
+                except Exception:
+                    cursor.execute("DELETE FROM branch_manager WHERE bm_id=%s", [pk])
+            return Response({'status': 'deleted'}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': f'Error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 class DirectorListView(APIView):
     """Return list of director names from director table."""
     permission_classes = [IsAuthenticated]
@@ -2866,6 +3283,72 @@ class DirectorListView(APIView):
                     raw_rows = cursor.fetchall()
                     rows = [dict(zip(cols, r)) for r in raw_rows]
                     return Response({'directors': rows}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': f'Error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def post(self, request):
+        """Create a new director record."""
+        name = request.data.get('name') or request.data.get('name_of_director')
+        phone = request.data.get('phone_number_of_lolc') or request.data.get('phone')
+        if not name:
+            return Response({'error': 'Missing name'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            with connection.cursor() as cursor:
+                # Some DB schemas have director_id NOT NULL without AUTO_INCREMENT.
+                # Try to generate a new director_id if needed by taking MAX(director_id)+1.
+                new_id = None
+                try:
+                    cursor.execute("SELECT COALESCE(MAX(director_id), 0) + 1 FROM director")
+                    row = cursor.fetchone()
+                    if row:
+                        new_id = row[0]
+                except Exception:
+                    new_id = None
+
+                if new_id is not None:
+                    cursor.execute("INSERT INTO director (director_id, name_of_director, phone_number_of_lolc) VALUES (%s, %s, %s)", [new_id, name, phone])
+                else:
+                    cursor.execute("INSERT INTO director (name_of_director, phone_number_of_lolc) VALUES (%s, %s)", [name, phone])
+            return Response({'status': 'created'}, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({'error': f'Error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def patch(self, request, pk=None):
+        """Update an existing director by id (pk)."""
+        if not pk:
+            return Response({'error': 'Missing director id'}, status=status.HTTP_400_BAD_REQUEST)
+        name = request.data.get('name') or request.data.get('name_of_director')
+        phone = request.data.get('phone_number_of_lolc') or request.data.get('phone')
+        if name is None and phone is None:
+            return Response({'error': 'No fields to update'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            with connection.cursor() as cursor:
+                updates = []
+                params = []
+                if name is not None:
+                    updates.append('name_of_director=%s')
+                    params.append(name)
+                if phone is not None:
+                    updates.append('phone_number_of_lolc=%s')
+                    params.append(phone)
+                params.append(pk)
+                sql = f"UPDATE director SET {', '.join(updates)} WHERE director_id=%s"
+                cursor.execute(sql, params)
+            return Response({'status': 'updated'}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': f'Error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def delete(self, request, pk=None):
+        """Soft-delete a director by is_active if available, else delete row."""
+        if not pk:
+            return Response({'error': 'Missing director id'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            with connection.cursor() as cursor:
+                try:
+                    cursor.execute("UPDATE director SET is_active=0 WHERE director_id=%s", [pk])
+                except Exception:
+                    cursor.execute("DELETE FROM director WHERE director_id=%s", [pk])
+            return Response({'status': 'deleted'}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'error': f'Error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -2957,11 +3440,12 @@ class BLAgreementDocxDownloadView(APIView):
                 v = ctx.get(dk)
                 try:
                     # human-readable date (e.g., '6 September 2026')
-                    ctx[dk] = format_indonesian_date(v) if v else ''
-                    # spelled-out lowercase date (e.g., 'enam september dua ribu dua puluh enam')
-                    ctx[dk + '_in_word'] = date_to_indonesian_words(v) if v else ''
-                    # display with parentheses e.g. '(6 September 2026)'
-                    ctx[dk + '_display'] = f"({format_indonesian_date(v)})" if v else ''
+                    # Render human-readable date uppercased for documents
+                    ctx[dk] = format_indonesian_date(v, uppercase_all=True) if v else ''
+                    # spelled-out date words entirely UPPERCASE
+                    ctx[dk + '_in_word'] = date_to_indonesian_words(v, uppercase_month=True, uppercase_all=True) if v else ''
+                    # display with parentheses e.g. '(6 SEPTEMBER 2026)'
+                    ctx[dk + '_display'] = f"({format_indonesian_date(v, uppercase_all=True)})" if v else ''
                 except Exception:
                     ctx[dk + '_in_word'] = ''
 
@@ -3262,6 +3746,13 @@ class BLAgreementDocxDownloadView(APIView):
                 download = request.query_params.get('download', '').strip().lower()
                 if download == 'pdf':
                     pdf_path = os.path.join(tmpdir, f'bl_agreement_{safe_cn}.pdf')
+                    try:
+                        import shutil as _sh
+                        if _sh.which('soffice') is None:
+                            return Response({'error': 'LibreOffice (soffice) not found on server'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+                    except Exception:
+                        return Response({'error': 'Server environment check failed (soffice detection)'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
                     ok, err = _convert_docx_to_pdf(docx_path, pdf_path)
                     if ok:
                         try:
@@ -3398,9 +3889,9 @@ class UVAgreementDocxDownloadView(APIView):
             for dk in date_keys:
                 v = ctx.get(dk)
                 try:
-                    ctx[dk] = format_indonesian_date(v) if v else ''
-                    ctx[dk + '_in_word'] = date_to_indonesian_words(v) if v else ''
-                    ctx[dk + '_display'] = f"({format_indonesian_date(v)})" if v else ''
+                    ctx[dk] = format_indonesian_date(v, uppercase_all=True) if v else ''
+                    ctx[dk + '_in_word'] = date_to_indonesian_words(v, uppercase_month=True, uppercase_all=True) if v else ''
+                    ctx[dk + '_display'] = f"({format_indonesian_date(v, uppercase_all=True)})" if v else ''
                 except Exception:
                     ctx[dk + '_in_word'] = ''
 
@@ -3584,6 +4075,13 @@ class UVAgreementDocxDownloadView(APIView):
                 download = request.query_params.get('download', '').strip().lower()
                 if download == 'pdf':
                     pdf_path = os.path.join(tmpdir, f'{base_prefix}_{safe_cn}.pdf')
+                    try:
+                        import shutil as _sh
+                        if _sh.which('soffice') is None:
+                            return Response({'error': 'LibreOffice (soffice) not found on server'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+                    except Exception:
+                        return Response({'error': 'Server environment check failed (soffice detection)'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
                     ok, err = _convert_docx_to_pdf(docx_path, pdf_path)
                     if ok:
                         try:
@@ -3890,9 +4388,9 @@ class UVSP3DocxDownloadView(APIView):
                     for dk in date_keys:
                         v = ctx.get(dk)
                         try:
-                            ctx[dk] = format_indonesian_date(v) if v else ''
-                            ctx[dk + '_in_word'] = date_to_indonesian_words(v) if v else ''
-                            ctx[dk + '_display'] = f"({format_indonesian_date(v)})" if v else ''
+                            ctx[dk] = format_indonesian_date(v, uppercase_all=True) if v else ''
+                            ctx[dk + '_in_word'] = date_to_indonesian_words(v, uppercase_month=True, uppercase_all=True) if v else ''
+                            ctx[dk + '_display'] = f"({format_indonesian_date(v, uppercase_all=True)})" if v else ''
                         except Exception:
                             ctx[dk + '_in_word'] = ''
 

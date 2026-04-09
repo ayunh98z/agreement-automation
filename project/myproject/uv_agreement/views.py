@@ -27,7 +27,7 @@ from myproject.common import (_resolve_username, _get_request_user_and_now, _nor
                               _ensure_synthesized_pk, format_number_dot, number_to_indonesian_words,
                               date_to_indonesian_words, format_indonesian_date, _repair_docx_jinja_tags,
                               _convert_docx_to_pdf, _safe_rmtree)
-from myproject.models import DownloadLog
+from myproject.models import DownloadLog, AgreementAccess
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -107,6 +107,23 @@ class UVAgreementView(APIView):
                             pass
 
                 user_username = user_username or (user_full_name and user_full_name.replace(' ', '').lower()) or 'anonymous'
+                # determine numeric uid for created_by_id: prefer request.user, fallback to Bearer token payload
+                uid = None
+                try:
+                    if getattr(request, 'user', None) and getattr(request.user, 'is_authenticated', False):
+                        uid = getattr(request.user, 'id', None)
+                    else:
+                        auth_header = request.META.get('HTTP_AUTHORIZATION', '')
+                        if auth_header and auth_header.startswith('Bearer '):
+                            token = auth_header.split(' ', 1)[1].strip()
+                            try:
+                                payload = AccessToken(token)
+                                uid = payload.get('user_id') or payload.get('uid') or payload.get('id')
+                            except TokenError:
+                                uid = None
+                except Exception:
+                    uid = None
+
                 now = timezone.now()
 
                 if branch_id is not None and 'branch_id' in cols_lookup:
@@ -118,6 +135,18 @@ class UVAgreementView(APIView):
                         data_map[cols_lookup['director']] = director
 
                 branch_data = data.get('branch_data', {})
+                # Backward-compat: when branch phone is provided, copy it to
+                # `phone_number_of_bm` column on uv_agreement (if present)
+                # so existing templates and downstream code that expect BM
+                # phone continue to work.
+                try:
+                    if isinstance(branch_data, dict) and branch_data.get('phone_number_branch') is not None:
+                        target_col = cols_lookup.get('phone_number_of_bm')
+                        if target_col and target_col not in data_map:
+                            data_map[target_col] = branch_data.get('phone_number_branch') or ''
+                except Exception:
+                    pass
+
                 for src in (bm_data, branch_data, contract_data, collateral_data, header_fields):
                     if not isinstance(src, dict):
                         continue
@@ -183,32 +212,55 @@ class UVAgreementView(APIView):
                         else:
                             data_map[field_name] = '-'
 
-                # Normalize certain text fields to Title Case (Capital Each Word)
-                def _title_each_word(val):
-                    if val is None:
-                        return val
-                    if not isinstance(val, str):
-                        return val
-                    s = val.strip()
-                    if not s:
-                        return s
-                    return ' '.join([w.capitalize() for w in s.split()])
+                # Determine whether caller requested skipping normalization (e.g., modal Create)
+                skip_normalization = False
+                try:
+                    if data.get('create_only') or data.get('createOnly'):
+                        skip_normalization = True
+                except Exception:
+                    pass
+                try:
+                    if data.get('skip_normalization'):
+                        skip_normalization = True
+                except Exception:
+                    pass
 
-                _titlecase_fields = [
-                    'name_of_debtor','place_birth_of_debtor','date_birth_of_debtor_in_word',
-                    'street_of_debtor','subdistrict_of_debtor','district_of_debtor','city_of_debtor','province_of_debtor',
-                    'business_type','name_of_account_holder','loan_amount_in_word','term_by_word','flat_rate_by_word',
-                    'notaris_fee_in_word','admin_fee_in_word','mortgage_amount_in_word','net_amount_in_word',
-                    'admin_rate_in_word','tlo_in_word','life_insurance_in_word',
-                    # Collateral / vehicle fields
-                    'vehicle_type','vehicle_brand','vehicle_model','vehicle_colour','bpkb_number','name_bpkb_owner','name_of_vehicle_owner'
-                ]
-                for _f in _titlecase_fields:
-                    if _f in data_map:
-                        try:
-                            data_map[_f] = _title_each_word(data_map[_f])
-                        except Exception:
-                            pass
+                # Ensure all textual fields are stored in UPPERCASE for UV agreements
+                try:
+                    for _k in list(data_map.keys()):
+                        ft = field_type_map.get(_k, '')
+                        # skip dates/timestamps
+                        if any(t in ft for t in ('date', 'timestamp', 'datetime')):
+                            continue
+                        # skip numeric columns
+                        if any(t in ft for t in ('int', 'decimal', 'float', 'double', 'numeric')):
+                            continue
+                        v = data_map.get(_k)
+                        if isinstance(v, str):
+                            data_map[_k] = v.strip().upper()
+                except Exception:
+                    pass
+
+                # If this POST is a create-only (typically coming from the "Add Collateral" modal),
+                # ensure collateral-related fields are stored in UPPERCASE so identifiers remain preserved.
+                # Cek ini kalau gak uppercase pas add collateral
+                """
+                try:
+                    if bool(data.get('create_only')):
+                        collateral_upper_fields = {
+                            'vehicle_type','vehicle_brand','vehicle_model','vehicle_colour',
+                            'bpkb_number','name_bpkb_owner','name_of_vehicle_owner',
+                            'plate_number','plat_number','chassis_number','engine_number',
+                            'wheeled_vehicle','manufactured_year'
+                        }
+                        for cf in list(data_map.keys()):
+                            if cf in collateral_upper_fields:
+                                v = data_map.get(cf)
+                                if isinstance(v, str):
+                                    data_map[cf] = v.strip().upper()
+                except Exception:
+                    pass
+                """
 
                 existing_check_sql = "SELECT contract_number FROM uv_agreement WHERE contract_number=%s"
                 exists = None
@@ -226,7 +278,9 @@ class UVAgreementView(APIView):
                         data_map['update_at'] = now
                     if 'updated_at' in cols_info:
                         data_map['updated_at'] = now
+                    # Prevent accidental overwrite of original creator info on updates
                     data_map.pop('created_by', None)
+                    data_map.pop('created_by_id', None)
                     data_map.pop('created_at', None)
                     set_cols = []
                     params = []
@@ -236,14 +290,88 @@ class UVAgreementView(APIView):
                         set_cols.append(f"{col}=%s")
                         params.append(val)
                     if set_cols:
+                        # If role is CSA, verify caller is creator before applying UPDATE.
+                        # Use strict created_by_id match when available, fallback to created_by username when id is empty/zero.
+                        permitted = True
+                        if role == 'CSA':
+                            try:
+                                try:
+                                    cursor.execute("SELECT created_by, created_by_id FROM uv_agreement WHERE LOWER(contract_number)=LOWER(%s) LIMIT 1", [contract_number])
+                                    row = cursor.fetchone()
+                                    created_by = row[0] if row else None
+                                    created_by_id = row[1] if row and len(row) > 1 else None
+                                except Exception:
+                                    created_by = None
+                                    created_by_id = None
+                                caller_uname = getattr(request.user, 'username', None) or _resolve_username(request) or ''
+                                # prefer numeric uid resolved earlier; fall back to request.user.id if needed
+                                caller_uid = uid if 'uid' in locals() and uid is not None else getattr(request.user, 'id', None)
+                                permitted = False
+                                if created_by_id and caller_uid is not None and str(created_by_id) == str(caller_uid):
+                                    permitted = True
+                                elif (not created_by_id or str(created_by_id) in ('0', '')) and created_by and caller_uname and str(created_by).lower() == str(caller_uname).lower():
+                                    permitted = True
+                                try:
+                                    logs_dir = os.path.join(settings.BASE_DIR, 'logs')
+                                    os.makedirs(logs_dir, exist_ok=True)
+                                    dbg = os.path.join(logs_dir, 'uv_agreement_access_debug.log')
+                                    with open(dbg, 'a', encoding='utf-8') as df:
+                                        df.write(f"[{timezone.now().isoformat()}] pre_update_permission_check contract={contract_number} created_by={created_by} created_by_id={created_by_id} caller_uname={caller_uname} caller_uid={caller_uid} permitted={permitted}\n")
+                                except Exception:
+                                    pass
+                            except Exception:
+                                permitted = False
+                            if not permitted:
+                                return Response({'error': 'Edit not allowed or not creator'}, status=status.HTTP_403_FORBIDDEN)
+
+                        # apply update
                         sql = f"UPDATE uv_agreement SET {', '.join(set_cols)} WHERE contract_number=%s"
                         params.append(contract_number)
                         cursor.execute(sql, params)
+
+                        # If this was an edit by the CSA creator, consume edit grant (POST is also used for updates)
+                        try:
+                            if role == 'CSA':
+                                try:
+                                    # use resolved caller_uid again
+                                    caller_uid = uid if 'uid' in locals() and uid is not None else getattr(request.user, 'id', None)
+                                    aa = AgreementAccess.get_for_contract_and_user(contract_number, caller_uid)
+                                    try:
+                                        logs_dir = os.path.join(settings.BASE_DIR, 'logs')
+                                        os.makedirs(logs_dir, exist_ok=True)
+                                        dbg = os.path.join(logs_dir, 'uv_agreement_access_debug.log')
+                                        with open(dbg, 'a', encoding='utf-8') as df:
+                                            df.write(f"[{timezone.now().isoformat()}] post_update_consume_try contract={contract_number} uid={caller_uid} aa_exists={bool(aa)} aa_edit_consumed={getattr(aa, 'edit_consumed', None)} aa_edit_grants={getattr(aa, 'edit_grants', None)}\n")
+                                    except Exception:
+                                        pass
+                                    if aa:
+                                        ok = aa.consume_edit()
+                                        try:
+                                            logs_dir = os.path.join(settings.BASE_DIR, 'logs')
+                                            os.makedirs(logs_dir, exist_ok=True)
+                                            dbg = os.path.join(logs_dir, 'uv_agreement_access_debug.log')
+                                            with open(dbg, 'a', encoding='utf-8') as df:
+                                                df.write(f"[{timezone.now().isoformat()}] post_update_consume_result contract={contract_number} uid={caller_uid} result={ok} aa_edit_consumed_after={aa.edit_consumed} aa_edit_grants={aa.edit_grants}\n")
+                                        except Exception:
+                                            pass
+                                        if not ok:
+                                            logger.warning('Consume edit returned False for %s user=%s', contract_number, caller_uid)
+                                except Exception:
+                                    logger.exception('Failed to consume edit grant (POST-update) for %s user=%s', contract_number, caller_uid)
+                        except Exception:
+                            pass
                 else:
                     if edit_only:
                         return Response({'error': 'Record not found for update (edit_only specified)'}, status=status.HTTP_400_BAD_REQUEST)
                     if 'created_by' in cols_info and user_username:
                         data_map['created_by'] = user_username
+                    # if the table has created_by_id, store numeric creator id as well (match BL behavior)
+                    try:
+                        # use resolved uid (from request.user or token fallback)
+                        if uid is not None and 'created_by_id' in cols_info:
+                            data_map['created_by_id'] = uid
+                    except Exception:
+                        pass
                     if 'created_at' in cols_info:
                         data_map[cols_lookup['created_at']] = now if 'created_at' in cols_lookup else now
                     if 'updated_at' in cols_info:
@@ -298,6 +426,46 @@ class UVAgreementView(APIView):
                                 logger.warning('Duplicate primary but no contract_number available; skipping insert')
                         else:
                             raise
+                    else:
+                        # record inserted successfully; create per-CSA access entry when creator is CSA
+                        try:
+                            creator_username = data_map.get('created_by') or user_username
+                            if role == 'CSA' and creator_username and creator_username == (user_username or ''):
+                                try:
+                                    AgreementAccess.objects.create(
+                                        contract_number=contract_number,
+                                        user_id=uid,
+                                        role='CSA',
+                                        download_grants=2,
+                                        edit_grants=1,
+                                    )
+                                except Exception:
+                                    logger.exception('Failed to create AgreementAccess for %s user=%s', contract_number, creator_username)
+                        except Exception:
+                            pass
+
+            # When CSA created, include AgreementAccess status so frontend can refresh UI without full page reload
+            try:
+                aa_data = None
+                if role == 'CSA' and contract_number:
+                    try:
+                        uid = getattr(request.user, 'id', None)
+                        aa = AgreementAccess.get_for_contract_and_user(contract_number, uid)
+                        if aa:
+                            aa_data = {
+                                'contract_number': aa.contract_number,
+                                'download_grants': aa.download_grants,
+                                'download_consumed': aa.download_consumed,
+                                'edit_grants': aa.edit_grants,
+                                'edit_consumed': aa.edit_consumed,
+                                'locked': aa.locked,
+                            }
+                    except Exception:
+                        aa_data = None
+                if aa_data:
+                    return Response({'message': 'Data berhasil disimpan', 'agreement_access': aa_data}, status=status.HTTP_200_OK)
+            except Exception:
+                pass
             return Response({'message': 'Data berhasil disimpan'}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -393,7 +561,7 @@ class UVAgreementView(APIView):
                             params.append(user_region)
                         else:
                             return Response({'error': 'region_id/branch_id column missing in uv_agreement'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-                    elif role in ('Admin', 'BOD'):
+                    elif role in ('Admin', 'BOD', 'Audit'):
                         pass
                     else:
                         where_clauses.append('1=0')
@@ -554,6 +722,40 @@ class UVAgreementView(APIView):
         except Exception as e:
             return Response({'error': f'Error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    def delete(self, request):
+        """Delete a UV agreement (and associated uv_collateral) by contract_number.
+
+        Permission: only Admin may delete.
+        Expects `contract_number` as a query param or in JSON body.
+        """
+        try:
+            contract_number = request.query_params.get('contract_number') or (request.data or {}).get('contract_number')
+            if not contract_number:
+                return Response({'error': 'contract_number is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+            role = get_role_from_request(request) or getattr(request.user, 'role', '')
+            allowed_deleters = ('Admin')
+            if role not in allowed_deleters:
+                return Response({'error': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
+
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT 1 FROM uv_agreement WHERE LOWER(contract_number)=LOWER(%s) LIMIT 1", [contract_number])
+                if not cursor.fetchone():
+                    return Response({'error': 'Record not found'}, status=status.HTTP_404_NOT_FOUND)
+
+                # delete agreement row
+                cursor.execute("DELETE FROM uv_agreement WHERE LOWER(contract_number)=LOWER(%s)", [contract_number])
+                # also remove any collateral rows for this contract to avoid orphaned data
+                try:
+                    cursor.execute("DELETE FROM uv_collateral WHERE LOWER(contract_number)=LOWER(%s)", [contract_number])
+                except Exception:
+                    # non-fatal if uv_collateral table missing
+                    pass
+
+            return Response({'message': 'Record deleted'}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class UVCollateralCreateView(APIView):
     """Create or update UV collateral rows (mirrors BL collateral handler semantics)."""
@@ -614,7 +816,7 @@ class UVCollateralCreateView(APIView):
 
                 # Normalize certain string fields to uppercase server-side
                 try:
-                    upper_fields = set(['vehicle_model', 'plate_number', 'plat_number', 'chassis_number', 'engine_number', 'bpkb_number', 'sp3_number'])
+                    upper_fields = set(['wheeled_vehicle', 'vehicle_type', 'vehicle_brand', 'vehicle_model','plate_number', 'chassis_number', 'engine_number', 'manufactured_year','vehicle_colour', 'bpkb_number', 'name_bpkb_owner'])
                     for col in list(data_map.keys()):
                         try:
                             if col and isinstance(col, str) and col.lower() in upper_fields:
@@ -627,7 +829,24 @@ class UVCollateralCreateView(APIView):
                 except Exception:
                     pass
 
+                # Additionally, ensure all text fields from collateral POST are stored UPPERCASE
+                # (skip obvious ISO date-like strings to preserve dates)
+                try:
+                    for col in list(data_map.keys()):
+                        try:
+                            val = data_map.get(col)
+                            if isinstance(val, str):
+                                # skip ISO date-like strings (YYYY-MM-DD or YYYY-MM-DDT...)
+                                if re.match(r'^\d{4}-\d{2}-\d{2}(T|$)', val):
+                                    continue
+                                data_map[col] = val.strip().upper()
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
+
                 # Title-case certain human-readable fields (capitalize each word)
+                """
                 try:
                     title_fields = set(['vehicle_type', 'vehicle_brand', 'vehicle_colour', 'name_bpkb_owner'])
                     for col in list(data_map.keys()):
@@ -641,6 +860,7 @@ class UVCollateralCreateView(APIView):
                             pass
                 except Exception:
                     pass
+                """
 
                 for col_row in cols_meta:
                     field_name = col_row[0]
@@ -692,7 +912,7 @@ class UVAgreementDocxDownloadView(APIView):
 
     def get(self, request):
         contract_number = request.query_params.get('contract_number', '').strip()
-        if not contract_number:
+        if not contract_number or not isinstance(contract_number, str):
             return Response({'error': 'contract_number parameter required'}, status=status.HTTP_400_BAD_REQUEST)
 
         doc_type = request.query_params.get('type', 'agreement').strip().lower()
@@ -732,12 +952,40 @@ class UVAgreementDocxDownloadView(APIView):
         if isinstance(main_data, dict):
             role = get_role_from_request(request) or getattr(request.user, 'role', '')
             username = getattr(request.user, 'username', None) or _resolve_username(request) or ''
-            if role in ('Admin', 'BOD'):
+            if role in ('Admin', 'BOD', 'Audit'):
                 pass
             elif role == 'CSA':
-                if main_data.get('created_by') != username:
+                # Prefer strict id-match; if created_by_id missing/0, allow fallback to created_by username
+                try:
+                    with connection.cursor() as c2:
+                        c2.execute('SELECT created_by, created_by_id FROM uv_agreement WHERE contract_number=%s LIMIT 1', [contract_number])
+                        row = c2.fetchone()
+                        created_by = row[0] if row else None
+                        created_by_id = row[1] if row and len(row) > 1 else None
+                except Exception:
+                    created_by = None
+                    created_by_id = None
+                uid = getattr(request.user, 'id', None)
+                caller_uname = getattr(request.user, 'username', None) or _resolve_username(request) or ''
+                permitted = False
+                if created_by_id:
+                    if uid is not None and str(created_by_id) == str(uid):
+                        permitted = True
+                else:
+                    if created_by and str(created_by).lower() == str(caller_uname).lower():
+                        permitted = True
+                try:
+                    logs_dir = os.path.join(settings.BASE_DIR, 'logs')
+                    os.makedirs(logs_dir, exist_ok=True)
+                    dbg = os.path.join(logs_dir, 'uv_agreement_access_debug.log')
+                    with open(dbg, 'a', encoding='utf-8') as df:
+                        df.write(f"[{timezone.now().isoformat()}] download_check contract={contract_number} created_by={created_by} created_by_id={created_by_id} caller_uname={caller_uname} caller_uid={uid} permitted={permitted}\n")
+                except Exception:
+                    pass
+                if not permitted:
                     return Response({'error': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
             elif role == 'BM':
+                
                 user_branch = getattr(request.user, 'branch_id', None)
                 if user_branch is None or str(main_data.get('branch_id')) != str(user_branch):
                     return Response({'error': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
@@ -787,7 +1035,9 @@ class UVAgreementDocxDownloadView(APIView):
             ctx['contract_number'] = contract_number
 
         # Apply numeric formatting (thousand separators + word conversion)
-        numeric_keys = ['loan_amount', 'admin_fee', 'net_amount', 'notaris_fee', 'mortgage_amount', 'stamp_amount', 'financing_agreement_amount', 'security_agreement_amount', 'upgrading_land_rights_amount', 'previous_topup_amount', 'total_amount', 'surface_area', 'capacity_of_building', 'handling_fee', 'tlo', 'life_insurance']
+        # Do not force Title Case for fields that originate from collateral
+        numeric_keys = ['loan_amount', 'admin_fee', 'admin_rate','net_amount', 'notaris_fee', 'mortgage_amount', 'stamp_amount', 'financing_agreement_amount', 'security_agreement_amount', 'upgrading_land_rights_amount', 'previous_topup_amount', 'total_amount', 'surface_area', 'capacity_of_building', 'handling_fee', 'tlo', 'life_insurance']
+        collateral_keys = set(collateral.keys()) if isinstance(collateral, dict) else set()
         for nk in numeric_keys:
             val = ctx.get(nk)
             try:
@@ -795,23 +1045,31 @@ class UVAgreementDocxDownloadView(APIView):
             except Exception:
                 ctx[nk] = val
             try:
-                ctx[nk + '_in_word'] = number_to_indonesian_words(val, title_case=True) if val is not None else ''
+                title_case_flag = False if nk in collateral_keys else True
+                try:
+                    tmp_words = number_to_indonesian_words(val, title_case=title_case_flag) if val is not None else ''
+                    ctx[nk + '_in_word'] = tmp_words.upper() if isinstance(tmp_words, str) else tmp_words
+                except Exception:
+                    ctx[nk + '_in_word'] = ''
             except Exception:
                 ctx[nk + '_in_word'] = ''
 
         # Apply date formatting (Indonesian format + word conversion)
+        # Avoid title-casing dates that come from collateral
         date_keys = ['agreement_date', 'date_birth_of_debtor', 'date_birth_of_bm', 'sp3_date', 'date_of_delegated']
         for dk in date_keys:
             v = ctx.get(dk)
             try:
-                ctx[dk] = format_indonesian_date(v) if v else ''
-                ctx[dk + '_in_word'] = date_to_indonesian_words(v, title_case=True) if v else ''
-                ctx[dk + '_display'] = f"({format_indonesian_date(v)})" if v else ''
+                # Uppercase rendered date and spelled-out date words for document output
+                ctx[dk] = format_indonesian_date(v, uppercase_all=True) if v else ''
+                title_case_flag = False if dk in collateral_keys else True
+                ctx[dk + '_in_word'] = date_to_indonesian_words(v, title_case=title_case_flag, uppercase_month=True, uppercase_all=True) if v else ''
+                ctx[dk + '_display'] = f"({format_indonesian_date(v, uppercase_all=True)})" if v else ''
             except Exception:
                 ctx[dk + '_in_word'] = ''
 
         # Rate fields: convert dot decimal to comma for document display
-        rate_keys = ['flat_rate', 'admin_rate']
+        rate_keys = ['flat_rate']
         for rk in rate_keys:
             val = ctx.get(rk)
             if val is not None and val != '':
@@ -826,6 +1084,15 @@ class UVAgreementDocxDownloadView(APIView):
             return Response({'error': 'docxtpl not installed. Please install with `pip install docxtpl`.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         try:
+            # Ensure collateral original values are preserved (no title-casing) for rendering
+            try:
+                if isinstance(collateral, dict):
+                    for ck, cv in collateral.items():
+                        # prefer raw collateral values for document rendering
+                        ctx[ck] = cv
+            except Exception:
+                pass
+
             repaired_template = _repair_docx_jinja_tags(template_path, contract_no=contract_number)
             tpl = DocxTemplate(repaired_template)
             tpl.render(ctx)
@@ -844,6 +1111,26 @@ class UVAgreementDocxDownloadView(APIView):
                 if ok:
                     with open(pdf_path, 'rb') as fh:
                         pdf_bytes = fh.read()
+                    # For certain roles (CSA and AM/BM/BOD/RM) ensure AgreementAccess exists and grants remain before returning PDF
+                    aa = None
+                    role_chk = get_role_from_request(request) or getattr(request.user, 'role', '')
+                    try:
+                        if role_chk in ('CSA', 'AM', 'BM', 'BOD', 'RM'):
+                            user = getattr(request, 'user', None)
+                            uid = getattr(user, 'id', None) if user and getattr(user, 'is_authenticated', False) else None
+                            # Strict per-user lookup
+                            aa = AgreementAccess.get_for_contract_and_user(contract_number, uid)
+                            # For non-CSA roles, create a one-time access record if none exists
+                            if not aa and role_chk in ('AM', 'BM', 'BOD', 'RM'):
+                                if uid is None:
+                                    return Response({'error': 'Authentication required for download'}, status=status.HTTP_403_FORBIDDEN)
+                                aa = AgreementAccess.objects.create(contract_number=contract_number, user_id=uid, role=role_chk, download_grants=2, edit_grants=0)
+                            # For CSA, do not create/override — require existing AgreementAccess
+                            if not aa or not aa.can_download():
+                                return Response({'error': 'No download grants remaining'}, status=status.HTTP_403_FORBIDDEN)
+                    except Exception:
+                        return Response({'error': 'No download grants remaining'}, status=status.HTTP_403_FORBIDDEN)
+
                     response = HttpResponse(pdf_bytes, content_type='application/pdf')
                     download_filename = f'{doc_name}_{contract_number}.pdf'.upper()
                     response['Content-Disposition'] = f'attachment; filename="{download_filename}"'
@@ -869,6 +1156,12 @@ class UVAgreementDocxDownloadView(APIView):
                             file_size=len(pdf_bytes),
                             method='stream',
                         )
+                        # consume download grant after successful response preparation
+                        try:
+                            if aa:
+                                aa.consume_download()
+                        except Exception:
+                            logger.exception('Failed to consume download grant for %s user=%s', contract_number, user)
                     except Exception:
                         logger.exception('Failed to write DownloadLog for UV PDF %s', contract_number)
                     return response
@@ -913,3 +1206,73 @@ class UVAgreementDocxDownloadView(APIView):
 
 
 __all__ = ['UVAgreementView', 'UVAgreementDocxDownloadView', 'UVCollateralCreateView']
+
+
+class UVAgreementAccessView(APIView):
+    """Return AgreementAccess status for a given contract_number to the CSA creator (mirror BL)."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, contract_number=None):
+        if not contract_number:
+            return Response({'error': 'contract_number is required in URL'}, status=status.HTTP_400_BAD_REQUEST)
+
+        role = get_role_from_request(request) or getattr(request.user, 'role', '')
+        username = getattr(request.user, 'username', None) or _resolve_username(request) or ''
+        try:
+            logs_dir = os.path.join(settings.BASE_DIR, 'logs')
+            os.makedirs(logs_dir, exist_ok=True)
+            dbg = os.path.join(logs_dir, 'uv_agreement_access_debug.log')
+            uid = getattr(request.user, 'id', None)
+            with open(dbg, 'a', encoding='utf-8') as df:
+                df.write(f"[{timezone.now().isoformat()}] access_incoming contract={contract_number} role={role} user_username={username} user_id={uid}\n")
+        except Exception:
+            pass
+
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute('SELECT created_by, created_by_id FROM uv_agreement WHERE LOWER(contract_number)=LOWER(%s) LIMIT 1', [contract_number])
+                row = cursor.fetchone()
+                created_by = row[0] if row else None
+                created_by_id = row[1] if row and len(row) > 1 else None
+        except Exception:
+            created_by = None
+            created_by_id = None
+
+        if role == 'CSA':
+            uid = getattr(request.user, 'id', None)
+            caller_uname = getattr(request.user, 'username', None) or _resolve_username(request) or ''
+            if created_by_id:
+                if uid is None or str(created_by_id) != str(uid):
+                    return Response({'error': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
+            else:
+                if not created_by or str(created_by).lower() != str(caller_uname).lower():
+                    try:
+                        logs_dir = os.path.join(settings.BASE_DIR, 'logs')
+                        os.makedirs(logs_dir, exist_ok=True)
+                        dbg = os.path.join(logs_dir, 'uv_agreement_access_debug.log')
+                        with open(dbg, 'a', encoding='utf-8') as df:
+                            df.write(f"[{timezone.now().isoformat()}] access_fallback_username contract={contract_number} created_by={created_by} caller_uname={caller_uname}\n")
+                    except Exception:
+                        pass
+                    return Response({'error': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            if role == 'CSA':
+                uid = getattr(request.user, 'id', None)
+                aa = AgreementAccess.get_for_contract_and_user(contract_number, uid)
+            else:
+                aa = AgreementAccess.objects.filter(contract_number=contract_number).first()
+        except Exception:
+            aa = None
+
+        if not aa:
+            return Response({'error': 'Access record not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        return Response({
+            'contract_number': aa.contract_number,
+            'download_grants': aa.download_grants,
+            'download_consumed': aa.download_consumed,
+            'edit_grants': aa.edit_grants,
+            'edit_consumed': aa.edit_consumed,
+            'locked': aa.locked,
+        }, status=status.HTTP_200_OK)

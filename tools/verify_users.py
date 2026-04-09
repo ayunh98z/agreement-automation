@@ -1,4 +1,7 @@
 import re, requests, json, sys, os
+API_BASE = os.environ.get('API_BASE')
+if not API_BASE:
+    raise RuntimeError("Environment variable API_BASE is required (e.g. 'http://127.0.0.1:8000').")
 
 # Cari token di project/frontend_token.txt
 base = os.path.dirname(os.path.dirname(__file__))
@@ -18,7 +21,7 @@ if not m:
 token = m.group(1)
 headers = {'Authorization': f'Bearer {token}'}
 
-url = 'http://127.0.0.1:8000/api/users/'
+url = API_BASE + '/api/users/'
 print('Using token from', tokpath)
 print('Requesting', url)
 try:

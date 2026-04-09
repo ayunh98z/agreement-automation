@@ -1,5 +1,7 @@
-import requests, json
-BASE='http://127.0.0.1:8000'
+import requests, json, os
+BASE = os.environ.get('API_BASE')
+if not BASE:
+    raise RuntimeError("Environment variable API_BASE is required (e.g. 'http://127.0.0.1:8000').")
 creds=[('admin','Password123!'),('csa','Password123!'),('slik','Password123!')]
 for u,p in creds:
     try:

@@ -1,29 +1,40 @@
 import React, { useState, useEffect } from 'react';
+import useT from './hooks/useT';
 import axios from 'axios';
 import Dashboard from './components/DashboardHome';
-import { ToastContainer } from 'react-toastify';
+// translation via hook `useT` is used in this component
+import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import './App.css';
 
 function App() {
+  const t = useT();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [message, setMessage] = useState('');
-  const [messageType, setMessageType] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userData, setUserData] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Konfigurasi backend
-  const BACKEND_URL = 'http://localhost:8000';
+  // Konfigurasi backend (allow overriding via env var)
+  const BACKEND_URL = process.env.REACT_APP_API_BASE || '';
   const LOGIN_ENDPOINT = `${BACKEND_URL}/login/`;
 
   // Fungsi untuk menangani login dari auth_user table
   const handleLogin = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    setMessage('');
+
+    // helper: map server free-text errors to client translation keys
+    const mapServerErrorKey = (msg) => {
+      if (!msg) return null;
+      const s = msg.toString().toLowerCase();
+      if (/\b(tidak terdaftar|user tidak terdaftar|user tidak ditemukan|username tidak ditemukan|not registered|not found|not exist)\b/.test(s)) return 'user_not_registered';
+      if (/\b(password salah|wrong password|invalid password|invalid credentials|username or password|incorrect|salah)\b/.test(s)) return 'invalid_credentials';
+      if (/\b(akun tidak aktif|account inactive|inactive)\b/.test(s)) return 'account_inactive';
+      if (/\b(username and password|required|harus diisi|credentials required)\b/.test(s)) return 'credentials_required';
+      return null;
+    };
 
     try {
       // Mengirim permintaan POST ke backend untuk mendapatkan token
@@ -52,8 +63,7 @@ function App() {
       }
       localStorage.setItem('user_data', JSON.stringify(userObj));
 
-      setMessage('Login berhasil!');
-      setMessageType('success');
+      toast.success(t('login_success'));
       setUsername('');
       setPassword('');
       setIsLoggedIn(true);
@@ -61,25 +71,33 @@ function App() {
     } catch (error) {
       console.error('Login error:', error);
       
-      let errorMsg = 'Login gagal. Silakan coba lagi.';
+      let errorMsg = t('login_failed');
       
       if (error.code === 'ECONNABORTED') {
-        errorMsg = 'Koneksi timeout. Pastikan backend sedang berjalan di localhost:8000';
+        errorMsg = t('connection_timeout') + ' ' + BACKEND_URL;
       } else if (error.code === 'ECONNREFUSED') {
-        errorMsg = 'Tidak bisa terhubung ke backend. Pastikan backend sudah dijalankan.';
+        errorMsg = t('cannot_connect');
       } else if (error.response?.status === 401) {
-        errorMsg = error.response.data.error || 'Username atau password salah';
+        const serverErr = error.response.data?.error || '';
+        const key = mapServerErrorKey(serverErr);
+        if (key) {
+          errorMsg = t(key);
+        } else {
+          errorMsg = serverErr || t('invalid_credentials');
+        }
       } else if (error.response?.status === 403) {
-        // Show inactive account message from server when present
-        errorMsg = error.response.data.error || 'Akun tidak aktif. Hubungi administrator.';
+        const serverErr = error.response.data?.error || '';
+        const key = mapServerErrorKey(serverErr);
+        errorMsg = key ? t(key) : serverErr || t('account_inactive');
       } else if (error.response?.status === 400) {
-        errorMsg = error.response.data.error || 'Username dan password harus diisi';
+        const serverErr = error.response.data?.error || '';
+        const key = mapServerErrorKey(serverErr);
+        errorMsg = key ? t(key) : serverErr || t('credentials_required');
       } else if (error.message === 'Network Error') {
-        errorMsg = 'Network error. Pastikan backend berjalan di http://localhost:8000';
+        errorMsg = t('network_error') + ' ' + BACKEND_URL;
       }
       
-      setMessage(errorMsg);
-      setMessageType('error');
+      toast.error(errorMsg);
     } finally {
       setIsLoading(false);
     }
@@ -92,7 +110,6 @@ function App() {
     localStorage.removeItem('user_data');
     setIsLoggedIn(false);
     setUserData(null);
-    setMessage('');
     setUsername('');
     setPassword('');
   };
@@ -118,9 +135,11 @@ function App() {
         }
       })();
     }
-  }, []);
+  }, [BACKEND_URL]);
 
   // Jika sudah login dan userData ada, tampilkan Dashboard
+  
+
   if (isLoggedIn && userData) {
     return <Dashboard userData={userData} onLogout={handleLogout} />;
   }
@@ -142,8 +161,12 @@ function App() {
       <div className="login-container">
         <div className="login-card">
           <div className="card-header">
-            <h1 className="card-title">Agreement Automation</h1>
-            <p className="card-subtitle">Sign in to your account</p>
+            <div style={{display: 'flex', justifyContent: 'center', alignItems: 'center'}}>
+              <div style={{textAlign: 'center'}}>
+                <h1 className="card-title">{t('dashboard_header')}</h1>
+                <p className="card-subtitle">{t('login_subtitle')}</p>
+              </div>
+            </div>
           </div>
 
           <form onSubmit={handleLogin} className="login-form">
@@ -153,14 +176,14 @@ function App() {
                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                   <circle cx="12" cy="7" r="4"></circle>
                 </svg>
-                Username
+                {t('username')}
               </label>
               <input
                 id="username"
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="Enter your username"
+                placeholder={t('username_placeholder')}
                 className="form-input"
                 required
               />
@@ -172,7 +195,7 @@ function App() {
                   <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                   <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                 </svg>
-                Password
+                {t('password')}
               </label>
               <div className="password-input-wrapper">
                 <input
@@ -180,7 +203,7 @@ function App() {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your password"
+                  placeholder={t('password_placeholder')}
                   className="form-input"
                   required
                 />
@@ -205,22 +228,18 @@ function App() {
               </div>
             </div>
 
-            {message && (
-              <div className={`message message-${messageType}`}>
-                {message}
-              </div>
-            )}
+            
 
             <button 
               type="submit" 
               className="sign-in-btn"
               disabled={isLoading}
             >
-              {isLoading ? 'Signing In...' : 'Sign In'}
+              {isLoading ? t('signing_in') : t('sign_in')}
             </button>
 
             <div className="card-footer">
-              <p>© 2026 LOLC Ventura Indonesia. All rights reserved.</p>
+              <p>©2026 PT LOLC Ventura Indonesia. All rights reserved.</p>
             </div>
 
           </form>
@@ -229,9 +248,7 @@ function App() {
 
       <footer className="site-footer">
         <div className="footer-inner">
-          <span className="made-with">Developed by <button type="button" className="dev-link" onClick={() => { /* non-navigable label */ }}>Ayu Nurhasanah</button></span>
-          <span className="dot-sep">•</span>
-          <span className="copyright">© 2026</span>
+          <span className="made-with">Powered by LOVI IT Team v1.1.0 • © 2026</span>
         </div>
       </footer>
 

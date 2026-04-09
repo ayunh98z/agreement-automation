@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
+import useT from '../../hooks/useT';
 import { requestWithAuth } from '../../utils/api';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -13,14 +13,16 @@ import LogsAgreement from '../Logs/LogsAgreement';
 import dashboardIcon from '../../assets/icons/sidebar-dashboard.svg';
 import userIcon from '../../assets/icons/sidebar-user.svg';
 import agreementIcon from '../../assets/icons/sidebar-agreement.svg';
+import LanguageSwitcher from '../LanguageSwitcher';
 
 function DashboardHome({ userData, onNavigate }) {
+  const t = useT();
   const [stats, setStats] = useState(null);
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const res = await requestWithAuth({ method: 'get', url: 'http://localhost:8000/api/dashboard/summary/' });
+        const res = await requestWithAuth({ method: 'get', url: '/api/dashboard/summary/' });
         setStats(res.data);
       } catch (err) {
         console.error('Failed to fetch stats:', err);
@@ -31,8 +33,8 @@ function DashboardHome({ userData, onNavigate }) {
 
   return (
     <div className="content-section">
-      <h2>Welcome back, {userData.full_name}</h2>
-      <p>Your workspace for Agreement Automation</p>
+      <h2>{t('welcome_back')} {userData.full_name}</h2>
+      <p>{t('workspace_subtitle')}</p>
       <div className="dashboard-stats">
         <div
           className="stat-card"
@@ -46,7 +48,7 @@ function DashboardHome({ userData, onNavigate }) {
           <div className="stat-icon">📄</div>
           <div className="stat-content">
             <h3 className="stat-value">{stats ? stats.bl_agreement : (stats === null ? '—' : 0)}</h3>
-            <p className="stat-label">BL Agreement files</p>
+            <p className="stat-label">{t('bl_agreement_files')}</p>
           </div>
         </div>
 
@@ -62,7 +64,7 @@ function DashboardHome({ userData, onNavigate }) {
           <div className="stat-icon">📄</div>
           <div className="stat-content">
             <h3 className="stat-value">{stats ? stats.uv_agreement : (stats === null ? '—' : 0)}</h3>
-            <p className="stat-label">UV Agreement files</p>
+            <p className="stat-label">{t('uv_agreement_files')}</p>
           </div>
         </div>
 
@@ -72,6 +74,7 @@ function DashboardHome({ userData, onNavigate }) {
 }
 
 function Dashboard({ userData, onLogout }) {
+  const t = useT();
   const [activeMenu, setActiveMenu] = useState('dashboard');
   const [expandedMenu, setExpandedMenu] = useState(null);
   const [avatarOpen, setAvatarOpen] = useState(false);
@@ -102,18 +105,18 @@ function Dashboard({ userData, onLogout }) {
   const showUserManagement = roleLower.includes('admin') || roleLower === 'audit';
   // Only show Master Data for admin or audit roles
   const showMasterData = roleLower.includes('admin') || roleLower === 'audit';
-  // Only show Logs for admin role
-  const showLogs = roleLower.includes('admin');
+  // Show Logs for admin and audit (audit = read-only)
+  const showLogs = roleLower.includes('admin') || roleLower === 'audit';
 
   const menuItemsBase = [
-    { id: 'dashboard', label: 'Dashboard', icon: Icon.Dashboard },
-    { id: 'masterdata', label: 'Master Data', icon: Icon.MasterData },
-    { id: 'agreement', label: 'Agreement', icon: Icon.Agreement, submenu: [
-      { id: 'bl-agreement', label: 'BL Agreement' },
-      { id: 'uv-agreement', label: 'UV Agreement' },
+    { id: 'dashboard', label: t('dashboard'), icon: Icon.Dashboard },
+    { id: 'masterdata', label: t('master_data'), icon: Icon.MasterData },
+    { id: 'agreement', label: t('app_title'), icon: Icon.Agreement, submenu: [
+      { id: 'bl-agreement', label: t('bl_agreement') },
+      { id: 'uv-agreement', label: t('uv_agreement') },
     ]},
-    { id: 'logs', label: 'Logs', icon: Icon.Settings, submenu: [
-      { id: 'logs-agreement', label: 'Logs agreement' },
+    { id: 'logs', label: t('logs'), icon: Icon.Settings, submenu: [
+      { id: 'logs-agreement', label: t('log_download_agreement') },
     ]},
   ];
 
@@ -126,7 +129,7 @@ function Dashboard({ userData, onLogout }) {
     menuItems = menuItems.filter(m => m.id !== 'logs');
   }
   if (showUserManagement) {
-    menuItems.splice(2, 0, { id: 'usermanagement', label: 'User Management', icon: Icon.UserManagement });
+    menuItems.splice(2, 0, { id: 'usermanagement', label: t('user_management'), icon: Icon.UserManagement });
   }
 
   const handleMenuClick = (menuId) => {
@@ -173,11 +176,11 @@ function Dashboard({ userData, onLogout }) {
       />
       <aside className={`sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
         <div className="sidebar-header">
-          <div className="sidebar-header-content">
-            <h3>{userData.full_name || userData.username || 'User'}</h3>
-            <p className="sidebar-subtitle">@{userData.username || 'username'}</p>
-          </div>
-          <span className="sidebar-header-toggle" onClick={() => setSidebarCollapsed(!sidebarCollapsed)} title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
+                <div className="sidebar-header-content">
+                  <h3>{userData.full_name || userData.username || t('username')}</h3>
+                  <p className="sidebar-subtitle">@{userData.username || 'username'}</p>
+                </div>
+          <span className="sidebar-header-toggle" onClick={() => setSidebarCollapsed(!sidebarCollapsed)} title={sidebarCollapsed ? t('expand_sidebar') : t('collapse_sidebar')}>
             <svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
               <rect x="3" y="6" width="18" height="2" rx="1" fill="#ffffff" />
               <rect x="3" y="11" width="18" height="2" rx="1" fill="#ffffff" />
@@ -215,41 +218,49 @@ function Dashboard({ userData, onLogout }) {
             </div>
           ))}
         </nav>
-        <div className="sidebar-footer"><p>Developed by <strong>Ayu Nurhasanah</strong></p></div>
+        <div className="sidebar-footer">
+          <p>© 2026 PT LOLC Ventura Indonesia.</p>
+          <p>All rights reserved.</p>
+        </div>
       </aside>
 
       <main className="dashboard-main">
         <header className="dashboard-header">
           <div className="header-title">
-            <h1>Agreement Automation</h1>
+            <h1>{t('dashboard_header')}</h1>
           </div>
-          <div className="header-user" ref={avatarRef}>
-            <button className="avatar-btn" onClick={() => setAvatarOpen(s => !s)} aria-haspopup="true" aria-expanded={avatarOpen} title="User menu"><span className="avatar-initial">{(userData.username || 'U').charAt(0).toUpperCase()}</span></button>
-            {avatarOpen && (<div className="avatar-dropdown"><div className="avatar-dropdown-name">{userData.userme}</div><button className="avatar-signout" onClick={onLogout}>Sign Out</button></div>)}
+          <div className="header-controls">
+            <LanguageSwitcher />
+            <div className="header-user" ref={avatarRef}>
+              <button className="avatar-btn" onClick={() => setAvatarOpen(s => !s)} aria-haspopup="true" aria-expanded={avatarOpen} title={t('user_menu_title')}><span className="avatar-initial">{(userData.username || 'U').charAt(0).toUpperCase()}</span></button>
+              {avatarOpen && (<div className="avatar-dropdown"><div className="avatar-dropdown-name">{userData.userme}</div><button className="avatar-signout" onClick={onLogout}>{t('sign_out')}</button></div>)}
+            </div>
           </div>
         </header>
 
         <div className="dashboard-content">{renderContent()}</div>
 
+        <div className="content-footer"><p>Powered by LOVI IT Team v1.1.0 • © 2026</p></div>
+
         {showModal && (
           <div className="modal-overlay" onClick={() => setShowModal(false)}>
             <div className="modal" onClick={e => e.stopPropagation()}>
-              <div className="modal-header"><h3>{modalMode === 'new' ? 'Create New User' : 'Edit User'}</h3><button className="modal-close" onClick={() => setShowModal(false)}>✕</button></div>
+              <div className="modal-header"><h3>{modalMode === 'new' ? t('create_new_user') : t('edit_user')}</h3><button className="modal-close" onClick={() => setShowModal(false)}>✕</button></div>
               <form className="user-form" onSubmit={async e => {
                 e.preventDefault();
                 try {
                   const token = localStorage.getItem('access_token');
                   const headers = token ? { Authorization: `Bearer ${token}` } : {};
-                  if (modalMode === 'new') await axios.post('http://localhost:8000/api/users/', { username: formData.username, email: formData.email, password: formData.password, role: formData.role }, { headers });
-                  else await axios.put(`http://localhost:8000/api/users/${formData.username}/`, { email: formData.email, password: formData.password, role: formData.role }, { headers });
+                  if (modalMode === 'new') await requestWithAuth({ method: 'post', url: '/api/users/', data: { username: formData.username, email: formData.email, password: formData.password, role: formData.role }, headers });
+                  else await requestWithAuth({ method: 'put', url: `/api/users/${encodeURIComponent(formData.username)}/`, data: { email: formData.email, password: formData.password, role: formData.role }, headers });
                 } catch (err) { console.error(err); alert('Error saving user'); }
                 setShowModal(false);
               }}>
-                <div className="form-group"><label>Username</label><input type="text" value={formData.username} onChange={e => setFormData({ ...formData, username: e.target.value })} disabled={modalMode === 'edit'} required /></div>
-                <div className="form-group"><label>Email</label><input type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} required /></div>
-                <div className="form-group"><label>{modalMode === 'new' ? 'Password' : 'Password (leave blank to keep)'}</label><input type="password" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} {...(modalMode === 'new' ? { required: true } : {})} /></div>
-                <div className="form-group"><label>Role</label><select value={formData.role} onChange={e => setFormData({ ...formData, role: e.target.value })}><option>User</option><option>Administrator</option></select></div>
-                <div className="form-actions"><button type="submit" className="btn-primary">Save</button><button type="button" className="btn-secondary" onClick={() => setShowModal(false)}>Cancel</button></div>
+                <div className="form-group"><label>{t('username')}</label><input type="text" value={formData.username} onChange={e => setFormData({ ...formData, username: e.target.value })} disabled={modalMode === 'edit'} required /></div>
+                <div className="form-group"><label>{t('email')}</label><input type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} required /></div>
+                <div className="form-group"><label>{modalMode === 'new' ? t('password') : t('password_leave_blank')}</label><input type="password" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} {...(modalMode === 'new' ? { required: true } : {})} /></div>
+                <div className="form-group"><label>{t('role')}</label><select value={formData.role} onChange={e => setFormData({ ...formData, role: e.target.value })}><option>{t('role_user')}</option><option>{t('role_admin')}</option></select></div>
+                <div className="form-actions"><button type="submit" className="btn-primary">{t('save')}</button><button type="button" className="btn-secondary" onClick={() => setShowModal(false)}>{t('cancel')}</button></div>
               </form>
             </div>
           </div>

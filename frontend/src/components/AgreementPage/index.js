@@ -1,21 +1,23 @@
 import React from 'react';
+import useT from '../../hooks/useT';
 
 function AgreementPage() {
+  const t = useT();
   const agreements = [
-    { id: 'bl-agreement', label: 'BL Agreement', category: 'BL' },
-    { id: 'uv-agreement', label: 'UV Agreement', category: 'UV' },
+    { id: 'bl-agreement', label: t('bl_agreement'), category: t('bl') },
+    { id: 'uv-agreement', label: t('uv_agreement'), category: t('uv') },
   ];
 
   return (
     <div className="agreement-page">
-      <h2>Agreement Management</h2>
+      <h2>{t('app_title')}</h2>
       <div className="agreement-grid">
         {agreements.map(agreement => (
           <div key={agreement.id} className="agreement-card">
             <div className="agreement-icon">📄</div>
             <div className="agreement-info">
               <h3>{agreement.label}</h3>
-              <p>Category: {agreement.category}</p>
+              <p>{t('filter')}: {agreement.category}</p>
             </div>
           </div>
         ))}

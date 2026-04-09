@@ -1,8 +1,13 @@
 import json
 import urllib.request
+import os
 
-URL_TOKEN = 'http://localhost:8000/api/token/'
-URL_UV = 'http://localhost:8000/api/uv-agreement/'
+API_BASE = os.environ.get('API_BASE')
+if not API_BASE:
+    raise RuntimeError("Environment variable API_BASE is required (e.g. 'http://127.0.0.1:8000').")
+
+URL_TOKEN = API_BASE + '/api/token/'
+URL_UV = API_BASE + '/api/uv-agreement/'
 
 creds = {'username':'admin', 'password':'admin123'}
 

@@ -87,8 +87,8 @@ class UserListCreateView(APIView):
             role = get_role_from_request(request) or getattr(getattr(request, 'user', None), 'role', None)
             if isinstance(role, str):
                 role = role.strip()
-            # Only Admin can view user list (deny BOD, CSA, BM, AM, RM, Audit)
-            if role != 'Admin':
+            # Allow Admin and Audit to view user list (Audit is read-only)
+            if role not in ('Admin', 'Audit'):
                 return Response({'error': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
 
             with connection.cursor() as cursor:
@@ -114,8 +114,17 @@ class UserListCreateView(APIView):
 
         serializer = UserSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
-            return Response({'message': 'User created successfully'}, status=status.HTTP_201_CREATED)
+            try:
+                user_obj = serializer.save()
+                # Return full user row so frontend can immediately show region/area/branch
+                with connection.cursor() as cursor:
+                    cursor.execute('SELECT id, username, email, full_name, role, is_active, region_id, area_id, branch_id, employee_id FROM auth_user WHERE id=%s', [user_obj.id])
+                    cols = [c[0] for c in cursor.description] if cursor.description else []
+                    row = cursor.fetchone()
+                    user = dict(zip(cols, row)) if row else None
+                return Response({'user': user, 'message': 'User created successfully'}, status=status.HTTP_201_CREATED)
+            except Exception as e:
+                return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -217,3 +226,27 @@ class UserDetailView(APIView):
             return Response({'user': user, 'message': 'User updated'}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, username):
+        """Allow Admin to delete a user by username."""
+        try:
+            role = get_role_from_request(request) or getattr(request.user, 'role', None)
+            if isinstance(role, str):
+                role = role.strip()
+            if role != 'Admin':
+                return Response({'error': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
+
+            with connection.cursor() as cursor:
+                # perform delete
+                cursor.execute('DELETE FROM auth_user WHERE username=%s', [username])
+                # cursor.rowcount may not be supported depending on DB API; attempt a lookup when unsure
+                try:
+                    deleted = cursor.rowcount
+                except Exception:
+                    deleted = None
+
+            if deleted == 0:
+                return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'message': 'User deleted'}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

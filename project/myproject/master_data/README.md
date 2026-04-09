@@ -16,4 +16,9 @@ cd project
 .venv\Scripts\python.exe manage.py create_test_user
 ```
 
-Then set `REACT_APP_API_BASE` in frontend to `http://127.0.0.1:8001` and use the printed `access` token in Authorization header: `Bearer <access>`.
+Then set the backend URL in your environment:
+
+- For Python scripts (required): set `API_BASE`, e.g. `export API_BASE=http://127.0.0.1:8000` (or on Windows: `set API_BASE=http://127.0.0.1:8000`).
+- For the frontend (optional): set `REACT_APP_API_BASE` to override the CRA dev proxy, e.g. `REACT_APP_API_BASE=http://127.0.0.1:8000`. If you leave `REACT_APP_API_BASE` empty, the frontend will use relative paths and the `proxy` defined in `frontend/package.json` during development.
+
+Use the printed `access` token in the Authorization header: `Bearer <access>`.

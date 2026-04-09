@@ -2,6 +2,7 @@
 
 from django.db import models, connection, transaction
 import logging
+from django.conf import settings
 from django.contrib.auth.models import AbstractUser, UserManager
 from django.contrib.auth.hashers import check_password
 
@@ -35,6 +36,7 @@ class UserRole(AbstractUserRole):
 # table name via Meta.db_table so migrations will alter the existing table.
 ROLE_CHOICES = [
     ('Admin', 'Admin'),
+    ('Audit', 'Audit'),
     ('CSA', 'CSA'),
     ('SLIK', 'SLIK'),
     ('BM', 'BM'),
@@ -58,7 +60,10 @@ class CustomUser(AbstractUser):
 
     class Meta:
         db_table = 'auth_user'
-        managed = False  # Don't manage table creation
+        # By default we don't manage the legacy `auth_user` table. When
+        # running integration tests we can set `TEST_MANAGE_AUTH_USER = True`
+        # in test settings so Django will create the table in the test DB.
+        managed = getattr(settings, 'TEST_MANAGE_AUTH_USER', False)  # Don't manage table creation unless tests enable it
 
     def __str__(self):
         return self.username
@@ -224,7 +229,7 @@ class AgreementAccess(models.Model):
     user_id = models.BigIntegerField(blank=True, null=True, help_text='creator user id (CSA)')
     role = models.CharField(max_length=50, blank=True, null=True)
 
-    download_grants = models.IntegerField(default=1)
+    download_grants = models.IntegerField(default=2)
     edit_grants = models.IntegerField(default=1)
     download_consumed = models.IntegerField(default=0)
     edit_consumed = models.IntegerField(default=0)
@@ -233,35 +238,19 @@ class AgreementAccess(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
+    
     class Meta:
         db_table = 'agreement_access'
-
-
-class AuditEvent(models.Model):
-    contract_number = models.CharField(max_length=255, db_index=True)
-    user_id = models.BigIntegerField(blank=True, null=True)
-    username = models.CharField(max_length=150, blank=True, null=True)
-    action = models.CharField(max_length=50)
-    details = models.TextField(blank=True, null=True)
-    timestamp = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        db_table = 'agreement_audit_event'
-
-    def __str__(self):
-        who = self.username or (str(self.user_id) if self.user_id else 'anonymous')
-        return f"{self.timestamp.isoformat()} {who} {self.action} {self.contract_number}"
 
     def can_download(self):
         if self.locked:
             return False
-        return (self.download_consumed < self.download_grants)
+        return (self.download_consumed < (self.download_grants or 0))
 
     def can_edit(self):
         if self.locked:
             return False
-        return (self.edit_consumed < self.edit_grants)
+        return (self.edit_consumed < (self.edit_grants or 0))
 
     def consume_download(self):
         try:
@@ -273,7 +262,6 @@ class AuditEvent(models.Model):
                 if (obj.download_consumed >= (obj.download_grants or 0)) and (obj.edit_consumed >= (obj.edit_grants or 0)):
                     obj.locked = True
                 obj.save(update_fields=['download_consumed', 'locked', 'updated_at'])
-                # refresh self
                 self.refresh_from_db()
                 try:
                     logger = logging.getLogger(__name__)
@@ -282,7 +270,6 @@ class AuditEvent(models.Model):
                 except Exception:
                     pass
                 try:
-                    # create persistent audit event
                     AuditEvent.objects.create(
                         contract_number=self.contract_number,
                         user_id=self.user_id,
@@ -312,11 +299,16 @@ class AuditEvent(models.Model):
                 if not obj.can_edit():
                     return False
                 obj.edit_consumed = (obj.edit_consumed or 0) + 1
-                # grant one additional download after successful edit commit
-                obj.download_grants = (obj.download_grants or 0) + 1
+                # ensure download grants are at least 2 after an edit (per policy)
+                obj.download_grants = max((obj.download_grants or 0), 2)
+                # reset consumed downloads so CSA gets the full allowance again after edit
+                obj.download_consumed = 0
+                # recalculate locked: only lock when both quotas are exhausted
                 if (obj.download_consumed >= (obj.download_grants or 0)) and (obj.edit_consumed >= (obj.edit_grants or 0)):
                     obj.locked = True
-                obj.save(update_fields=['edit_consumed', 'download_grants', 'locked', 'updated_at'])
+                else:
+                    obj.locked = False
+                obj.save(update_fields=['edit_consumed', 'download_grants', 'download_consumed', 'locked', 'updated_at'])
                 self.refresh_from_db()
                 try:
                     logger = logging.getLogger(__name__)
@@ -349,5 +341,29 @@ class AuditEvent(models.Model):
 
     @classmethod
     def get_for_contract_and_user(cls, contract_number, user_id):
-        return cls.objects.filter(contract_number=contract_number, user_id=user_id).first()
+        """Return AgreementAccess matching contract_number and numeric user_id only.
+
+        This enforces strict id-based lookup (no username fallback).
+        """
+        try:
+            return cls.objects.filter(contract_number__iexact=contract_number, user_id=user_id).first()
+        except Exception:
+            return cls.objects.filter(contract_number=contract_number, user_id=user_id).first()
+
+
+class AuditEvent(models.Model):
+    contract_number = models.CharField(max_length=255, db_index=True)
+    user_id = models.BigIntegerField(blank=True, null=True)
+    username = models.CharField(max_length=150, blank=True, null=True)
+    action = models.CharField(max_length=50)
+    details = models.TextField(blank=True, null=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'agreement_audit_event'
+
+    def __str__(self):
+        who = self.username or (str(self.user_id) if self.user_id else 'anonymous')
+        return f"{self.timestamp.isoformat()} {who} {self.action} {self.contract_number}"
+    
 

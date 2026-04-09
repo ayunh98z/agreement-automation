@@ -36,6 +36,13 @@ class RolePermission(BasePermission):
 
         role_norm = role.strip().lower()
         required_norm = [r.strip().lower() for r in required]
+
+        # Allow `audit` role to perform safe (read-only) requests even when
+        # the view's `required_roles` does not include it. Unsafe methods
+        # continue to require explicit membership in `required_roles`.
+        if request.method in ('GET', 'HEAD', 'OPTIONS') and role_norm == 'audit':
+            return True
+
         return role_norm in required_norm
 
     def has_object_permission(self, request, view, obj):
@@ -45,7 +52,12 @@ class RolePermission(BasePermission):
         except Exception:
             role_norm = ''
 
+        # Admin/BOD retain full object-level access
         if role_norm in ('admin', 'bod'):
+            return True
+
+        # Audit can access objects for read-only methods
+        if role_norm == 'audit' and request.method in ('GET', 'HEAD', 'OPTIONS'):
             return True
 
         return False

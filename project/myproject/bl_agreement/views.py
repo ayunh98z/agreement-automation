@@ -77,6 +77,25 @@ class BLAgreementView(APIView):
 
     def post(self, request):
         data = request.data
+        # Debug: log raw incoming request body and auth info to help diagnose parse/permission issues
+        try:
+            logs_dir = os.path.join(settings.BASE_DIR, 'logs')
+            os.makedirs(logs_dir, exist_ok=True)
+            dbg = os.path.join(logs_dir, 'bl_agreement_access_debug.log')
+            body_preview = None
+            try:
+                body_preview = (request.body.decode('utf-8', errors='replace') or '')[:400]
+            except Exception:
+                try:
+                    body_preview = str(request.data)[:400]
+                except Exception:
+                    body_preview = '<unreadable>'
+            uname = getattr(request.user, 'username', None) or _resolve_username(request) or ''
+            uid = getattr(request.user, 'id', None)
+            with open(dbg, 'a', encoding='utf-8') as df:
+                df.write(f"[{timezone.now().isoformat()}] post_incoming contract={data.get('contract_number')} user_username={uname} user_id={uid} body_preview={body_preview}\n")
+        except Exception:
+            pass
         contract_number = data.get('contract_number')
         branch_id = data.get('branch_id')
         director = data.get('director')
@@ -156,6 +175,17 @@ class BLAgreementView(APIView):
                         data_map[cols_lookup['director']] = director
 
                 branch_data = data.get('branch_data', {})
+                # Backward-compat: if frontend sends branch phone, persist it into
+                # `phone_number_of_bm` column when that column exists on the
+                # `bl_agreement` table so templates expecting BM phone keep working.
+                try:
+                    if isinstance(branch_data, dict) and branch_data.get('phone_number_branch') is not None:
+                        target_col = cols_lookup.get('phone_number_of_bm')
+                        if target_col and target_col not in data_map:
+                            data_map[target_col] = branch_data.get('phone_number_branch') or ''
+                except Exception:
+                    pass
+
                 for src in (bm_data, branch_data, contract_data, collateral_data, header_fields):
                     if not isinstance(src, dict):
                         continue
@@ -280,7 +310,9 @@ class BLAgreementView(APIView):
                         data_map['update_at'] = now
                     if 'updated_at' in cols_info:
                         data_map['updated_at'] = now
+                    # Prevent accidental overwrite of original creator info on updates
                     data_map.pop('created_by', None)
+                    data_map.pop('created_by_id', None)
                     data_map.pop('created_at', None)
                     set_cols = []
                     params = []
@@ -289,15 +321,134 @@ class BLAgreementView(APIView):
                             continue
                         set_cols.append(f"{col}=%s")
                         params.append(val)
+                    # If no DB fields to update but client explicitly requested an edit action,
+                    # consume edit grant even when set_cols is empty (modal Update with no-delta).
+                    if (not set_cols) and bool(edit_only):
+                        try:
+                            if role == 'CSA':
+                                try:
+                                    cursor.execute("SELECT created_by, created_by_id FROM bl_agreement WHERE LOWER(contract_number)=LOWER(%s) LIMIT 1", [contract_number])
+                                    row = cursor.fetchone()
+                                    created_by = row[0] if row else None
+                                    created_by_id = row[1] if row and len(row) > 1 else None
+                                except Exception:
+                                    created_by = None
+                                    created_by_id = None
+                                uid = getattr(request.user, 'id', None)
+                                caller_uname = getattr(request.user, 'username', None) or _resolve_username(request) or ''
+                                # only allow when created_by_id matches caller id (strict id-only check)
+                                permitted = False
+                                if created_by_id and uid is not None and str(created_by_id) == str(uid):
+                                    permitted = True
+                                try:
+                                    logs_dir = os.path.join(settings.BASE_DIR, 'logs')
+                                    os.makedirs(logs_dir, exist_ok=True)
+                                    dbg = os.path.join(logs_dir, 'bl_agreement_access_debug.log')
+                                    with open(dbg, 'a', encoding='utf-8') as df:
+                                        df.write(f"[{timezone.now().isoformat()}] post_nochange_consume_check contract={contract_number} created_by={created_by} created_by_id={created_by_id} caller_uname={caller_uname} caller_uid={uid} permitted={permitted}\n")
+                                except Exception:
+                                    pass
+                                if permitted:
+                                    try:
+                                        aa = AgreementAccess.get_for_contract_and_user(contract_number, uid)
+                                        try:
+                                            logs_dir = os.path.join(settings.BASE_DIR, 'logs')
+                                            os.makedirs(logs_dir, exist_ok=True)
+                                            dbg = os.path.join(logs_dir, 'bl_agreement_access_debug.log')
+                                            with open(dbg, 'a', encoding='utf-8') as df:
+                                                df.write(f"[{timezone.now().isoformat()}] post_nochange_consume_try contract={contract_number} uid={uid} aa_exists={bool(aa)} aa_edit_consumed={getattr(aa, 'edit_consumed', None)} aa_edit_grants={getattr(aa, 'edit_grants', None)}\n")
+                                        except Exception:
+                                            pass
+                                        if not aa:
+                                            return Response({'error': 'Edit not allowed or access not found'}, status=status.HTTP_403_FORBIDDEN)
+                                        ok = aa.consume_edit()
+                                        try:
+                                            logs_dir = os.path.join(settings.BASE_DIR, 'logs')
+                                            os.makedirs(logs_dir, exist_ok=True)
+                                            dbg = os.path.join(logs_dir, 'bl_agreement_access_debug.log')
+                                            with open(dbg, 'a', encoding='utf-8') as df:
+                                                df.write(f"[{timezone.now().isoformat()}] post_nochange_consume_result contract={contract_number} uid={uid} result={ok} aa_edit_consumed_after={aa.edit_consumed} aa_edit_grants={aa.edit_grants}\n")
+                                        except Exception:
+                                            pass
+                                        if not ok:
+                                            return Response({'error': 'No edit grants remaining'}, status=status.HTTP_403_FORBIDDEN)
+                                    except Exception:
+                                        logger.exception('Failed to consume edit grant (POST no-delta) for %s user=%s', contract_number, uid)
+                                else:
+                                    # not permitted -> forbidden
+                                    return Response({'error': 'Edit not allowed or not creator'}, status=status.HTTP_403_FORBIDDEN)
+                        except Exception:
+                            pass
                     if set_cols:
                         sql = f"UPDATE bl_agreement SET {', '.join(set_cols)} WHERE contract_number=%s"
                         params.append(contract_number)
                         cursor.execute(sql, params)
+                        # If this was an edit by the CSA creator, consume edit grant (POST is also used for updates)
+                        try:
+                            if role == 'CSA':
+                                try:
+                                    cursor.execute("SELECT created_by, created_by_id FROM bl_agreement WHERE LOWER(contract_number)=LOWER(%s) LIMIT 1", [contract_number])
+                                    row = cursor.fetchone()
+                                    created_by = row[0] if row else None
+                                    created_by_id = row[1] if row and len(row) > 1 else None
+                                except Exception:
+                                    created_by = None
+                                    created_by_id = None
+                                uid = getattr(request.user, 'id', None)
+                                caller_uname = getattr(request.user, 'username', None) or _resolve_username(request) or ''
+                                # strict id-only check: require numeric created_by_id match
+                                permitted = False
+                                if created_by_id and uid is not None and str(created_by_id) == str(uid):
+                                    permitted = True
+                                try:
+                                    logs_dir = os.path.join(settings.BASE_DIR, 'logs')
+                                    os.makedirs(logs_dir, exist_ok=True)
+                                    dbg = os.path.join(logs_dir, 'bl_agreement_access_debug.log')
+                                    with open(dbg, 'a', encoding='utf-8') as df:
+                                        df.write(f"[{timezone.now().isoformat()}] post_update_consume_check contract={contract_number} created_by={created_by} created_by_id={created_by_id} caller_uname={caller_uname} caller_uid={uid} permitted={permitted}\n")
+                                except Exception:
+                                    pass
+                                if permitted:
+                                    try:
+                                        aa = AgreementAccess.get_for_contract_and_user(contract_number, uid)
+                                        try:
+                                            logs_dir = os.path.join(settings.BASE_DIR, 'logs')
+                                            os.makedirs(logs_dir, exist_ok=True)
+                                            dbg = os.path.join(logs_dir, 'bl_agreement_access_debug.log')
+                                            with open(dbg, 'a', encoding='utf-8') as df:
+                                                df.write(f"[{timezone.now().isoformat()}] post_update_consume_try contract={contract_number} uid={uid} aa_exists={bool(aa)} aa_edit_consumed={getattr(aa, 'edit_consumed', None)} aa_edit_grants={getattr(aa, 'edit_grants', None)}\n")
+                                        except Exception:
+                                            pass
+                                        if aa:
+                                            ok = aa.consume_edit()
+                                            try:
+                                                logs_dir = os.path.join(settings.BASE_DIR, 'logs')
+                                                os.makedirs(logs_dir, exist_ok=True)
+                                                dbg = os.path.join(logs_dir, 'bl_agreement_access_debug.log')
+                                                with open(dbg, 'a', encoding='utf-8') as df:
+                                                    df.write(f"[{timezone.now().isoformat()}] post_update_consume_result contract={contract_number} uid={uid} result={ok} aa_edit_consumed_after={aa.edit_consumed} aa_edit_grants={aa.edit_grants}\n")
+                                            except Exception:
+                                                pass
+                                            if not ok:
+                                                logger.warning('Consume edit returned False for %s user=%s', contract_number, uid)
+                                    except Exception:
+                                        logger.exception('Failed to consume edit grant (POST-update) for %s user=%s', contract_number, uid)
+                                else:
+                                    return Response({'error': 'Edit not allowed or not creator'}, status=status.HTTP_403_FORBIDDEN)
+                        except Exception:
+                            pass
                 else:
                     if edit_only:
                         return Response({'error': 'Record not found for update (edit_only specified)'}, status=status.HTTP_400_BAD_REQUEST)
                     if 'created_by' in cols_info and user_username:
                         data_map['created_by'] = user_username
+                    # if the table has created_by_id, store numeric creator id as well
+                    try:
+                        uid = getattr(request.user, 'id', None)
+                        if uid is not None and 'created_by_id' in cols_info:
+                            data_map['created_by_id'] = uid
+                    except Exception:
+                        pass
                     if 'created_at' in cols_info:
                         data_map[cols_lookup['created_at']] = now if 'created_at' in cols_lookup else now
                     if 'updated_at' in cols_info:
@@ -363,13 +514,35 @@ class BLAgreementView(APIView):
                                         contract_number=contract_number,
                                         user_id=uid,
                                         role='CSA',
-                                        download_grants=1,
+                                        download_grants=2,
                                         edit_grants=1,
                                     )
                                 except Exception:
                                     logger.exception('Failed to create AgreementAccess for %s user=%s', contract_number, creator_username)
                         except Exception:
                             pass
+            # When CSA created/updated, include AgreementAccess status so frontend can refresh UI without full page reload
+            try:
+                aa_data = None
+                if role == 'CSA' and contract_number:
+                    try:
+                        uid = getattr(request.user, 'id', None)
+                        aa = AgreementAccess.get_for_contract_and_user(contract_number, uid)
+                        if aa:
+                            aa_data = {
+                                'contract_number': aa.contract_number,
+                                'download_grants': aa.download_grants,
+                                'download_consumed': aa.download_consumed,
+                                'edit_grants': aa.edit_grants,
+                                'edit_consumed': aa.edit_consumed,
+                                'locked': aa.locked,
+                            }
+                    except Exception:
+                        aa_data = None
+                if aa_data:
+                    return Response({'message': 'Data berhasil disimpan', 'agreement_access': aa_data}, status=status.HTTP_200_OK)
+            except Exception:
+                pass
             return Response({'message': 'Data berhasil disimpan'}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -415,7 +588,52 @@ class BLAgreementView(APIView):
                                 update_map[cols_lookup[lk]] = v
 
                 if not update_map:
-                    return Response({'message': 'No fields to update'}, status=status.HTTP_200_OK)
+                    # No DB fields changed — but client may have intended an edit action
+                    try:
+                        want_consume = bool(data.get('edit_only') or data.get('consume_edit') or data.get('force_consume_edit'))
+                    except Exception:
+                        want_consume = False
+                    if not want_consume:
+                        return Response({'message': 'No fields to update'}, status=status.HTTP_200_OK)
+                    # attempt to consume edit grant even if nothing changed (client requested edit)
+                    try:
+                        if role == 'CSA':
+                            try:
+                                cursor.execute("SELECT created_by, created_by_id FROM bl_agreement WHERE LOWER(contract_number)=LOWER(%s) LIMIT 1", [contract_number])
+                                row = cursor.fetchone()
+                                created_by = row[0] if row else None
+                                created_by_id = row[1] if row and len(row) > 1 else None
+                            except Exception:
+                                created_by = None
+                                created_by_id = None
+                            uid = getattr(request.user, 'id', None)
+                            caller_uname = getattr(request.user, 'username', None) or _resolve_username(request) or ''
+                            permitted = False
+                            # only allow when created_by_id exists and matches caller id
+                            if created_by_id and uid is not None and str(created_by_id) == str(uid):
+                                permitted = True
+                            try:
+                                logs_dir = os.path.join(settings.BASE_DIR, 'logs')
+                                os.makedirs(logs_dir, exist_ok=True)
+                                dbg = os.path.join(logs_dir, 'bl_agreement_access_debug.log')
+                                with open(dbg, 'a', encoding='utf-8') as df:
+                                    df.write(f"[{timezone.now().isoformat()}] put_nochange_consume_check contract={contract_number} created_by={created_by} created_by_id={created_by_id} caller_uname={caller_uname} caller_uid={uid} permitted={permitted}\n")
+                            except Exception:
+                                pass
+                            if permitted:
+                                try:
+                                    aa = AgreementAccess.get_for_contract_and_user(contract_number, uid)
+                                    if not aa:
+                                        return Response({'error': 'Edit not allowed or access not found'}, status=status.HTTP_403_FORBIDDEN)
+                                    ok = aa.consume_edit()
+                                    if not ok:
+                                        return Response({'error': 'No edit grants remaining'}, status=status.HTTP_403_FORBIDDEN)
+                                except Exception:
+                                    logger.exception('Failed to consume edit grant (no-field PUT) for %s user=%s', contract_number, uid)
+                            else:
+                                return Response({'error': 'Edit not allowed or not creator'}, status=status.HTTP_403_FORBIDDEN)
+                    except Exception:
+                        pass
 
                 now = timezone.now()
                 if 'update_at' in cols_info:
@@ -438,17 +656,18 @@ class BLAgreementView(APIView):
                 try:
                     username = getattr(request.user, 'username', None) or _resolve_username(request) or ''
                     if role == 'CSA':
-                        # fetch created_by to ensure only creator CSA can edit and consume grant
+                        # Strict id-based check: only allow if created_by_id exists and equals caller id
                         try:
-                            cursor.execute("SELECT created_by FROM bl_agreement WHERE LOWER(contract_number)=LOWER(%s) LIMIT 1", [contract_number])
+                            cursor.execute("SELECT created_by_id FROM bl_agreement WHERE LOWER(contract_number)=LOWER(%s) LIMIT 1", [contract_number])
                             row = cursor.fetchone()
-                            created_by = row[0] if row else None
+                            created_by_id = row[0] if row else None
                         except Exception:
-                            created_by = None
-                        if not created_by or str(created_by) != str(username):
+                            created_by_id = None
+                        uid = getattr(request.user, 'id', None)
+                        # Strict id-only check: require created_by_id to exist and match caller id
+                        if not created_by_id or uid is None or str(created_by_id) != str(uid):
                             return Response({'error': 'Forbidden - CSA not creator'}, status=status.HTTP_403_FORBIDDEN)
                         try:
-                            uid = getattr(request.user, 'id', None)
                             aa = AgreementAccess.get_for_contract_and_user(contract_number, uid)
                             if not aa:
                                 return Response({'error': 'Edit not allowed or access not found'}, status=status.HTTP_403_FORBIDDEN)
@@ -460,6 +679,28 @@ class BLAgreementView(APIView):
                 except Exception:
                     pass
 
+            # Include AgreementAccess status for CSA editor so frontend can enable download immediately
+            try:
+                aa_data = None
+                if role == 'CSA' and contract_number:
+                    try:
+                        uid = getattr(request.user, 'id', None)
+                        aa = AgreementAccess.get_for_contract_and_user(contract_number, uid)
+                        if aa:
+                            aa_data = {
+                                'contract_number': aa.contract_number,
+                                'download_grants': aa.download_grants,
+                                'download_consumed': aa.download_consumed,
+                                'edit_grants': aa.edit_grants,
+                                'edit_consumed': aa.edit_consumed,
+                                'locked': aa.locked,
+                            }
+                    except Exception:
+                        aa_data = None
+                if aa_data:
+                    return Response({'message': 'Data berhasil diupdate', 'agreement_access': aa_data}, status=status.HTTP_200_OK)
+            except Exception:
+                pass
             return Response({'message': 'Data berhasil diupdate'}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -563,7 +804,7 @@ class BLAgreementView(APIView):
                             params.append(user_region)
                         else:
                             return Response({'error': 'region_id/branch_id column missing in bl_agreement'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-                    elif role in ('Admin', 'BOD'):
+                    elif role in ('Admin', 'BOD', 'Audit'):
                         pass
                     else:
                         where_clauses.append('1=0')
@@ -772,74 +1013,13 @@ class BLAgreementView(APIView):
 
 
 def _convert_docx_to_pdf(docx_path, pdf_path, retries=2, min_size=2048):
-    import shlex
-    docx2pdf_err = None
+    # Delegate to central helper in `myproject.common` so the configured
+    # `SOFFICE_PATH` is respected across apps.
     try:
-        from docx2pdf import convert
-        docx2pdf_available = True
-    except Exception as imp_e:
-        docx2pdf_available = False
-        docx2pdf_err = f'docx2pdf import failed: {imp_e}'
-
-    if docx2pdf_available:
-        try:
-            try:
-                import pythoncom
-                try:
-                    pythoncom.CoInitializeEx(0)
-                except Exception:
-                    pass
-            except Exception:
-                pythoncom = None
-            try:
-                convert(docx_path, pdf_path)
-            finally:
-                if pythoncom is not None:
-                    try:
-                        pythoncom.CoUninitialize()
-                    except Exception:
-                        pass
-            if os.path.exists(pdf_path) and os.path.getsize(pdf_path) >= int(min_size or 0):
-                return True, None
-            return False, 'pdf file missing or too small after docx2pdf conversion'
-        except Exception as e:
-            docx2pdf_err = f'docx2pdf conversion failed: {e}'
-
-    soffice_err = None
-    try:
-        outdir = os.path.dirname(os.path.abspath(pdf_path)) or '.'
-        cmd = f'soffice --headless --convert-to pdf --outdir {shlex.quote(outdir)} {shlex.quote(docx_path)}'
-        proc = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=120)
-        if proc.returncode != 0:
-            soffice_err = f'soffice returned exit {proc.returncode}: {proc.stderr.decode("utf-8", errors="replace")}'
-        else:
-            expected = os.path.join(outdir, os.path.splitext(os.path.basename(docx_path))[0] + '.pdf')
-            try:
-                if os.path.exists(expected):
-                    if os.path.abspath(expected) != os.path.abspath(pdf_path):
-                        try:
-                            shutil.move(expected, pdf_path)
-                        except Exception:
-                            shutil.copyfile(expected, pdf_path)
-                    if os.path.exists(pdf_path) and os.path.getsize(pdf_path) >= int(min_size or 0):
-                        return True, None
-                    else:
-                        soffice_err = 'LibreOffice produced PDF but file missing or too small'
-                else:
-                    soffice_err = 'LibreOffice did not produce expected PDF file'
-            except Exception as e:
-                soffice_err = f'Error after LibreOffice conversion: {e}'
+        from myproject.common import _convert_docx_to_pdf as _common_convert
+        return _common_convert(docx_path, pdf_path)
     except Exception as e:
-        soffice_err = f'soffice execution failed: {e}'
-
-    msgs = []
-    if docx2pdf_err:
-        msgs.append(docx2pdf_err)
-    if soffice_err:
-        msgs.append(soffice_err)
-    if not msgs:
-        msgs.append('No conversion method available')
-    return False, '; '.join(msgs)
+        return False, f'Conversion helper import failed: {e}'
 
 
 def _safe_rmtree(path, retries=6, delay=0.25):
@@ -1078,6 +1258,42 @@ class BLAgreementDocxDownloadView(APIView):
                 coll_cols = [c[0] for c in cursor.description] if cursor.description else []
                 collateral = dict(zip(coll_cols, coll_row)) if coll_row else {}
 
+                # If requesting SP3 document, also fetch bl_sp3 table row (most recent)
+                sp3_row = None
+                sp3 = {}
+                try:
+                    if doc_type == 'sp3':
+                        cursor.execute('SELECT * FROM bl_sp3 WHERE LOWER(contract_number)=LOWER(%s) ORDER BY COALESCE(sp3_date, created_at) DESC LIMIT 1', [contract_number])
+                        sp3_row = cursor.fetchone()
+                        sp3_cols = [c[0] for c in cursor.description] if cursor.description else []
+                        sp3 = dict(zip(sp3_cols, sp3_row)) if sp3_row else {}
+                        # debug when sp3 expected but missing
+                        if not sp3_row:
+                            try:
+                                logs_dir = os.path.join(settings.BASE_DIR, 'logs')
+                                os.makedirs(logs_dir, exist_ok=True)
+                                dbg = os.path.join(logs_dir, 'bl_agreement_docx_repair.log')
+                                with open(dbg, 'a', encoding='utf-8') as df:
+                                    df.write(f"[{timezone.now().isoformat()}] SP3 row missing for contract={contract_number}\n")
+                            except Exception:
+                                pass
+                except Exception:
+                    sp3_row = None
+                    sp3 = {}
+
+            # Debug logging: capture creator and current user info to help diagnose CSA creator checks
+            try:
+                logs_dir = os.path.join(settings.BASE_DIR, 'logs')
+                os.makedirs(logs_dir, exist_ok=True)
+                dbg_path = os.path.join(logs_dir, 'bl_agreement_access_debug.log')
+                uname = getattr(request.user, 'username', None) or _resolve_username(request) or ''
+                uid = getattr(request.user, 'id', None)
+                created_by = agreement.get('created_by') if isinstance(agreement, dict) else None
+                with open(dbg_path, 'a', encoding='utf-8') as df:
+                    df.write(f"[{timezone.now().isoformat()}] contract={contract_number} created_by={created_by} user_username={uname} user_id={uid}\n")
+            except Exception:
+                pass
+
             role = get_role_from_request(request) or getattr(request.user, 'role', '')
             username = getattr(request.user, 'username', None) or _resolve_username(request) or ''
 
@@ -1089,10 +1305,37 @@ class BLAgreementDocxDownloadView(APIView):
                     username = 'debug_inspect'
                 except Exception:
                     pass
-            if role in ('Admin', 'BOD'):
+            if role in ('Admin', 'BOD', 'Audit'):
                 pass
             elif role == 'CSA':
-                if agreement.get('created_by') != username:
+                # Prefer strict id-match; if created_by_id missing/0, allow fallback to created_by username
+                try:
+                    with connection.cursor() as c2:
+                        c2.execute('SELECT created_by, created_by_id FROM bl_agreement WHERE contract_number=%s LIMIT 1', [contract_number])
+                        row = c2.fetchone()
+                        created_by = row[0] if row else None
+                        created_by_id = row[1] if row and len(row) > 1 else None
+                except Exception:
+                    created_by = None
+                    created_by_id = None
+                uid = getattr(request.user, 'id', None)
+                caller_uname = getattr(request.user, 'username', None) or _resolve_username(request) or ''
+                permitted = False
+                if created_by_id:
+                    if uid is not None and str(created_by_id) == str(uid):
+                        permitted = True
+                else:
+                    if created_by and str(created_by).lower() == str(caller_uname).lower():
+                        permitted = True
+                try:
+                    logs_dir = os.path.join(settings.BASE_DIR, 'logs')
+                    os.makedirs(logs_dir, exist_ok=True)
+                    dbg = os.path.join(logs_dir, 'bl_agreement_access_debug.log')
+                    with open(dbg, 'a', encoding='utf-8') as df:
+                        df.write(f"[{timezone.now().isoformat()}] download_check contract={contract_number} created_by={created_by} created_by_id={created_by_id} caller_uname={caller_uname} caller_uid={uid} permitted={permitted}\n")
+                except Exception:
+                    pass
+                if not permitted:
                     return Response({'error': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
             elif role == 'BM':
                 user_branch = getattr(request.user, 'branch_id', None)
@@ -1147,6 +1390,11 @@ class BLAgreementDocxDownloadView(APIView):
                 for k, v in collateral.items():
                     if k not in ctx:
                         ctx[k] = v
+            # merge SP3-specific fields when present
+            if isinstance(sp3, dict) and sp3:
+                for k, v in sp3.items():
+                    if k not in ctx:
+                        ctx[k] = v
             ctx['contract_number'] = contract_number
 
             numeric_keys = ['loan_amount', 'admin_fee', 'net_amount', 'notaris_fee', 'mortgage_amount', 'stamp_amount', 'financing_agreement_amount', 'security_agreement_amount', 'upgrading_land_rights_amount', 'previous_topup_amount', 'total_amount', 'surface_area', 'capacity_of_building', 'handling_fee', 'tlo', 'life_insurance']
@@ -1157,7 +1405,9 @@ class BLAgreementDocxDownloadView(APIView):
                 except Exception:
                     ctx[nk] = val
                 try:
-                    ctx[nk + '_in_word'] = number_to_indonesian_words(val, title_case=True) if val is not None else ''
+                    # Force uppercase in-word representation for generated documents
+                    tmp_words = number_to_indonesian_words(val, title_case=True) if val is not None else ''
+                    ctx[nk + '_in_word'] = (tmp_words.upper() if isinstance(tmp_words, str) else tmp_words)
                 except Exception:
                     ctx[nk + '_in_word'] = ''
 
@@ -1165,9 +1415,12 @@ class BLAgreementDocxDownloadView(APIView):
             for dk in date_keys:
                 v = ctx.get(dk)
                 try:
-                    ctx[dk] = format_indonesian_date(v) if v else ''
-                    ctx[dk + '_in_word'] = date_to_indonesian_words(v, title_case=True) if v else ''
-                    ctx[dk + '_display'] = f"({format_indonesian_date(v)})" if v else ''
+                    # Render the human-readable date in UPPERCASE for documents
+                    ctx[dk] = format_indonesian_date(v, uppercase_all=True) if v else ''
+                    # Force entire date-in-word to UPPERCASE for generated documents
+                    tmp_date_words = date_to_indonesian_words(v, title_case=True, uppercase_month=True, uppercase_all=True) if v else ''
+                    ctx[dk + '_in_word'] = tmp_date_words
+                    ctx[dk + '_display'] = f"({format_indonesian_date(v, uppercase_all=True)})" if v else ''
                 except Exception:
                     ctx[dk + '_in_word'] = ''
 
@@ -1281,6 +1534,21 @@ class BLAgreementDocxDownloadView(APIView):
                 download = request.query_params.get('download', '').strip().lower()
                 if download == 'pdf':
                     pdf_path = os.path.join(tmpdir, f'{base_prefix}_{safe_cn}.pdf')
+                    # Ensure LibreOffice is available before attempting conversion.
+                    # Prefer explicit `SOFFICE_PATH` in settings, otherwise check PATH.
+                    try:
+                        from django.conf import settings as _settings
+                        import shutil as _sh
+                        soffice_cfg = getattr(_settings, 'SOFFICE_PATH', None)
+                        if soffice_cfg:
+                            # if configured but not a file, still allow; helper will validate
+                            pass
+                        else:
+                            if _sh.which('soffice') is None:
+                                return Response({'error': 'LibreOffice (soffice) not found on server'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+                    except Exception:
+                        return Response({'error': 'Server environment check failed (soffice detection)'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
                     ok, err = _convert_docx_to_pdf(docx_path, pdf_path)
                     if ok:
                         try:
@@ -1289,19 +1557,15 @@ class BLAgreementDocxDownloadView(APIView):
                             # If CSA creator, ensure and consume download grant on successful generation
                             try:
                                 aa = None
-                                if role == 'CSA':
+                                # Enforce per-user one-time download for CSA and AM/BM/BOD/RM
+                                if role in ('CSA', 'AM', 'BM', 'BOD', 'RM'):
                                     username = getattr(request.user, 'username', None) or _resolve_username(request) or ''
-                                    # ensure CSA is the creator of this agreement
-                                    try:
-                                        cursor.execute('SELECT created_by FROM bl_agreement WHERE LOWER(contract_number)=LOWER(%s) LIMIT 1', [contract_number])
-                                        row = cursor.fetchone()
-                                        created_by = row[0] if row else None
-                                    except Exception:
-                                        created_by = None
-                                    if not created_by or str(created_by) != str(username):
-                                        return Response({'error': 'Forbidden - CSA not creator'}, status=status.HTTP_403_FORBIDDEN)
                                     uid = getattr(request.user, 'id', None)
                                     aa = AgreementAccess.get_for_contract_and_user(contract_number, uid)
+                                    if not aa and role in ('AM', 'BM', 'BOD', 'RM'):
+                                        if uid is None:
+                                            return Response({'error': 'Authentication required for download'}, status=status.HTTP_403_FORBIDDEN)
+                                        aa = AgreementAccess.objects.create(contract_number=contract_number, user_id=uid, role=role, download_grants=2, edit_grants=0)
                                     if not aa or not aa.can_download():
                                         return Response({'error': 'No download grants remaining'}, status=status.HTTP_403_FORBIDDEN)
                                 else:
@@ -1448,25 +1712,52 @@ class BLAgreementAccessView(APIView):
 
         role = get_role_from_request(request) or getattr(request.user, 'role', '')
         username = getattr(request.user, 'username', None) or _resolve_username(request) or ''
+        # Debug: record access requests and caller info
+        try:
+            logs_dir = os.path.join(settings.BASE_DIR, 'logs')
+            os.makedirs(logs_dir, exist_ok=True)
+            dbg = os.path.join(logs_dir, 'bl_agreement_access_debug.log')
+            uid = getattr(request.user, 'id', None)
+            with open(dbg, 'a', encoding='utf-8') as df:
+                df.write(f"[{timezone.now().isoformat()}] access_incoming contract={contract_number} role={role} user_username={username} user_id={uid}\n")
+        except Exception:
+            pass
 
         # Only CSA creator may query their own access; Admin/BOD can also view
         try:
             with connection.cursor() as cursor:
-                cursor.execute('SELECT created_by FROM bl_agreement WHERE LOWER(contract_number)=LOWER(%s) LIMIT 1', [contract_number])
+                cursor.execute('SELECT created_by, created_by_id FROM bl_agreement WHERE LOWER(contract_number)=LOWER(%s) LIMIT 1', [contract_number])
                 row = cursor.fetchone()
                 created_by = row[0] if row else None
+                created_by_id = row[1] if row and len(row) > 1 else None
         except Exception:
             created_by = None
+            created_by_id = None
 
         if role == 'CSA':
-            if not created_by or str(created_by) != str(username):
-                return Response({'error': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
+            # Prefer strict id-based check; if created_by_id missing, fall back to created_by username
+            uid = getattr(request.user, 'id', None)
+            caller_uname = getattr(request.user, 'username', None) or _resolve_username(request) or ''
+            if created_by_id:
+                if uid is None or str(created_by_id) != str(uid):
+                    return Response({'error': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
+            else:
+                if not created_by or str(created_by).lower() != str(caller_uname).lower():
+                    try:
+                        logs_dir = os.path.join(settings.BASE_DIR, 'logs')
+                        os.makedirs(logs_dir, exist_ok=True)
+                        dbg = os.path.join(logs_dir, 'bl_agreement_access_debug.log')
+                        with open(dbg, 'a', encoding='utf-8') as df:
+                            df.write(f"[{timezone.now().isoformat()}] access_fallback_username contract={contract_number} created_by={created_by} caller_uname={caller_uname}\n")
+                    except Exception:
+                        pass
+                    return Response({'error': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
 
         # fetch AgreementAccess for this contract and user (if CSA) or for contract (admin)
         try:
             if role == 'CSA':
-                uid = getattr(request.user, 'id', None)
-                aa = AgreementAccess.get_for_contract_and_user(contract_number, uid)
+                                uid = getattr(request.user, 'id', None)
+                                aa = AgreementAccess.get_for_contract_and_user(contract_number, uid)
             else:
                 aa = AgreementAccess.objects.filter(contract_number=contract_number).first()
         except Exception:

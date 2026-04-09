@@ -1,11 +1,14 @@
-import sys, urllib.request, json
+import sys, urllib.request, json, os
 
 if len(sys.argv) < 2:
     print('Usage: python check_endpoints_with_token.py <ACCESS_TOKEN>')
     sys.exit(2)
 
 token = sys.argv[1].strip()
-base = 'http://localhost:8000'
+API_BASE = os.environ.get('API_BASE')
+if not API_BASE:
+    raise RuntimeError("Environment variable API_BASE is required (e.g. 'http://127.0.0.1:8000').")
+base = API_BASE
 endpoints = [
     ('Contracts (BL Agreement)', '/api/bl-agreement/contracts/'),
     ('BL Collateral', '/api/bl-collateral/'),

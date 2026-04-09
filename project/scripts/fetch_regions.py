@@ -1,7 +1,10 @@
-import urllib.request, json, sys
+import urllib.request, json, sys, os
 
+API_BASE = os.environ.get('API_BASE')
+if not API_BASE:
+    raise RuntimeError("Environment variable API_BASE is required (e.g. 'http://127.0.0.1:8000').")
 try:
-    url = "http://localhost:8000/api/regions/"
+    url = API_BASE.rstrip('/') + '/api/regions/'
     req = urllib.request.Request(url)
     # try to read admin token file for Authorization header if present
     try:

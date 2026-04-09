@@ -5,10 +5,15 @@ Verify CORS and token endpoint functionality
 import json
 import urllib.request
 import urllib.error
+import os
+
+API_BASE = os.environ.get('API_BASE')
+if not API_BASE:
+    raise RuntimeError("Environment variable API_BASE is required (e.g. 'http://127.0.0.1:8000').")
 
 def test_token_endpoint():
     """Test if token endpoint returns tokens"""
-    url = 'http://localhost:8000/api/token/'
+    url = API_BASE + '/api/token/'
     data = json.dumps({'username': 'admin', 'password': 'admin123'}).encode('utf-8')
     headers = {
         'Content-Type': 'application/json',
@@ -34,7 +39,7 @@ def test_token_endpoint():
 
 def test_cors_preflight():
     """Test CORS preflight request"""
-    url = 'http://localhost:8000/api/token/'
+    url = API_BASE + '/api/token/'
     
     req = urllib.request.Request(url)
     req.get_method = lambda: 'OPTIONS'
@@ -58,7 +63,7 @@ def test_protected_endpoint(token):
         print("⊘ Skipping protected endpoint test (no token)")
         return
     
-    url = 'http://localhost:8000/protected/'
+    url = API_BASE + '/protected/'
     headers = {
         'Authorization': f'Bearer {token}',
         'Origin': 'http://localhost:3000'

@@ -17,7 +17,8 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from myproject import views  # Mengimpor views dari aplikasi myapp
-from .views import CustomTokenObtainPairView, CustomTokenRefreshView, ProtectedView, DashboardSummaryView, BranchListView, BranchManagerByCityView, DirectorListView, RegionListView, AreaListView
+from .views import CustomTokenObtainPairView, CustomTokenRefreshView, ProtectedView, DashboardSummaryView, BranchManagerByCityView, DirectorListView
+from myproject.master_data import views as md_views
 from myproject.user_management import views as user_views
 from myproject.uv_agreement.views import UVCollateralCreateView
 
@@ -38,7 +39,10 @@ urlpatterns = [
     path('api/bl-agreement/', include('myproject.bl_agreement.urls')),
     # UV agreement endpoints
     path('api/uv-agreement/', include('myproject.uv_agreement.urls')),
+    # Master data app (new separate app)
+    path('api/master-data/', include('myproject.master_data.urls')),
     path('api/contracts/', views.ContractCreateView.as_view(), name='contract-create'),
+    path('api/contracts/<int:pk>/', views.ContractCRUDView.as_view(), name='contract-detail'),
     path('api/contracts/list/', views.ContractsListView.as_view(), name='contracts-list'),
     path('api/contracts/table/', views.ContractsTableView.as_view(), name='contracts-table'),
     path('api/contracts/lookup/', views.ContractLookupView.as_view(), name='contract-lookup'),
@@ -46,11 +50,19 @@ urlpatterns = [
     path('api/uv-collateral/', UVCollateralCreateView.as_view(), name='uv-collateral-create'),
     # All BL/UV endpoints are served from their app packages below.
     # Keep monolith routes only for unrelated legacy views.
-    path('api/regions/', RegionListView.as_view(), name='region-list'),
-    path('api/areas/', AreaListView.as_view(), name='area-list'),
-    path('api/branches/', BranchListView.as_view(), name='branch-list'),
+    path('api/regions/', md_views.RegionListCreateView.as_view(), name='region-list'),
+    path('api/regions/<int:pk>/', md_views.RegionDetailView.as_view(), name='region-detail'),
+    path('api/areas/', md_views.AreaListCreateView.as_view(), name='area-list'),
+    path('api/areas/<int:pk>/', md_views.AreaDetailView.as_view(), name='area-detail'),
+    path('api/branches/', md_views.BranchListCreateView.as_view(), name='branch-list'),
+    path('api/branches/<int:pk>/', md_views.BranchDetailView.as_view(), name='branch-detail'),
     path('api/branch-manager/', BranchManagerByCityView.as_view(), name='branch-manager-by-city'),
+    path('api/branch-manager/<int:pk>/', BranchManagerByCityView.as_view(), name='branch-manager-detail'),
+    # Separate CRUD endpoints for branch manager mutations (do not disturb legacy lookup)
+    path('api/branch-manager-crud/', views.BranchManagerCRUDView.as_view(), name='branch-manager-crud'),
+    path('api/branch-manager-crud/<int:pk>/', views.BranchManagerCRUDView.as_view(), name='branch-manager-crud-detail'),
     path('api/directors/', DirectorListView.as_view(), name='director-list'),
+    path('api/directors/<int:pk>/', DirectorListView.as_view(), name='director-detail'),
     path('api/whoami/', views.WhoAmIView.as_view(), name='whoami'),
     path('api/downloads/logs/', views.DownloadLogListView.as_view(), name='download-log-list'),
 ]

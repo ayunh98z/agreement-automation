@@ -258,8 +258,12 @@ def number_to_indonesian_words(n, title_case=False):
         return str(n) if n else ''
 
 
-def date_to_indonesian_words(d, title_case=False):
-    """Format tanggal menjadi kata-kata Indonesia (e.g., 'satu maret dua ribu delapan')"""
+def date_to_indonesian_words(d, title_case=False, uppercase_month=False, uppercase_all=False):
+    """Format tanggal menjadi kata-kata Indonesia (e.g., 'satu maret dua ribu delapan').
+    - `title_case`: title-case day/year parts
+    - `uppercase_month`: uppercase the month token only
+    - `uppercase_all`: return the entire resulting string in UPPERCASE
+    """
     try:
         if not d:
             return ''
@@ -269,25 +273,59 @@ def date_to_indonesian_words(d, title_case=False):
                 d = datetime.fromisoformat(d)
             except Exception:
                 return d
-        
         # Nama bulan dalam bahasa Indonesia (lowercase)
         bulan_indonesia = [
             'januari', 'februari', 'maret', 'april', 'mei', 'juni',
             'juli', 'agustus', 'september', 'oktober', 'november', 'desember'
         ]
-        
+
         hari_kata = number_to_indonesian_words(d.day, title_case=title_case)
-        bulan = bulan_indonesia[d.month - 1]
+        bulan_raw = bulan_indonesia[d.month - 1]
         tahun_kata = number_to_indonesian_words(d.year, title_case=title_case)
+
+        # Determine month rendering: either uppercase or title/sentence as requested
+        if uppercase_month:
+            bulan = bulan_raw.upper()
+        else:
+            bulan = bulan_raw
 
         # Combine parts
         combined = f'{hari_kata} {bulan} {tahun_kata}'.strip()
+        if uppercase_all:
+            try:
+                return combined.upper()
+            except Exception:
+                return combined
         if not combined:
             return ''
         try:
             if title_case:
+                # When title_case is requested we want day and year title-cased
+                # but preserve the month casing determined above (especially when uppercase_month=True).
+                try:
+                    parts = combined.split()
+                    if len(parts) >= 3:
+                        day_part = _refined_title_case(' '.join(parts[0:1]))
+                        month_part = parts[1]
+                        year_part = _refined_title_case(' '.join(parts[2:]))
+                        return ' '.join([day_part, month_part, year_part]).strip()
+                except Exception:
+                    return _refined_title_case(combined)
                 return _refined_title_case(combined)
             # default: sentence case
+            if uppercase_month:
+                # preserve uppercase month while sentence-casing surrounding parts
+                try:
+                    parts = combined.split()
+                    if len(parts) >= 3:
+                        day_part = parts[0].capitalize() if parts[0] else ''
+                        month_part = parts[1]
+                        year_part = ' '.join(parts[2:]).lower()
+                        if year_part:
+                            year_part = year_part[0].upper() + year_part[1:]
+                        return ' '.join([day_part, month_part, year_part]).strip()
+                except Exception:
+                    pass
             return combined[0].upper() + combined[1:].lower() if len(combined) > 1 else combined.upper()
         except Exception:
             return combined
@@ -295,7 +333,7 @@ def date_to_indonesian_words(d, title_case=False):
         return ''
 
 
-def format_indonesian_date(d):
+def format_indonesian_date(d, uppercase_all=False):
     """Format tanggal menjadi format Indonesia (e.g., '1 Maret 2008')"""
     try:
         if not d:
@@ -317,7 +355,8 @@ def format_indonesian_date(d):
         bulan = bulan_indonesia[d.month - 1]
         tahun = d.year
         
-        return f'{hari} {bulan} {tahun}'
+        out = f'{hari} {bulan} {tahun}'
+        return out.upper() if uppercase_all else out
     except Exception:
         return ''
 
@@ -419,46 +458,73 @@ def _safe_rmtree(path):
 
 
 def _convert_docx_to_pdf(src, dst):
-    """Convert DOCX to PDF using docx2pdf library.
-    
-    Returns (True, '') on success or (False, error_message) on failure.
-    Supports both Windows and Linux/Unix systems.
+    """Convert DOCX to PDF using LibreOffice (`soffice`) CLI only.
+
+    Returns (True, None) on success or (False, error_message) on failure.
     """
     try:
-        from docx2pdf import convert
-    except ImportError:
-        return False, 'docx2pdf library not installed. Install with: pip install docx2pdf'
-    
-    try:
-        # Create output directory if it doesn't exist
-        out_dir = os.path.dirname(dst)
+        from django.conf import settings as _dj_settings
+        out_dir = os.path.dirname(os.path.abspath(dst)) or '.'
         if out_dir and not os.path.exists(out_dir):
             os.makedirs(out_dir, exist_ok=True)
-        
-        # For Windows: Initialize COM thread before conversion
+
+        # Determine soffice executable path: prefer configured setting,
+        # then `which`, then common Windows Program Files locations.
+        soffice_path = None
         try:
-            import pythoncom
-            pythoncom.CoInitialize()
-            com_initialized = True
+            import shutil as _sh
+            cfg = getattr(_dj_settings, 'SOFFICE_PATH', None)
+            if cfg:
+                # allow cfg to be either the binary or a directory
+                if os.path.isfile(cfg):
+                    soffice_path = cfg
+                else:
+                    maybe = os.path.join(cfg, 'program', 'soffice.exe') if os.name == 'nt' else os.path.join(cfg, 'soffice')
+                    if os.path.isfile(maybe):
+                        soffice_path = maybe
+            if not soffice_path:
+                found = _sh.which('soffice')
+                if found:
+                    soffice_path = found
+            if not soffice_path and os.name == 'nt':
+                candidates = [r"C:\Program Files\LibreOffice\program\soffice.exe", r"C:\Program Files (x86)\LibreOffice\program\soffice.exe"]
+                for c in candidates:
+                    if os.path.isfile(c):
+                        soffice_path = c
+                        break
         except Exception:
-            com_initialized = False
-        
+            soffice_path = None
+
+        if not soffice_path:
+            return False, 'LibreOffice (soffice) not found on server; set SOFFICE_PATH or add soffice to PATH'
+
+        cmd = [
+            soffice_path,
+            '--headless',
+            '--convert-to', 'pdf',
+            '--outdir', out_dir,
+            src
+        ]
+        proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=120)
+        if proc.returncode != 0:
+            stderr = proc.stderr.decode('utf-8', errors='replace')
+            return False, f'soffice returned exit {proc.returncode}: {stderr}'
+
+        expected = os.path.join(out_dir, os.path.splitext(os.path.basename(src))[0] + '.pdf')
+        if not os.path.exists(expected):
+            return False, 'LibreOffice did not produce expected PDF file'
+
         try:
-            # docx2pdf.convert expects (input_file, output_file)
-            # It will create the output file at the specified path
-            convert(src, dst)
-            
-            # Verify output file was created and is not empty
-            if os.path.exists(dst) and os.path.getsize(dst) > 0:
-                return True, ''
-            else:
-                return False, 'PDF file was not created or is empty'
-        finally:
-            # Uninitialize COM thread if it was initialized
-            if com_initialized:
+            if os.path.abspath(expected) != os.path.abspath(dst):
                 try:
-                    pythoncom.CoUninitialize()
+                    shutil.move(expected, dst)
                 except Exception:
-                    pass
+                    shutil.copyfile(expected, dst)
+        except Exception as e:
+            return False, f'Failed to move/copy produced PDF: {e}'
+
+        if os.path.exists(dst) and os.path.getsize(dst) > 0:
+            return True, None
+        return False, 'PDF file missing or empty after soffice conversion'
     except Exception as e:
-        return False, f'docx2pdf conversion failed: {str(e)}'
+        return False, f'soffice conversion failed: {e}'

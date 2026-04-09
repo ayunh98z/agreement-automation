@@ -1,5 +1,9 @@
 import urllib.request, urllib.parse, json, os
 
+API_BASE = os.environ.get('API_BASE')
+if not API_BASE:
+    raise RuntimeError("Environment variable API_BASE is required (e.g. 'http://127.0.0.1:8000').")
+
 def read_credentials(path):
     try:
         with open(path,'r',encoding='utf-8') as f:
@@ -14,7 +18,7 @@ def read_credentials(path):
     except Exception as e:
         return 'admin','admin'
 
-base = 'http://localhost:8000'
+base = API_BASE
 credpath = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', 'admin_token.txt'))
 user,pwd = read_credentials(credpath)
 print('Using credentials:', user, ' / ', ('*'*len(pwd)))

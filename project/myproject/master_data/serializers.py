@@ -17,4 +17,4 @@ class AreaSerializer(serializers.ModelSerializer):
 class BranchSerializer(serializers.ModelSerializer):
     class Meta:
         model = Branch
-        fields = ['id', 'area', 'name', 'code', 'branch_name']
+        fields = ['id', 'area', 'name', 'code', 'branch_name', 'phone_number_branch']

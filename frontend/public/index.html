@@ -37,14 +37,21 @@
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
     <script>
-      // Auto-inject test token from /admin_token.json into localStorage for local dev only
-      (async function(){
+      // Auto-inject test token from /admin_token.json into localStorage —
+      // only run on local development hosts to avoid leaking tokens in production builds.
+      (function(){
         try{
-          const res = await fetch('/admin_token.json');
-          if(!res.ok) return;
-          const j = await res.json();
-          if(j.access_token) localStorage.setItem('access_token', j.access_token);
-          if(j.refresh_token) localStorage.setItem('refresh_token', j.refresh_token);
+          const host = window.location.hostname;
+          if (host !== 'localhost' && host !== '127.0.0.1') return;
+          (async function(){
+            try{
+              const res = await fetch('/admin_token.json');
+              if(!res.ok) return;
+              const j = await res.json();
+              if(j.access_token) localStorage.setItem('access_token', j.access_token);
+              if(j.refresh_token) localStorage.setItem('refresh_token', j.refresh_token);
+            }catch(e){}
+          })();
         }catch(e){}
       })();
     </script>

@@ -4,9 +4,13 @@ import sys
 import urllib.request
 import urllib.error
 import json
+import os
 
-BASE = 'http://localhost:8000'
-TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzcxNTEyOTI4LCJpYXQiOjE3NzE1MDkzMjgsImp0aSI6ImMzMDM1ODkzMjdiNDQ1MDBhZWYzZDJkZGQ3YzQyYjcwIiwidXNlcl9pZCI6MSwidXNlcm5hbWUiOiJhZG1pbiJ9.edMtXR6K1qrMB9rHfRxtUu9jPXjZ4SSPILfNa9du3pE'
+API_BASE = os.environ.get('API_BASE')
+if not API_BASE:
+    raise RuntimeError("Environment variable API_BASE is required (e.g. 'http://127.0.0.1:8000').")
+BASE = API_BASE.rstrip('/')
+TOKEN = os.environ.get('API_TOKEN', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzcxNTEyOTI4LCJpYXQiOjE3NzE1MDkzMjgsImp0aSI6ImMzMDM1ODkzMjdiNDQ1MDBhZWYzZDJkZGQ3YzQyYjcwIiwidXNlcl9pZCI6MSwidXNlcm5hbWUiOiJhZG1pbiJ9.edMtXR6K1qrMB9rHfRxtUu9jPXjZ4SSPILfNa9du3pE')
 
 def http_get(path):
     req = urllib.request.Request(path, headers={'Authorization': f'Bearer {TOKEN}'})

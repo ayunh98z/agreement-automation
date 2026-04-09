@@ -3,12 +3,14 @@
  * Used across BLAgreement and UVAgreement components
  */
 
+import { t } from './messages';
+
 /**
  * Convert numbers to Indonesian words
  * e.g., 1 → 'satu', 2008 → 'dua ribu delapan'
  */
 export function getIndonesianNumberWord(num) {
-  const units = ['', 'satu', 'dua', 'tiga', 'empat', 'lima', 'enam', 'tujuh', 'delapan', 'sembilan'];
+  const units = ['nol', 'satu', 'dua', 'tiga', 'empat', 'lima', 'enam', 'tujuh', 'delapan', 'sembilan'];
   const spellInt = (n) => {
     n = Math.floor(n);
     if (n === 0) return 'nol';
@@ -49,17 +51,26 @@ export function getIndonesianNumberWord(num) {
     const s = String(num).trim().replace(',', '.');
     let result = '';
     if (s.indexOf('.') >= 0) {
-      const [intPart, decPart] = s.split('.', 2);
+      const [intPart, decPartRaw] = s.split('.', 2);
       const intNum = intPart === '' ? 0 : parseInt(intPart, 10);
       const intWords = intNum === 0 ? 'nol' : spellInt(intNum);
-      const decWords = decPart.split('').map(d => units[parseInt(d,10)] || d).join(' ');
-      result = (intWords + ' koma ' + decWords).trim();
+      // Trim trailing zeros from fractional part so 2.90 -> treat as '9',
+      // while preserving leading zeros: 2.09 -> '0','9' -> 'nol sembilan'.
+      const decPart = String(decPartRaw || '');
+      const decTrimmed = decPart.replace(/0+$/, '');
+      if (decTrimmed === '') {
+        // nothing meaningful in fractional digits, return integer words only
+        result = intWords;
+      } else {
+        const decWords = decTrimmed.split('').map(d => units[parseInt(d, 10)] || d).join(' ');
+        result = (intWords + ' koma ' + decWords).trim();
+      }
     } else {
       const n = parseInt(s, 10);
       result = spellInt(n);
     }
-    return toTitleCase(result);
-  } catch (e) { return toTitleCase(String(num)); }
+    try { return String(result).toUpperCase(); } catch (e) { return String(result); }
+  } catch (e) { try { return String(num).toUpperCase(); } catch (ee) { return String(num); } }
 }
 
 /**
@@ -89,9 +100,10 @@ export function titleCasePayload(obj, numericFields = []) {
     try {
       const v = obj[k];
       const lk = String(k).toLowerCase();
-      // Explicitly exclude certain fields from any title-casing
-      const _excludedKeys = ['location_of_land', 'street_of_debtor'];
-      if (_excludedKeys.includes(lk)) { out[k] = v; return; }
+      // Exclusions: do not title-case branch manager section, branch section, or sp3_number
+      if (lk === 'bm_data' || lk === 'branch_data' || lk === 'name_of_bank' || lk === 'number_of_ajb' || lk === 'sp3_number') { out[k] = v; return; }
+      // No explicit exclusions here — allow address fields to be title-cased
+      // (previously excluded: location_of_land, street_of_debtor)
       // Skip numeric fields
       if (Array.isArray(numericFields) && numericFields.includes(k)) { out[k] = v; return; }
       // Skip obvious identifiers/contact fields
@@ -148,7 +160,7 @@ export function getIndonesianDateInWords(dateString) {
   const month = monthsInWords[date.getMonth()];
   const year = date.getFullYear();
   const composed = `${getIndonesianNumberWord(day)} ${month} ${getIndonesianNumberWord(year)}`;
-  return toTitleCase(composed);
+  try { return String(composed).toUpperCase(); } catch (e) { return composed; }
 }
 
 /**
@@ -193,9 +205,36 @@ export function formatDateDisplay(dateString) {
 export function formatNumberWithDots(val) {
   try {
     if (val === null || val === undefined || val === '') return '';
-    const v = parseFloat(String(val).replace(/,/g, '.'));
-    if (isNaN(v)) return String(val);
-    return v.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    // Normalize input into integer and decimal parts robustly, then insert '.' as thousand separator.
+    let s = String(val).trim();
+    if (s === '') return '';
+    // Preserve negative sign
+    let sign = '';
+    if (s.startsWith('-')) { sign = '-'; s = s.slice(1); }
+    // Keep only digits, dots and commas for analysis
+    const cleaned = s.replace(/[^0-9.,]/g, '');
+    // Find last separator (dot or comma) — treat it as decimal separator if present
+    const lastDot = cleaned.lastIndexOf('.');
+    const lastComma = cleaned.lastIndexOf(',');
+    const sepIndex = Math.max(lastDot, lastComma);
+    let intPart = '';
+    let decPart = '';
+    if (sepIndex === -1) {
+      intPart = cleaned.replace(/[.,]/g, '');
+    } else {
+      intPart = cleaned.slice(0, sepIndex).replace(/[.,]/g, '');
+      decPart = cleaned.slice(sepIndex + 1).replace(/[.,]/g, '');
+    }
+    if (intPart === '') intPart = '0';
+    // Insert thousand separators into integer part
+    const grouped = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    // Decide whether to show decimals: only if decimal part contains non-zero digits
+    let out = grouped;
+    if (decPart && /[1-9]/.test(decPart)) {
+      const showDec = decPart.slice(0, 2); // limit to 2 decimals for display
+      out = `${grouped},${showDec}`;
+    }
+    return sign + out;
   } catch (e) {
     return String(val);
   }
@@ -249,14 +288,21 @@ export function isIsoDate(s) {
 export function formatFieldName(name) {
   if (!name) return '';
   try {
+    // Prefer explicit translation entries when available
+    try {
+      const translated = t(name);
+      if (translated && translated !== name) return translated;
+    } catch (e) { /* ignore translation errors and fall back */ }
+
     // handle known frontend-only label overrides centrally so all components
     // using `formatFieldName` will show the desired display names
     const isWord = /(_in_word|_by_word)$/.test(name);
     const base = name.replace(/(_in_word|_by_word)$/, '');
-    if (base === 'notaris_fee') return isWord ? 'Handling Fee In Word' : 'Handling Fee';
+    // Prefer translations for these frontend-local overrides so language switcher works
+    if (base === 'notaris_fee') return isWord ? t('notaris_fee_in_word') : t('notaris_fee');
     // UX: show more user-friendly labels for previous topup and topup contract
-    if (base === 'previous_topup_amount') return isWord ? 'Outstanding Previous Contract In Word' : 'Outstanding Previous Contract';
-    if (base === 'topup_contract') return isWord ? 'Previous Contract In Word' : 'Previous Contract';
+    if (base === 'previous_topup_amount') return isWord ? t('previous_topup_amount_in_word') : t('previous_topup_amount');
+    if (base === 'topup_contract') return isWord ? t('topup_contract_in_word') : t('topup_contract');
     // Note: `flat_rate` label intentionally not overridden here so BL can
     // display the original "Flat Rate" while UV applies its own local
     // override to show "Effective Rate". Keeping this mapping only for

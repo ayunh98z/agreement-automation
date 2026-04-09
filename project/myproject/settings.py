@@ -181,7 +181,7 @@ pymysql.install_as_MySQLdb()
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': os.environ.get('MYSQL_NAME', 'lolc_operasional'),
+        'NAME': os.environ.get('MYSQL_NAME', 'lolc_agreement'),
         'USER': os.environ.get('MYSQL_USER', 'root'),
         'PASSWORD': os.environ.get('MYSQL_PASSWORD', ''),
         'HOST': os.environ.get('MYSQL_HOST', '127.0.0.1'),
@@ -245,7 +245,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # will use this exact path when converting DOCX->PDF. If left as None,
 # the view will attempt to call `soffice` from PATH and fallback to
 # HTML->PDF conversion (WeasyPrint) if unavailable.
-# Note: PDF conversion via LibreOffice was removed; no SOFFICE_PATH is required.
+# Default: try sensible defaults depending on platform. You can override
+# by setting the environment variable `SOFFICE_PATH` to an absolute path
+# (e.g. on Windows: "C:\\Program Files\\LibreOffice\\program\\soffice.exe").
+SOFFICE_PATH = os.environ.get('SOFFICE_PATH') or (r"C:\Program Files\LibreOffice\program\soffice.exe" if os.name == 'nt' else 'soffice')
 
 import logging.handlers
 

@@ -1,6 +1,9 @@
-import requests, json
+import requests, json, os
 
-url = 'http://127.0.0.1:8000/api/bl-sp3/create-public/'
+API_BASE = os.environ.get('API_BASE')
+if not API_BASE:
+    raise RuntimeError("Environment variable API_BASE is required (e.g. 'http://127.0.0.1:8000').")
+url = API_BASE.rstrip('/') + '/api/bl-sp3/create-public/'
 payload = {
     'contract_number': 'CON123',
     'name_of_debtor': 'Frontend Test Debtor',

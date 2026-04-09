@@ -1,9 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect, useCallback } from 'react';
+// axios removed: use `requestWithAuth` helper for API calls
 import { requestWithAuth } from '../../utils/api';
+import { toast } from 'react-toastify';
 import './UserManagement.css';
+import useT from '../../hooks/useT';
 
 function UserManagement() {
+  const t = useT();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -17,7 +20,7 @@ function UserManagement() {
     password: '',
     employee_id: '',
     phone: '',
-    role: 'User',
+    role: 'CSA',
     region_id: '',
     area_id: '',
     branch_id: '',
@@ -27,64 +30,44 @@ function UserManagement() {
   const [areas, setAreas] = useState([]);
   const [branches, setBranches] = useState([]);
   const [branchMap, setBranchMap] = useState({});
+  const [allBranches, setAllBranches] = useState([]);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [isAdminUser, setIsAdminUser] = useState(false);
-  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  const API_BASE_URL = 'http://localhost:8000/api';
+  // API base handled by `requestWithAuth` helper; avoid module-level constants
 
   // Muat daftar user dan data dropdown saat komponen dimount
-  const loadAllBranches = async () => {
+  const loadAllBranches = useCallback(async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/branches/`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-        }
-      });
+      const response = await requestWithAuth({ method: 'get', url: '/api/master-data/branches/' });
       const all = response.data.branches || [];
       const map = {};
       all.forEach(b => { map[b.id] = b.name; });
       setBranchMap(map);
+      setAllBranches(all);
     } catch (err) {
       console.error('Error loading all branches:', err);
       setBranchMap({});
+      setAllBranches([]);
     }
-  };
-
-  useEffect(() => {
-    loadUsers();
-    loadRegions();
-    loadAllBranches();
-    // Jangan muat semua area/branch di awal; akan dimuat berdasarkan pilihan atau saat mengedit
-
-    // Determine current user's role from localStorage so we can hide/disable actions
-    try {
-      const raw = localStorage.getItem('user_data');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        const r = (parsed.role || parsed.role_name || parsed.role_name_display || '').toString().trim();
-        setIsAdminUser(r.toLowerCase().includes('admin'));
-      }
-    } catch (e) { /* ignore */ }
   }, []);
 
-  const loadUsers = async () => {
+  
+
+  const loadUsers = useCallback(async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('access_token');
       console.log('Loading users with token:', token ? 'Present' : 'Missing');
-      console.log('API URL:', `${API_BASE_URL}/users/`);
+      console.log('API URL: /api/users/');
       
-      const response = await axios.get(`${API_BASE_URL}/users/`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const response = await requestWithAuth({ method: 'get', url: '/api/users/' });
       
       console.log('Users loaded successfully:', response.data);
       const rawUsers = response.data.users || response.data || [];
@@ -99,15 +82,15 @@ function UserManagement() {
     } catch (err) {
       console.error('Error loading users:', err);
       
-      let errorMessage = 'Failed to load user list';
+      let errorMessage = t('failed_load_user_list');
       if (err.response?.status === 401) {
-        errorMessage = 'Token tidak valid atau sudah expired. Silakan login kembali.';
+        errorMessage = t('session_expired');
       } else if (err.response?.status === 403) {
-        errorMessage = 'Anda tidak memiliki akses ke fitur ini.';
+        errorMessage = t('no_access');
       } else if (err.response?.status === 404) {
-        errorMessage = 'API endpoint tidak ditemukan. Pastikan backend berjalan dengan baik.';
+        errorMessage = t('endpoint_not_found');
       } else if (err.message === 'Network Error') {
-        errorMessage = 'Tidak dapat terhubung ke server. Pastikan backend berjalan di localhost:8000';
+        errorMessage = t('cannot_connect');
       } else if (err.response?.data?.error) {
         errorMessage = err.response.data.error;
       } else if (err.response?.data?.detail) {
@@ -125,33 +108,69 @@ function UserManagement() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
-  const loadRegions = async () => {
+  const loadRegions = useCallback(async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/regions/`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-        }
-      });
+      const response = await requestWithAuth({ method: 'get', url: '/api/master-data/regions/' });
       console.log('Regions loaded:', response.data);
-      setRegions(response.data.regions || []);
+      // Backend may sometimes return regions under different keys or
+      // mistakenly return areas only. Handle several shapes defensively.
+      const data = response.data || {};
+      if (Array.isArray(data.regions) && data.regions.length > 0) {
+        setRegions(data.regions);
+      } else if (Array.isArray(data.areas) && data.areas.length > 0) {
+        // Derive unique region ids from areas when regions endpoint returns areas
+        const map = {};
+        data.areas.forEach(a => {
+          const rid = a.region_id || a.region || null;
+          if (rid && !map[rid]) {
+            map[rid] = { id: rid, name: `Region ${rid}` };
+          }
+        });
+        const derived = Object.values(map);
+        console.warn('Regions endpoint returned areas; derived regions:', derived);
+        setRegions(derived);
+      } else {
+        setRegions([]);
+      }
     } catch (err) {
       console.error('Error loading regions:', err);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadUsers();
+    loadRegions();
+    loadAllBranches();
+    // Jangan muat semua area/branch di awal; akan dimuat berdasarkan pilihan atau saat mengedit
+
+    // Determine current user's role from localStorage so we can hide/disable actions
+    try {
+      const raw = localStorage.getItem('user_data');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const r = (parsed.role || parsed.role_name || parsed.role_name_display || '').toString().trim();
+        setIsAdminUser(r.toLowerCase().includes('admin'));
+      }
+    } catch (e) { /* ignore */ }
+  }, [loadUsers, loadRegions, loadAllBranches]);
 
   const loadAreas = async (regionId) => {
     try {
-      const params = regionId ? { params: { region_id: regionId } } : {};
-      const response = await axios.get(`${API_BASE_URL}/areas/`, {
-        ...(params),
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-        }
-      });
+      const params = regionId ? { params: { region_id: regionId, region: regionId } } : {};
+      const response = await requestWithAuth({ method: 'get', url: '/api/master-data/areas/', params });
       console.log('Areas loaded:', response.data, 'for region:', regionId);
-      setAreas(response.data.areas || []);
+      const remote = response.data.areas || [];
+      // If backend returned all areas ignoring region filter, filter client-side
+      let filtered = remote;
+      if (regionId) {
+        filtered = remote.filter(a => String(a.region_id || a.region || '').toLowerCase() === String(regionId).toLowerCase());
+        if (remote.length > 0 && filtered.length === 0) {
+          console.warn('Areas endpoint returned unfiltered data; client-side filtered to region:', regionId);
+        }
+      }
+      setAreas(filtered);
     } catch (err) {
       console.error('Error loading areas:', err);
       setAreas([]);
@@ -160,15 +179,52 @@ function UserManagement() {
 
   const loadBranches = async (areaId) => {
     try {
-      const params = areaId ? { params: { area_id: areaId } } : {};
-      const response = await axios.get(`${API_BASE_URL}/branches/`, {
-        ...(params),
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+      const params = areaId ? { params: { area_id: areaId, area: areaId } } : {};
+      console.log('Requesting branches with params:', params);
+      const response = await requestWithAuth({ method: 'get', url: '/api/master-data/branches/', params });
+      console.log('Branches endpoint response:', response.data, 'for area:', areaId);
+      const remote = response.data.branches || [];
+      if (remote.length > 0) {
+        if (areaId) {
+          const selectedArea = areas.find(a => String(a.id) === String(areaId));
+          const filteredRemote = remote.filter(b => {
+            const bArea = String(b.area_id || b.area || b.parent_id || '').toLowerCase();
+            const matchAreaId = bArea === String(areaId).toLowerCase();
+            const matchRegion = selectedArea && b.region_id && String(b.region_id) === String(selectedArea.region_id);
+            const matchAreaCode = selectedArea && selectedArea.code && String(b.code || b.area_code || '').toLowerCase() === String(selectedArea.code).toLowerCase();
+            return matchAreaId || matchRegion || matchAreaCode;
+          });
+          if (filteredRemote.length > 0) {
+            setBranches(filteredRemote);
+            return;
+          }
+          console.warn('Branches endpoint returned items but none matched selected area; falling back to derived filtering');
+          // continue to fallback derivation below
+        } else {
+          setBranches(remote);
+          return;
         }
+      }
+
+      // Fallback: filter preloaded allBranches by area_id or area code
+      const selectedArea = areas.find(a => String(a.id) === String(areaId));
+      const derived = allBranches.filter(b => {
+        // Try multiple heuristics: explicit area_id, area field, parent_id,
+        // or branch.region_id matching selected area's region, or matching area.code
+        const bArea = String(b.area_id || b.area || b.parent_id || '').toLowerCase();
+        const matchAreaId = areaId ? (bArea === String(areaId).toLowerCase()) : false;
+        const matchRegion = selectedArea && b.region_id && String(b.region_id) === String(selectedArea.region_id);
+        const matchAreaCode = selectedArea && selectedArea.code && String(b.code || b.area_code || '').toLowerCase() === String(selectedArea.code).toLowerCase();
+        return matchAreaId || matchRegion || matchAreaCode;
       });
-      console.log('Branches loaded:', response.data, 'for area:', areaId);
-      setBranches(response.data.branches || []);
+      if (derived.length > 0) {
+        console.warn('Branches endpoint empty; derived from allBranches:', derived);
+        setBranches(derived);
+        return;
+      }
+
+      // No branches found
+      setBranches([]);
     } catch (err) {
       console.error('Error loading branches:', err);
       setBranches([]);
@@ -213,7 +269,7 @@ function UserManagement() {
       password: '',
       employee_id: '',
       phone: '',
-      role: 'User',
+      role: 'CSA',
       region_id: '',
       area_id: '',
       branch_id: '',
@@ -262,6 +318,23 @@ function UserManagement() {
     setShowModal(true);
   };
 
+  const handleDeleteUser = async (user) => {
+    if (!user) return;
+    const label = user.full_name || user.username || '';
+    if (!window.confirm(`${t('delete_prefix')} ${label}?`)) return;
+    try {
+      setError('');
+      await requestWithAuth({ method: 'delete', url: `/api/users/${encodeURIComponent(user.username)}/` });
+      await loadUsers();
+      toast.success(t('user_deleted'));
+    } catch (err) {
+      console.error('Delete user failed', err);
+      const msg = err?.response?.data?.error || t('delete_failed');
+      setError(msg);
+      toast.error(msg);
+    }
+  };
+
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({
@@ -271,22 +344,17 @@ function UserManagement() {
 
     // Muat dropdown tergantung
     if (name === 'region_id') {
-      loadAreas(value);
-      // Reset area dan branch saat region berubah
-      setFormData(prev => ({
-        ...prev,
-        area_id: '',
-        branch_id: ''
-      }));
+      // Clear dependent lists first to avoid showing stale options
+      setFormData(prev => ({ ...prev, area_id: '', branch_id: '' }));
+      setAreas([]);
       setBranches([]);
+      loadAreas(value);
     }
     if (name === 'area_id') {
+      // Clear child list before requesting
+      setFormData(prev => ({ ...prev, branch_id: '' }));
+      setBranches([]);
       loadBranches(value);
-      // Reset branch saat area berubah
-      setFormData(prev => ({
-        ...prev,
-        branch_id: ''
-      }));
     }
   };
 
@@ -306,22 +374,33 @@ function UserManagement() {
       if (modalMode === 'new') {
         // Untuk user baru, password wajib
         if (!formData.password) {
-          setError('Password diperlukan untuk user baru');
+          setError(t('password_required_new_user'));
+          toast.error(t('password_required_new_user'));
+          setSubmitLoading(false);
+          return;
+        }
+        // For new users, require region/area/branch
+        if (!formData.region_id || !formData.area_id || !formData.branch_id) {
+          const msg = t('region_area_branch_required');
+          setError(msg);
+          toast.error(msg);
           setSubmitLoading(false);
           return;
         }
         payload.password = formData.password;
 
-        const response = await axios.post(`${API_BASE_URL}/users/`, payload, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-          }
-        });
+        const response = await requestWithAuth({ method: 'post', url: '/api/users/', data: payload });
         const saved = response.data.user || response.data;
-        const newList = [...users, saved];
-        newList.sort((a, b) => ((a.full_name || '') + '').toLowerCase().localeCompare(((b.full_name || '') + '').toLowerCase()));
-        setUsers(newList);
+        // If backend returned a full user object, append it. Otherwise re-fetch list.
+        if (saved && (saved.id || saved.username || saved.full_name)) {
+          const newList = [...users, saved];
+          newList.sort((a, b) => ((a.full_name || '') + '').toLowerCase().localeCompare(((b.full_name || '') + '').toLowerCase()));
+          setUsers(newList);
+        } else {
+          await loadUsers();
+        }
         setError('');
+        toast.success(t('user_created'));
       } else {
         // Edit user - kirim semua field agar di-update di backend
         const editPayload = {
@@ -338,16 +417,18 @@ function UserManagement() {
         // Sertakan password hanya jika user mengisikan password baru
         if (formData.password) editPayload.password = formData.password;
 
-        const response = await axios.put(`${API_BASE_URL}/users/${formData.username}/`, editPayload, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-          }
-        });
+        const response = await requestWithAuth({ method: 'put', url: `/api/users/${formData.username}/`, data: editPayload });
         const saved = response.data.user || response.data;
-        const replaced = users.map(u => u.id === editingUserId ? saved : u);
-        replaced.sort((a, b) => ((a.full_name || '') + '').toLowerCase().localeCompare(((b.full_name || '') + '').toLowerCase()));
-        setUsers(replaced);
+        // If backend returned a full user object, replace it locally. Otherwise re-fetch list.
+        if (saved && (saved.id || saved.username || saved.full_name)) {
+          const replaced = users.map(u => (u.id === editingUserId || u.username === saved.username) ? saved : u);
+          replaced.sort((a, b) => ((a.full_name || '') + '').toLowerCase().localeCompare(((b.full_name || '') + '').toLowerCase()));
+          setUsers(replaced);
+        } else {
+          await loadUsers();
+        }
         setError('');
+        toast.success(t('user_updated'));
       }
 
       setShowModal(false);
@@ -366,7 +447,9 @@ function UserManagement() {
       });
     } catch (err) {
       console.error('Error submitting form:', err);
-      setError(err.response?.data?.error || 'Failed to save user data');
+      const msg = err.response?.data?.error || t('failed_save_user');
+      setError(msg);
+      toast.error(msg);
     } finally {
       setSubmitLoading(false);
     }
@@ -375,20 +458,20 @@ function UserManagement() {
   const getStatusBadge = (isActive) => {
     // Treat undefined/null as active by default (backend should provide is_active)
     if (typeof isActive === 'undefined' || isActive === null) {
-      return <span style={styles.statusActive}>Active</span>;
+      return <span style={styles.statusActive}>{t('active_label')}</span>;
     }
     // Normalize common representations: numeric 1/0, boolean, or string '1'/'0'/'true'/'false'
     const s = String(isActive).toLowerCase();
     const active = !(s === '0' || s === 'false');
-    return active ? <span style={styles.statusActive}>Active</span> : <span style={styles.statusInactive}>Inactive</span>;
+    return active ? <span style={styles.statusActive}>{t('active_label')}</span> : <span style={styles.statusInactive}>{t('inactive_label')}</span>;
   };
 
-  if (loading) {
+    if (loading) {
     return <div style={styles.container}>
       <div style={styles.loadingMessage}>
-        <p>Loading data user...</p>
+        <p>{t('loading_user_list')}</p>
         <p style={{fontSize: '12px', color: '#999', marginTop: '10px'}}>
-          Jika loading terlalu lama, periksa console (F12) untuk error details
+          {t('loading_check_console')}
         </p>
       </div>
     </div>;
@@ -422,31 +505,32 @@ function UserManagement() {
   return (
     <div>
       <div className="content-section">
-        <h2>User Management</h2>
+        <h2>{t('user_mgmt_title')}</h2>
       </div>
 
       <div style={styles.actionSection}>
         <div style={styles.filterRow}>
           <input
             type="text"
-            placeholder="Search name, email, username..."
+            placeholder={t('search_users_placeholder')}
             value={searchQuery}
             onChange={handleSearchChange}
             style={styles.searchInput}
             aria-label="Search users"
           />
           <select value={roleFilter} onChange={handleRoleFilterChange} style={styles.filterSelect} aria-label="Filter by role">
-            <option value="All">All Roles</option>
+            <option value="All">{t('all_roles')}</option>
             {uniqueRoles().map(r => <option key={r} value={r}>{r}</option>)}
           </select>
           <select value={statusFilter} onChange={handleStatusFilterChange} style={styles.filterSelect} aria-label="Filter by status">
-            <option value="All">All Status</option>
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
+            <option value="All">{t('all_status')}</option>
+            <option value="Active">{t('active_label')}</option>
+            <option value="Inactive">{t('inactive_label')}</option>
           </select>
+          {/* Refresh button removed per request */}
         </div>
         <button onClick={openNewUserModal} style={{ ...styles.btnPrimary, opacity: isAdminUser ? 1 : 0.5, cursor: isAdminUser ? 'pointer' : 'not-allowed' }} disabled={!isAdminUser}>
-          + New User
+          {t('new_user')}
         </button>
       </div>
 
@@ -456,14 +540,14 @@ function UserManagement() {
         <table className="user-table agreements-table">
           <thead>
             <tr style={styles.headerRow}>
-              <th style={styles.th}>Full Name</th>
-              <th style={styles.th}>Email</th>
-              <th style={styles.th}>Employee ID</th>
-              <th style={styles.th}>Role</th>
-              <th style={styles.th}>Branch</th>
-              <th style={styles.th}>Status</th>
-        
-              <th style={styles.th}>Actions</th>
+              <th style={styles.th}>{t('Full Name')}</th>
+              <th style={styles.th}>{t('email')}</th>
+              <th style={styles.th}>{t('Employee ID')}</th>
+              <th style={styles.th}>{t('Role')}</th>
+              <th style={styles.th}>{t('branch')}</th>
+              <th style={styles.th}>{t('status')}</th>
+
+              <th style={styles.th}>{t('actions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -479,30 +563,14 @@ function UserManagement() {
                     <td style={styles.td}>{(user.branch_id && branchMap[user.branch_id]) || user.branch_id || '-'}</td>
                     <td style={styles.td}>{getStatusBadge(user.is_active)}</td>
                     <td style={styles.td}>
-                        {confirmDeleteId === user.id ? (
-                          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                            <span>Yakin akan menghapus?</span>
-                            <button className="action-btn compact-action-btn" onClick={() => setConfirmDeleteId(null)}>Cancel</button>
-                            <button className="btn-primary" onClick={async () => {
-                              try {
-                                await requestWithAuth({ method: 'delete', url: `http://localhost:8000/api/users/${encodeURIComponent(user.username)}/` });
-                                await loadUsers();
-                                setConfirmDeleteId(null);
-                              } catch (err) {
-                                console.error('Delete user failed', err);
-                                alert('Delete failed');
-                              }
-                            }}>Delete</button>
-                          </div>
-                        ) : (
-                          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                             <button 
                               onClick={() => openEditUserModal(user)}
                               className="action-btn compact-action-btn"
                               style={{ opacity: isAdminUser ? 1 : 0.5, cursor: isAdminUser ? 'pointer' : 'not-allowed' }}
                               disabled={!isAdminUser}
-                              title="Edit user"
-                              aria-label={`Edit ${user.username || user.full_name || ''}`}
+                              title={t('edit_user')}
+                              aria-label={`${t('edit_user')} ${user.username || user.full_name || ''}`}
                             >
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z" fill="#0a1e3d"/>
@@ -510,11 +578,12 @@ function UserManagement() {
                               </svg>
                             </button>
                             <button
-                              onClick={() => setConfirmDeleteId(user.id)}
-                              title="Delete"
-                              aria-label={`Delete ${user.username || user.full_name || ''}`}
+                              onClick={() => handleDeleteUser(user)}
+                              title={t('delete')}
+                              aria-label={`${t('delete')} ${user.username || user.full_name || ''}`}
                               className="action-btn compact-action-btn"
-                              style={{ border: '1px solid #000', background: 'transparent', color: '#000' }}
+                              style={{ opacity: isAdminUser ? 1 : 0.5, cursor: isAdminUser ? 'pointer' : 'not-allowed' }}
+                              disabled={!isAdminUser}
                             >
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M3 6h18" stroke="#000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -524,13 +593,12 @@ function UserManagement() {
                               </svg>
                             </button>
                           </div>
-                        )}
                     </td>
                   </tr>
                 ))
             ) : (
               <tr>
-                <td colSpan="7" className="no-data">Tidak ada data user</td>
+                <td colSpan="7" className="no-data">{t('no_users')}</td>
               </tr>
             )}
           </tbody>
@@ -539,7 +607,7 @@ function UserManagement() {
 
         {/* Pagination controls (match Branches layout) */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-          <div>Showing {start + 1}-{end} of {total}</div>
+          <div>{t('showing')} {start + 1}-{end} of {total}</div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }} style={{ padding: '6px 8px', border: '1px solid #ddd', borderRadius: 6 }}>
               <option value={5}>5</option>
@@ -551,11 +619,11 @@ function UserManagement() {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
                 <path d="M15 18L9 12L15 6" stroke="#0a1e3d" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              Prev
+              {t('prev')}
             </button>
             <div className="pagination-indicator">{current} / {totalPages}</div>
             <button className="pagination-btn" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={current >= totalPages} aria-label="Next page">
-              Next
+              {t('next')}
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
                 <path d="M9 6L15 12L9 18" stroke="#0a1e3d" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
@@ -569,7 +637,7 @@ function UserManagement() {
           <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
             <div style={styles.modalHeader}>
               <h3 style={styles.modalTitle}>
-                {modalMode === 'new' ? 'Add New User' : 'Edit User'}
+                {modalMode === 'new' ? t('add_user') : t('edit_user')}
               </h3>
               <button 
                 onClick={() => setShowModal(false)}
@@ -582,7 +650,7 @@ function UserManagement() {
             <form onSubmit={handleSubmit} style={styles.form}>
               <div style={styles.formGrid}>
                 <div style={styles.formGroup}>
-                  <label style={styles.label}>Full Name *</label>
+                  <label style={styles.label}>{t('full_name')} *</label>
                   <input
                     type="text"
                     name="full_name"
@@ -594,7 +662,7 @@ function UserManagement() {
                 </div>
 
                 <div style={styles.formGroup}>
-                  <label style={styles.label}>Email *</label>
+                  <label style={styles.label}>{t('email')} *</label>
                   <input
                     type="email"
                     name="email"
@@ -606,7 +674,7 @@ function UserManagement() {
                 </div>
 
                 <div style={styles.formGroup}>
-                  <label style={styles.label}>Username {modalMode === 'new' && '*'}</label>
+                  <label style={styles.label}>{t('username')} {modalMode === 'new' && '*'}</label>
                   <input
                     type="text"
                     name="username"
@@ -619,7 +687,7 @@ function UserManagement() {
                 </div>
 
                 <div style={styles.formGroup}>
-                  <label style={styles.label}>Password {modalMode === 'new' && '*'}</label>
+                  <label style={styles.label}>{t('password')} {modalMode === 'new' && '*'}</label>
                   <input
                     type="password"
                     name="password"
@@ -627,12 +695,12 @@ function UserManagement() {
                     onChange={handleInputChange}
                     style={styles.input}
                     required={modalMode === 'new'}
-                    placeholder={modalMode === 'edit' ? 'Kosongkan jika tidak ingin mengubah' : ''}
+                    placeholder={modalMode === 'edit' ? t('password_leave_blank') : ''}
                   />
                 </div>
 
                 <div style={styles.formGroup}>
-                  <label style={styles.label}>Employee ID</label>
+                  <label style={styles.label}>{t('employee_id_label')}</label>
                   <input
                     type="text"
                     name="employee_id"
@@ -643,7 +711,7 @@ function UserManagement() {
                 </div>
 
                 <div style={styles.formGroup}>
-                  <label style={styles.label}>Phone</label>
+                  <label style={styles.label}>{t('phone')}</label>
                   <input
                     type="tel"
                     name="phone"
@@ -654,7 +722,7 @@ function UserManagement() {
                 </div>
 
                 <div style={styles.formGroup}>
-                  <label style={styles.label}>Role *</label>
+                  <label style={styles.label}>{t('role_label')} *</label>
                   <select
                     name="role"
                     value={formData.role}
@@ -664,24 +732,24 @@ function UserManagement() {
                   >
                     <option value="Admin">Admin</option>
                     <option value="CSA">CSA</option>
-                    <option value="SLIK">SLIK</option>
                     <option value="BM">BM</option>
                     <option value="AM">AM</option>
                     <option value="RM">RM</option>
                     <option value="BOD">BOD</option>
-                    <option value="User">User</option>
+                    <option value="Audit">Audit</option>
                   </select>
                 </div>
 
                 <div style={styles.formGroup}>
-                  <label style={styles.label}>Region</label>
+                  <label style={styles.label}>{t('region_label')} {modalMode === 'new' && '*'}</label>
                   <select
                     name="region_id"
                     value={formData.region_id}
                     onChange={handleInputChange}
                     style={styles.select}
+                    required={modalMode === 'new'}
                   >
-                    <option value="">-- Select Region --</option>
+                    <option value="">{t('select_region_placeholder')}</option>
                     {regions.map((region) => (
                       <option key={region.id} value={region.id}>
                         {region.name}
@@ -691,41 +759,43 @@ function UserManagement() {
                 </div>
 
                 <div style={styles.formGroup}>
-                  <label style={styles.label}>Area</label>
+                  <label style={styles.label}>{t('area_label')} {modalMode === 'new' && '*'}</label>
                   <select
                     name="area_id"
                     value={formData.area_id}
                     onChange={handleInputChange}
                     style={styles.select}
                     disabled={!formData.region_id}
+                    required={modalMode === 'new'}
                   >
-                    <option value="">-- Pilih Area --</option>
+                    <option value="">{t('select_area_placeholder')}</option>
                     {areas.map((area) => (
                       <option key={area.id} value={area.id}>
                         {area.name}
                       </option>
                     ))}
                   </select>
-                  {!formData.region_id && <small style={{color: '#999', marginTop: '5px', display: 'block'}}>Pilih Region terlebih dahulu</small>}
+                  {!formData.region_id && <small style={{color: '#999', marginTop: '5px', display: 'block'}}>{t('choose_region_first')}</small>}
                 </div>
 
                 <div style={styles.formGroup}>
-                  <label style={styles.label}>Branch</label>
+                  <label style={styles.label}>{t('branch_label')} {modalMode === 'new' && '*'}</label>
                   <select
                     name="branch_id"
                     value={formData.branch_id}
                     onChange={handleInputChange}
                     style={styles.select}
                     disabled={!formData.area_id}
+                    required={modalMode === 'new'}
                   >
-                    <option value="">-- Pilih Branch --</option>
+                    <option value="">{t('select_branch_placeholder')}</option>
                     {branches.map((branch) => (
                       <option key={branch.id} value={branch.id}>
                         {branch.name}
                       </option>
                     ))}
                   </select>
-                  {!formData.area_id && <small style={{color: '#999', marginTop: '5px', display: 'block'}}>Pilih Area terlebih dahulu</small>}
+                  {!formData.area_id && <small style={{color: '#999', marginTop: '5px', display: 'block'}}>{t('choose_area_first')}</small>}
                 </div>
 
                 <div style={styles.formGroup}>
@@ -737,18 +807,18 @@ function UserManagement() {
                       onChange={handleInputChange}
                       style={styles.checkbox}
                     />
-                    Active
+                    {t('active_label')}
                   </label>
                 </div>
               </div>
 
               <div style={styles.modalFooter}>
-                <button 
-                  type="submit"
-                  style={styles.btnSave}
-                  disabled={submitLoading}
-                >
-                  {submitLoading ? (modalMode === 'new' ? 'Saving...' : 'Updating...') : (modalMode === 'new' ? 'Save' : 'Update')}
+                            <button 
+                              type="submit"
+                              style={styles.btnSave}
+                              disabled={submitLoading}
+                            >
+                  {submitLoading ? t('loading') : (modalMode === 'new' ? t('create') : t('update'))}
                 </button>
               </div>
             </form>

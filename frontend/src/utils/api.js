@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const API_BASE = process.env.REACT_APP_API_BASE || 'http://127.0.0.1:8001';
+// For development we use CRA proxy (see package.json). Default to empty string
+// so relative paths are used; REACT_APP_API_BASE can still override if needed.
+const API_BASE = process.env.REACT_APP_API_BASE || '';
 
 export async function requestWithAuth(config) {
   const doRequest = async (token) => {
@@ -14,7 +16,22 @@ export async function requestWithAuth(config) {
   };
 
   try {
-    const access = localStorage.getItem('access_token');
+    let access = null;
+    try {
+      access = localStorage.getItem('access_token');
+    } catch (e) {
+      access = null;
+    }
+
+    // Development convenience: if no token in localStorage and a dev token
+    // is provided via REACT_APP_DEV_ACCESS_TOKEN, use it (and persist
+    // to localStorage where possible). This makes it easy to test API
+    // calls without manually setting localStorage in the browser.
+    if (!access && process.env.REACT_APP_DEV_ACCESS_TOKEN && process.env.NODE_ENV !== 'production') {
+      access = process.env.REACT_APP_DEV_ACCESS_TOKEN;
+      try { localStorage.setItem('access_token', access); } catch (e) { /* ignore */ }
+    }
+
     return await doRequest(access);
   } catch (err) {
     const respData = err?.response?.data || {};
